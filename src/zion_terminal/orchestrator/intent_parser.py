@@ -20,9 +20,6 @@ logger = logging.getLogger(__name__)
 
 _TICKER_PATTERN = re.compile(r"\b([A-Z]{1,5})\b")
 
-# Known tickers that are also common words (allow these explicitly)
-_KNOWN_AMBIGUOUS_TICKERS = {"A", "AI", "GO", "IT", "NOW", "ON", "ALL", "ARE", "NEW", "ONE", "SEE", "WAY"}
-
 _TICKER_STOP_WORDS = {
     "AM", "AN", "AS", "AT", "BE", "BY", "DO", "IF", "IN", "IS", "ME",
     "MY", "NO", "OF", "OK", "OR", "SO", "TO", "UP", "US", "WE",

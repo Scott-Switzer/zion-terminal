@@ -1,79 +1,772 @@
 [
-  {"query": "Get AAPL stock price", "expected_intent": "quote", "expected_tickers": ["AAPL"]},
-  {"query": "Show me Apple's balance sheet", "expected_intent": "financials", "expected_tickers": ["AAPL"]},
-  {"query": "TSLA historical prices last 6 months weekly", "expected_intent": "history", "expected_tickers": ["TSLA"]},
-  {"query": "What is the current GDP?", "expected_intent": "macro", "expected_macro_series": ["GDP"]},
-  {"query": "Show me MSFT 10-K filings", "expected_intent": "filings", "expected_tickers": ["MSFT"]},
-  {"query": "Get unemployment rate data", "expected_intent": "macro", "expected_macro_series": ["UNRATE"]},
-  {"query": "Tell me about Tesla", "expected_intent": "company_info", "expected_tickers": ["TSLA"]},
-  {"query": "Generate a synthetic company", "expected_intent": "synthesis", "expected_tickers": []},
-  {"query": "meta stock price", "expected_intent": "quote", "expected_tickers": ["META"]},
-  {"query": "Show me metadata about the system", "expected_intent": "company_info", "expected_tickers": [], "note": "about triggers company_info intent; metadata does NOT match meta ticker (word boundary)"},
-  {"query": "NVDA GOOGL comparison prices", "expected_intent": "quote", "expected_tickers": ["NVDA", "GOOGL"]},
-  {"query": "CPI and inflation data", "expected_intent": "macro", "expected_macro_series": ["CPIAUCSL"]},
-  {"query": "Read AAPL filing content", "expected_intent": "filing_markdown", "expected_tickers": ["AAPL"]},
-  {"query": "AAPL company facts xbrl data", "expected_intent": "company_facts", "expected_tickers": ["AAPL"]},
-  {"query": "Get the fed funds rate", "expected_intent": "macro", "expected_macro_series": ["FEDFUNDS"]},
-  {"query": "What is Amazon's quarterly cash flow?", "expected_intent": "financials", "expected_tickers": ["AMZN"]},
-  {"query": "Boeing SEC filings", "expected_intent": "filings", "expected_tickers": ["BA"]},
-  {"query": "Show me AMD price and GDP at the same time", "expected_intent": "multi", "expected_tickers": ["AMD"], "expected_macro_series": ["GDP"]},
-  {"query": "Create a mock financial company", "expected_intent": "synthesis", "expected_tickers": []},
-  {"query": "current vix level today", "expected_intent": "macro", "expected_macro_series": ["VIXCLS"]},
-
-  {"query": "What is NVDA trading at?", "expected_intent": "quote", "expected_tickers": ["NVDA"]},
-  {"query": "MSFT market price right now", "expected_intent": "quote", "expected_tickers": ["MSFT"]},
-  {"query": "How much does Google stock cost?", "expected_intent": "quote", "expected_tickers": ["GOOGL"]},
-  {"query": "Netflix current share price", "expected_intent": "quote", "expected_tickers": ["NFLX"]},
-  {"query": "coinbase quote", "expected_intent": "quote", "expected_tickers": ["COIN"]},
-
-  {"query": "AAPL 5 year chart", "expected_intent": "history", "expected_tickers": ["AAPL"]},
-  {"query": "Show me TSLA performance over the past 3 months", "expected_intent": "history", "expected_tickers": ["TSLA"]},
-  {"query": "AMD historical daily data for 1 year", "expected_intent": "history", "expected_tickers": ["AMD"]},
-  {"query": "Nvidia trend last 2 years", "expected_intent": "history", "expected_tickers": ["NVDA"]},
-  {"query": "MSFT ohlcv data monthly", "expected_intent": "history", "expected_tickers": ["MSFT"]},
-
-  {"query": "Show me Tesla's income statement", "expected_intent": "financials", "expected_tickers": ["TSLA"]},
-  {"query": "Apple quarterly revenue and earnings", "expected_intent": "financials", "expected_tickers": ["AAPL"]},
-  {"query": "Microsoft annual financial statements", "expected_intent": "financials", "expected_tickers": ["MSFT"]},
-  {"query": "GOOGL net income over the last year", "expected_intent": "financials", "expected_tickers": ["GOOGL"]},
-  {"query": "What are Costco's cash flows?", "expected_intent": "financials", "expected_tickers": ["COST"]},
-
-  {"query": "AAPL 10-Q filings from last year", "expected_intent": "filings", "expected_tickers": ["AAPL"]},
-  {"query": "Show me Goldman Sachs 8-K filings", "expected_intent": "filings", "expected_tickers": ["GS"]},
-  {"query": "Recent NVDA SEC filings", "expected_intent": "filings", "expected_tickers": ["NVDA"]},
-  {"query": "List Tesla's annual filings last 5", "expected_intent": "filings", "expected_tickers": ["TSLA"]},
-  {"query": "MSFT quarterly filing 10-Q", "expected_intent": "filings", "expected_tickers": ["MSFT"]},
-
-  {"query": "Read Tesla's latest 10-K filing document", "expected_intent": "filing_markdown", "expected_tickers": ["TSLA"]},
-  {"query": "Convert AAPL filing to markdown", "expected_intent": "filing_markdown", "expected_tickers": ["AAPL"]},
-  {"query": "Show me the full filing text for MSFT", "expected_intent": "filing_markdown", "expected_tickers": ["MSFT"]},
-
-  {"query": "TSLA xbrl facts", "expected_intent": "company_facts", "expected_tickers": ["TSLA"]},
-  {"query": "AAPL xbrl data from SEC", "expected_intent": "company_facts", "expected_tickers": ["AAPL"]},
-
-  {"query": "What is the 10-year treasury rate?", "expected_intent": "macro", "expected_macro_series": ["DGS10"]},
-  {"query": "Show me consumer sentiment data", "expected_intent": "macro", "expected_macro_series": ["UMCSENT"]},
-  {"query": "30-year mortgage rate", "expected_intent": "macro", "expected_macro_series": ["MORTGAGE30US"]},
-  {"query": "money supply M2 trend", "expected_intent": "macro", "expected_macro_series": ["M2SL"]},
-  {"query": "What is core PCE?", "expected_intent": "macro", "expected_macro_series": ["PCEPILFE"]},
-  {"query": "Current S&P 500 level", "expected_intent": "macro", "expected_macro_series": ["SP500"]},
-
-  {"query": "Tell me about NVDA", "expected_intent": "company_info", "expected_tickers": ["NVDA"]},
-  {"query": "What sector is Palantir in?", "expected_intent": "company_info", "expected_tickers": ["PLTR"]},
-  {"query": "Disney company overview", "expected_intent": "company_info", "expected_tickers": ["DIS"]},
-  {"query": "Adobe company profile", "expected_intent": "company_info", "expected_tickers": ["ADBE"]},
-
-  {"query": "Generate synthetic financials for a mock company", "expected_intent": "synthesis", "expected_tickers": []},
-  {"query": "Create a fictional synthetic company", "expected_intent": "synthesis", "expected_tickers": []},
-  {"query": "Simulate a fake public company", "expected_intent": "synthesis", "expected_tickers": []},
-
-  {"query": "Pull NVDA quarterly financials and the current Fed Funds rate", "expected_intent": "multi", "expected_tickers": ["NVDA"], "expected_macro_series": ["FEDFUNDS"]},
-  {"query": "TSLA stock price and CPI data", "expected_intent": "multi", "expected_tickers": ["TSLA"], "expected_macro_series": ["CPIAUCSL"]},
-
-  {"query": "pltr", "expected_intent": "quote", "expected_tickers": ["PLTR"], "note": "bare ticker should default to quote"},
-  {"query": "aapl", "expected_intent": "quote", "expected_tickers": ["AAPL"], "note": "lowercase ticker"},
-  {"query": "uber stock", "expected_intent": "quote", "expected_tickers": ["UBER"]},
-  {"query": "What is Microsoft doing today?", "expected_intent": "quote", "expected_tickers": ["MSFT"]},
-  {"query": "industrial production index", "expected_intent": "macro", "expected_macro_series": ["INDPRO"]},
-  {"query": "retail sales data from FRED", "expected_intent": "macro", "expected_macro_series": ["RSXFS"]}
+  {
+    "query": "Get AAPL stock price",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "Show me Apple's balance sheet",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "TSLA historical prices last 6 months weekly",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "What is the current GDP?",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "GDP"
+    ]
+  },
+  {
+    "query": "Show me MSFT 10-K filings",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "Get unemployment rate data",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "UNRATE"
+    ]
+  },
+  {
+    "query": "Tell me about Tesla",
+    "expected_intent": "company_info",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "Generate a synthetic company",
+    "expected_intent": "synthesis",
+    "expected_tickers": []
+  },
+  {
+    "query": "meta stock price",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "META"
+    ]
+  },
+  {
+    "query": "Show me metadata about the system",
+    "expected_intent": "company_info",
+    "expected_tickers": [],
+    "note": "about triggers company_info intent; metadata does NOT match meta ticker (word boundary)"
+  },
+  {
+    "query": "NVDA GOOGL comparison prices",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "NVDA",
+      "GOOGL"
+    ]
+  },
+  {
+    "query": "CPI and inflation data",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "CPIAUCSL"
+    ]
+  },
+  {
+    "query": "Read AAPL filing content",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "AAPL company facts xbrl data",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "Get the fed funds rate",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "FEDFUNDS"
+    ]
+  },
+  {
+    "query": "What is Amazon's quarterly cash flow?",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "AMZN"
+    ]
+  },
+  {
+    "query": "Boeing SEC filings",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "BA"
+    ]
+  },
+  {
+    "query": "Show me AMD price and GDP at the same time",
+    "expected_intent": "multi",
+    "expected_tickers": [
+      "AMD"
+    ],
+    "expected_macro_series": [
+      "GDP"
+    ]
+  },
+  {
+    "query": "Create a mock financial company",
+    "expected_intent": "synthesis",
+    "expected_tickers": []
+  },
+  {
+    "query": "current vix level today",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "VIXCLS"
+    ]
+  },
+  {
+    "query": "What is NVDA trading at?",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "MSFT market price right now",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "How much does Google stock cost?",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "GOOGL"
+    ]
+  },
+  {
+    "query": "Netflix current share price",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "NFLX"
+    ]
+  },
+  {
+    "query": "coinbase quote",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "COIN"
+    ]
+  },
+  {
+    "query": "AAPL 5 year chart",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "Show me TSLA performance over the past 3 months",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "AMD historical daily data for 1 year",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "AMD"
+    ]
+  },
+  {
+    "query": "Nvidia trend last 2 years",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "MSFT ohlcv data monthly",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "Show me Tesla's income statement",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "Apple quarterly revenue and earnings",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "Microsoft annual financial statements",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "GOOGL net income over the last year",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "GOOGL"
+    ]
+  },
+  {
+    "query": "What are Costco's cash flows?",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "COST"
+    ]
+  },
+  {
+    "query": "AAPL 10-Q filings from last year",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "Show me Goldman Sachs 8-K filings",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "GS"
+    ]
+  },
+  {
+    "query": "Recent NVDA SEC filings",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "List Tesla's annual filings last 5",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "MSFT quarterly filing 10-Q",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "Read Tesla's latest 10-K filing document",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "Convert AAPL filing to markdown",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "Show me the full filing text for MSFT",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "TSLA xbrl facts",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "AAPL xbrl data from SEC",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "What is the 10-year treasury rate?",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "DGS10"
+    ]
+  },
+  {
+    "query": "Show me consumer sentiment data",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "UMCSENT"
+    ]
+  },
+  {
+    "query": "30-year mortgage rate",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "MORTGAGE30US"
+    ]
+  },
+  {
+    "query": "money supply M2 trend",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "M2SL"
+    ]
+  },
+  {
+    "query": "What is core PCE?",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "PCEPILFE"
+    ]
+  },
+  {
+    "query": "Current S&P 500 level",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "SP500"
+    ]
+  },
+  {
+    "query": "Tell me about NVDA",
+    "expected_intent": "company_info",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "What sector is Palantir in?",
+    "expected_intent": "company_info",
+    "expected_tickers": [
+      "PLTR"
+    ]
+  },
+  {
+    "query": "Disney company overview",
+    "expected_intent": "company_info",
+    "expected_tickers": [
+      "DIS"
+    ]
+  },
+  {
+    "query": "Adobe company profile",
+    "expected_intent": "company_info",
+    "expected_tickers": [
+      "ADBE"
+    ]
+  },
+  {
+    "query": "Generate synthetic financials for a mock company",
+    "expected_intent": "synthesis",
+    "expected_tickers": []
+  },
+  {
+    "query": "Create a fictional synthetic company",
+    "expected_intent": "synthesis",
+    "expected_tickers": []
+  },
+  {
+    "query": "Simulate a fake public company",
+    "expected_intent": "synthesis",
+    "expected_tickers": []
+  },
+  {
+    "query": "Pull NVDA quarterly financials and the current Fed Funds rate",
+    "expected_intent": "multi",
+    "expected_tickers": [
+      "NVDA"
+    ],
+    "expected_macro_series": [
+      "FEDFUNDS"
+    ]
+  },
+  {
+    "query": "TSLA stock price and CPI data",
+    "expected_intent": "multi",
+    "expected_tickers": [
+      "TSLA"
+    ],
+    "expected_macro_series": [
+      "CPIAUCSL"
+    ]
+  },
+  {
+    "query": "pltr",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "PLTR"
+    ],
+    "note": "bare ticker should default to quote"
+  },
+  {
+    "query": "aapl",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "AAPL"
+    ],
+    "note": "lowercase ticker"
+  },
+  {
+    "query": "uber stock",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "UBER"
+    ]
+  },
+  {
+    "query": "What is Microsoft doing today?",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "industrial production index",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "INDPRO"
+    ]
+  },
+  {
+    "query": "retail sales data from FRED",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "RSXFS"
+    ]
+  },
+  {
+    "query": "What is the weather today?",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive test - no financial intent"
+  },
+  {
+    "query": "Tell me a joke about stocks",
+    "expected_intent": "company_info",
+    "expected_tickers": [],
+    "note": "false positive - about triggers company_info"
+  },
+  {
+    "query": "How do I install Python?",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive - tech question"
+  },
+  {
+    "query": "What time is it in London?",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive - non-financial"
+  },
+  {
+    "query": "recipe for chocolate cake",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive - completely irrelevant"
+  },
+  {
+    "query": "capital of France",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive - geography"
+  },
+  {
+    "query": "the quick brown fox",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive - nonsense"
+  },
+  {
+    "query": "hello world",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "false positive - greeting"
+  },
+  {
+    "query": "visa stock price",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "V"
+    ]
+  },
+  {
+    "query": "uber quarterly earnings report",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "UBER"
+    ]
+  },
+  {
+    "query": "costco annual report",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "COST"
+    ]
+  },
+  {
+    "query": "palantir 10-K filing",
+    "expected_intent": "filings",
+    "expected_tickers": [
+      "PLTR"
+    ]
+  },
+  {
+    "query": "snowflake company info",
+    "expected_intent": "company_info",
+    "expected_tickers": [
+      "SNOW"
+    ]
+  },
+  {
+    "query": "spotify revenue last quarter",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "SPOT"
+    ]
+  },
+  {
+    "query": "Show me AAPL financials and the unemployment rate",
+    "expected_intent": "multi",
+    "expected_tickers": [
+      "AAPL"
+    ],
+    "expected_macro_series": [
+      "UNRATE"
+    ]
+  },
+  {
+    "query": "TSLA 10-K and current mortgage rate",
+    "expected_intent": "multi",
+    "expected_tickers": [
+      "TSLA"
+    ],
+    "expected_macro_series": [
+      "MORTGAGE30US"
+    ]
+  },
+  {
+    "query": "NVDA balance sheet and housing starts",
+    "expected_intent": "multi",
+    "expected_tickers": [
+      "NVDA"
+    ],
+    "expected_macro_series": [
+      "HOUST"
+    ]
+  },
+  {
+    "query": "Compare MSFT and GOOGL prices",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "MSFT",
+      "GOOGL"
+    ]
+  },
+  {
+    "query": "AMZN and NFLX quarterly financials",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "AMZN",
+      "NFLX"
+    ]
+  },
+  {
+    "query": "JPM GS Morgan Stanley earnings",
+    "expected_intent": "financials",
+    "expected_tickers": [
+      "JPM",
+      "GS",
+      "MS"
+    ]
+  },
+  {
+    "query": "nothing useful here xyz123",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "nonsense"
+  },
+  {
+    "query": "asdfghjkl",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "garbage input"
+  },
+  {
+    "query": "",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "empty string"
+  },
+  {
+    "query": "   ",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "whitespace only"
+  },
+  {
+    "query": "42",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "number only"
+  },
+  {
+    "query": "the",
+    "expected_intent": "quote",
+    "expected_tickers": [],
+    "note": "single stop word"
+  },
+  {
+    "query": "Show me AAPL filing markdown for 10-K",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "convert TSLA 10-Q filing to markdown",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "read the NVDA filing text",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "MSFT full filing document",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "filing content for GOOGL",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "GOOGL"
+    ]
+  },
+  {
+    "query": "read filing for Amazon",
+    "expected_intent": "filing_markdown",
+    "expected_tickers": [
+      "AMZN"
+    ]
+  },
+  {
+    "query": "AAPL xbrl facts from SEC",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "TSLA company facts xbrl data",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "NVDA xbrl data",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "xbrl facts for Microsoft",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "GOOGL company facts",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "GOOGL"
+    ]
+  },
+  {
+    "query": "Meta xbrl facts",
+    "expected_intent": "company_facts",
+    "expected_tickers": [
+      "META"
+    ]
+  },
+  {
+    "query": "AAPL stock price last 3 months",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "AAPL"
+    ]
+  },
+  {
+    "query": "TSLA prices from 2023 to 2024",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "TSLA"
+    ]
+  },
+  {
+    "query": "MSFT 2 year daily data",
+    "expected_intent": "quote",
+    "expected_tickers": [
+      "MSFT"
+    ]
+  },
+  {
+    "query": "NVDA 5 year chart performance",
+    "expected_intent": "history",
+    "expected_tickers": [
+      "NVDA"
+    ]
+  },
+  {
+    "query": "GDP from 2020-01-01 to 2024-12-31",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "GDP"
+    ]
+  },
+  {
+    "query": "CPI last 6 months data",
+    "expected_intent": "macro",
+    "expected_macro_series": [
+      "CPIAUCSL"
+    ]
+  }
 ]

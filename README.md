@@ -138,7 +138,7 @@ src/zion_terminal/
 └── providers/base.py               # LLM abstraction (OpenAI, Ollama, None)
 
 tests/
-├── unit/                           # 218 unit tests
+├── unit/                           # 300+ unit tests
 ├── benchmarks/                     # Parser and converter benchmarks
 ├── fixtures/                       # Static test corpus
 └── integration/                    # Network-dependent tests
