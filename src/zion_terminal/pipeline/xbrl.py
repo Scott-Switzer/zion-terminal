@@ -107,6 +107,50 @@ class XBRLVerifier:
         """Validate a local XBRL file."""
         return self.validate_url(path, extract_facts)
 
+    @staticmethod
+    def _extract_concept_name(fact) -> str:
+        """Safely extract the concept name from an Arelle ModelFact.
+
+        In Arelle's API, ``fact.concept`` is a ``ModelConcept`` object
+        (not a dict).  The canonical name lives at ``fact.concept.qname``
+        which is a ``QName`` whose ``str()`` gives "prefix:localName".
+        We prefer the local name only for readability.
+        """
+        concept = getattr(fact, "concept", None)
+        if concept is None:
+            return ""
+        qname = getattr(concept, "qname", None)
+        if qname is not None:
+            # qname.localName is the unqualified tag name
+            return getattr(qname, "localName", str(qname))
+        # Last-resort fallback
+        name = getattr(concept, "name", None)
+        return str(name) if name else ""
+
+    @staticmethod
+    def _extract_period_info(fact, xbrl_fact: XBRLFact) -> None:
+        """Populate period fields on *xbrl_fact* from the Arelle context.
+
+        Arelle's ``ModelContext`` exposes period info via properties
+        ``startDatetime``, ``endDatetime``, and ``instantDatetime``
+        directly on the context, not on a nested ``period`` sub-object.
+        """
+        ctx = getattr(fact, "context", None)
+        if ctx is None:
+            return
+        # Arelle puts period datetimes directly on context
+        if getattr(ctx, "isStartEndPeriod", False):
+            sd = getattr(ctx, "startDatetime", None)
+            ed = getattr(ctx, "endDatetime", None)
+            if sd is not None:
+                xbrl_fact.period_start = str(sd)
+            if ed is not None:
+                xbrl_fact.period_end = str(ed)
+        elif getattr(ctx, "isInstantPeriod", False):
+            inst = getattr(ctx, "instantDatetime", None)
+            if inst is not None:
+                xbrl_fact.period_instant = str(inst)
+
     def _run_validation(self, source: str, extract_facts: bool) -> XBRLValidationResult:
         """Run Arelle validation on a source (URL or file path)."""
         from arelle import Cntlr
@@ -134,24 +178,13 @@ class XBRLVerifier:
             for fact in model_xbrl.facts:
                 try:
                     xbrl_fact = XBRLFact(
-                        concept=str(getattr(fact, "concept", {}).get("name", "")),
+                        concept=self._extract_concept_name(fact),
                         value=getattr(fact, "value", None),
                         context_id=str(getattr(fact, "contextID", "")),
                         unit=str(getattr(fact, "unitID", "")),
                         decimals=str(getattr(fact, "decimals", "")),
                     )
-                    # Extract period info from context
-                    ctx = getattr(fact, "context", None)
-                    if ctx is not None:
-                        period = getattr(ctx, "period", None)
-                        if period is not None:
-                            if hasattr(period, "startDatetime"):
-                                xbrl_fact.period_start = str(period.startDatetime)
-                            if hasattr(period, "endDatetime"):
-                                xbrl_fact.period_end = str(period.endDatetime)
-                            if hasattr(period, "instantDatetime"):
-                                xbrl_fact.period_instant = str(period.instantDatetime)
-
+                    self._extract_period_info(fact, xbrl_fact)
                     facts.append(xbrl_fact)
                 except Exception:
                     continue

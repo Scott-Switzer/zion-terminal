@@ -337,12 +337,13 @@ def company_facts(ctx: click.Context, ticker: str, fmt: str) -> None:
 @main.command()
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def synthesis(fmt: str) -> None:
+@click.pass_context
+def synthesis(ctx: click.Context, fmt: str) -> None:
     """Generate a synthetic company with consistent financials.
 
     Works without any LLM. With an LLM, also generates a press release.
     """
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
         resp = orc.query("generate synthetic company")
         _run_and_output(orc, resp, fmt)

@@ -108,3 +108,59 @@ class TestSegmenterAccuracy:
         sections = segmenter.segment("")
         assert len(sections) == 1
         assert sections[0].item == "full"
+
+
+class TestLargerFilingFixture:
+    """Tests using the larger multi-section filing fixture."""
+
+    @pytest.fixture
+    def large_html(self):
+        return (FIXTURES_DIR / "sample_html_filing_table_toc.html").read_text()
+
+    def test_converts_successfully(self, converter, large_html):
+        result = converter.convert(large_html)
+        assert result["char_count"] > 500
+        assert "Global Tech" in result["markdown"]
+
+    def test_multiple_tables_preserved(self, converter, large_html):
+        md = converter.convert(large_html)["markdown"]
+        # Should have at least 4 tables (TOC, revenue, opex, balance sheet, exhibits)
+        assert md.count("| ---") >= 4
+
+    def test_segments_10_sections(self, converter, segmenter, large_html):
+        md = converter.convert(large_html)["markdown"]
+        sections = segmenter.segment(md)
+        # Should find: 1, 1A, 2, 7, 7A, 8, 9, 9A, 15 = 9 sections
+        assert len(sections) >= 8
+        items = {s.item for s in sections}
+        assert "Item 1" in items
+        assert "Item 7" in items
+        assert "Item 8" in items
+        assert "Item 15" in items
+
+    def test_section_content_not_empty(self, converter, segmenter, large_html):
+        md = converter.convert(large_html)["markdown"]
+        sections = segmenter.segment(md)
+        for s in sections:
+            assert not s.is_empty, f"Section {s.item} is empty"
+
+
+class TestDivHeaderFixture:
+    """Tests using the div-header filing fixture."""
+
+    @pytest.fixture
+    def div_html(self):
+        return (FIXTURES_DIR / "sample_html_filing_div_headers.html").read_text()
+
+    def test_div_headers_converted(self, converter, div_html):
+        md = converter.convert(div_html)["markdown"]
+        assert "## Item 1" in md
+        assert "## Item 1A" in md
+
+    def test_div_headers_segmented(self, converter, segmenter, div_html):
+        md = converter.convert(div_html)["markdown"]
+        sections = segmenter.segment(md)
+        assert len(sections) >= 4
+        items = {s.item for s in sections}
+        assert "Item 1" in items
+        assert "Item 7" in items

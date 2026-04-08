@@ -83,13 +83,21 @@ class Orchestrator:
         if parsed.needs_synthesis:
             return self._handle_synthesis(parsed)
 
+        meta: dict[str, Any] = {
+            "tickers": parsed.tickers,
+            "macro_series": parsed.macro_series,
+            "tasks_count": len(parsed.tasks),
+            "llm_provider": self._llm.name,
+        }
+        if parsed.params.get("_llm_assisted"):
+            meta["llm_assisted"] = True
+
         return self._fetch_and_validate(
             tasks=parsed.tasks,
             query=text,
             intent=parsed.intent,
             validate=validate,
-            metadata={"tickers": parsed.tickers, "macro_series": parsed.macro_series,
-                       "tasks_count": len(parsed.tasks), "llm_provider": self._llm.name},
+            metadata=meta,
         )
 
     # ── Public direct-access methods ────────────────────────────────

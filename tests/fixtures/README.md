@@ -1,15 +1,17 @@
 # Test Fixtures
 
-Static test data for deterministic, offline testing.
+Shared test data for unit tests and benchmarks.
 
 ## Files
 
-- `sample_queries.json` — Intent parser test corpus: queries + expected intents/tickers
-- `sample_html_filing.html` — Minimal 10-K HTML for converter/segmenter tests
-- `sample_fred_response.json` — FRED API mock response
-- `sample_yf_quote.json` — Yahoo Finance quote mock response
+| File | Description |
+|---|---|
+| `sample_queries.json` | 66 query/intent/ticker/macro test cases for parser benchmarks |
+| `sample_html_filing.html` | Toy SEC 10-K HTML with headings, tables, lists, bold/italic |
+| `sample_html_filing_div_headers.html` | SEC filing HTML where Item headers are in div/p/b tags (realistic edge case) |
+| `sample_html_filing_table_toc.html` | Larger SEC 10-K with table of contents, multiple tables, 10 sections |
 
-## Usage
+## Adding Fixtures
 
-All fixtures are loaded in tests via `pathlib.Path(__file__).parent / "fixtures"`.
-Do not commit real API responses containing PII or API keys.
+- Query fixtures: add to `sample_queries.json` with `query`, `expected_intent`, and optionally `expected_tickers`, `expected_macro_series`, `note`.
+- HTML fixtures: use realistic SEC filing structure. Name as `sample_html_filing_*.html`.

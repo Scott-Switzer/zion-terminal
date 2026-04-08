@@ -31,7 +31,8 @@ CLI (click) → Orchestrator → Agents → Adapters → External APIs
 - Rule-based (first-class) + LLM fallback (optional)
 - Extracts tickers, macro series, periods, intervals
 - Word-boundary matching to prevent false positives (e.g. "meta" vs "metadata")
-- Tags LLM-assisted results with `_llm_assisted=True`
+- Length-weighted keyword scoring to prefer specific intent matches over generic ones
+- Tags LLM-assisted results; `llm_assisted` surfaced in `OrchestratorResponse.metadata`
 
 ### Retrieval Agent (`agents/retrieval/`)
 - Routes tasks to correct adapter by source name
@@ -53,9 +54,9 @@ CLI (click) → Orchestrator → Agents → Adapters → External APIs
 - Works without LLM (deterministic). LLM adds press release generation.
 
 ### Pipeline (`pipeline/`)
-- `FilingConverter` — DOM-based HTML→markdown conversion
-- `FilingSegmenter` — splits filings into sections by Item number
-- `XBRLVerifier` — optional Arelle integration for XBRL validation
+- `FilingConverter` — DOM-based HTML→markdown conversion; promotes SEC Item headers from `<div>`, `<p>`, `<b>` tags to markdown headings
+- `FilingSegmenter` — splits filings into sections by Item number (heading-prefixed primary, plain-text fallback)
+- `XBRLVerifier` — optional Arelle integration for XBRL validation (API-aligned with `ModelConcept.qname.localName`)
 
 ### Cache (`cache/`)
 - diskcache-backed file caching with TTL

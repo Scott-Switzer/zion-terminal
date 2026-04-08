@@ -49,7 +49,7 @@ class TestCLI:
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.3.0" in result.output
+        assert "0.3.1" in result.output
 
     def test_no_subcommand_shows_help(self, runner):
         result = runner.invoke(main, [])
@@ -169,6 +169,14 @@ class TestCLI:
         mock_build.return_value = mock_orchestrator
         result = runner.invoke(main, ["synthesis"])
         assert result.exit_code == 0
+
+    @patch("zion_terminal.cli._build_orchestrator")
+    def test_synthesis_passes_strict(self, mock_build, runner, mock_orchestrator):
+        """Verify --strict flag is forwarded to orchestrator from synthesis command."""
+        mock_build.return_value = mock_orchestrator
+        result = runner.invoke(main, ["--strict", "synthesis"])
+        assert result.exit_code == 0
+        mock_build.assert_called_once_with(strict=True)
 
     def test_all_subcommands_exist(self, runner):
         """Verify every documented subcommand is registered."""

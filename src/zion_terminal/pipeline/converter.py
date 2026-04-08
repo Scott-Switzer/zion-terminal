@@ -12,6 +12,12 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Pattern to detect SEC Item headers in text content.
+# Matches "Item 1", "ITEM 1A.", "Item 7A —", etc.
+_ITEM_HEADER_RE = re.compile(
+    r"^\s*(?:ITEM|Item)\s+\d{1,2}[A-Ba-b]?\b[\.\:\-\—\–]?\s*.{0,120}$"
+)
+
 
 class FilingConverter:
     """Converts SEC filing HTML to clean markdown.
@@ -32,9 +38,11 @@ class FilingConverter:
 
         Returns a dict with ``markdown``, ``metadata``, and ``char_count``.
         """
+        used_dom = False
         try:
             from bs4 import BeautifulSoup, NavigableString, Tag
             markdown = self._dom_convert(html, BeautifulSoup, NavigableString, Tag)
+            used_dom = True
         except ImportError:
             logger.warning("bs4/lxml not available — falling back to regex stripping")
             markdown = self._fallback_convert(html)
@@ -47,7 +55,7 @@ class FilingConverter:
             "char_count": len(markdown),
             "metadata": {
                 **(metadata or {}),
-                "converter": "dom" if "bs4" in str(type(self)) or True else "regex",
+                "converter": "dom" if used_dom else "regex",
                 "truncated": len(markdown) >= self._max_length,
             },
         }
@@ -85,6 +93,11 @@ class FilingConverter:
             return
 
         if name == "p":
+            text = element.get_text(strip=True)
+            # Promote SEC Item headers inside <p> tags to markdown headings
+            if text and _ITEM_HEADER_RE.match(text):
+                parts.append(f"\n\n## {text}\n\n")
+                return
             # Recurse into children to preserve inline formatting (bold, italic)
             parts.append("\n\n")
             for child in element.children:
@@ -98,8 +111,13 @@ class FilingConverter:
 
         if name in ("b", "strong"):
             text = element.get_text(strip=True)
-            if text:
-                parts.append(f"**{text}**")
+            if not text:
+                return
+            # Promote SEC Item headers inside <b>/<strong> to markdown headings
+            if _ITEM_HEADER_RE.match(text):
+                parts.append(f"\n\n## {text}\n\n")
+                return
+            parts.append(f"**{text}**")
             return
 
         if name in ("i", "em"):
@@ -117,6 +135,13 @@ class FilingConverter:
         if name == "table":
             self._convert_table(element, parts, Tag)
             return
+
+        # For <div> elements, check if they are SEC Item headers
+        if name == "div":
+            text = element.get_text(strip=True)
+            if text and _ITEM_HEADER_RE.match(text) and len(text) < 150:
+                parts.append(f"\n\n## {text}\n\n")
+                return
 
         for child in element.children:
             self._walk(child, parts, NavigableString, Tag)

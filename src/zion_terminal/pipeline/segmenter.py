@@ -51,10 +51,16 @@ class FilingSection:
         return len(self.content.strip()) == 0
 
 
-# Pattern to match "Item 1", "Item 1A", "Item 7A", "ITEM 15" etc.
-# Handles varying formats: "Item 1.", "ITEM 1 -", "Item 1:", etc.
-_ITEM_PATTERN = re.compile(
+# Primary pattern: Item headers as markdown headings (## Item 1A. Title)
+_ITEM_HEADING_PATTERN = re.compile(
     r"^#{1,4}\s*(?:ITEM|Item)\s+(\d{1,2}[A-Ba-b]?)\b[\.\:\-—–]?\s*(.*?)$",
+    re.MULTILINE,
+)
+
+# Fallback pattern: plain-text Item headers (no markdown heading prefix).
+# Real SEC filings converted from div/p/b tags may produce these.
+_ITEM_PLAIN_PATTERN = re.compile(
+    r"^(?:ITEM|Item)\s+(\d{1,2}[A-Ba-b]?)\b[\.\:\-—–]?\s*(.*?)$",
     re.MULTILINE,
 )
 
@@ -98,18 +104,35 @@ class FilingSegmenter:
     """
 
     def segment(self, markdown: str) -> list[FilingSection]:
-        """Split markdown into sections based on Item headers."""
+        """Split markdown into sections based on Item headers.
+
+        Tries heading-prefixed patterns first (``## Item 1``). If none
+        are found, falls back to plain-text patterns (``Item 1``) which
+        covers real SEC filings where headers appear in div/p/b tags.
+        """
         lines = markdown.split("\n")
         matches: list[tuple[int, str, str]] = []
 
+        # First pass: heading-prefixed Item patterns
         for i, line in enumerate(lines):
-            m = _ITEM_PATTERN.match(line)
+            m = _ITEM_HEADING_PATTERN.match(line)
             if m:
                 item_num = m.group(1).upper()
                 title = m.group(2).strip()
                 if not title:
                     title = _KNOWN_TITLES.get(item_num, "")
                 matches.append((i, item_num, title))
+
+        # Fallback: plain-text Item patterns if no headings found
+        if not matches:
+            for i, line in enumerate(lines):
+                m = _ITEM_PLAIN_PATTERN.match(line)
+                if m:
+                    item_num = m.group(1).upper()
+                    title = m.group(2).strip()
+                    if not title:
+                        title = _KNOWN_TITLES.get(item_num, "")
+                    matches.append((i, item_num, title))
 
         if not matches:
             # No items found — return the whole thing as one section

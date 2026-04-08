@@ -36,7 +36,8 @@ _TICKER_STOP_WORDS = {
     "THEN", "WELL", "WERE", "CURRENT", "QUARTERLY", "ANNUAL", "FISCAL",
     "NET", "INCOME", "REVENUE", "PRICE", "STOCK", "MARKET",
     # Form types and financial terms that look like tickers
-    "K", "Q", "GDP", "CPI", "VIX", "XBRL", "FORM", "READ", "FULL",
+    "K", "Q", "S", "P", "GDP", "CPI", "VIX", "PCE", "XBRL",
+    "FORM", "READ", "FULL", "FRED",
     "ABOUT", "FACTS", "LEVEL", "TEXT", "ITEM", "RISK",
 }
 
@@ -164,7 +165,7 @@ def extract_limit(text: str) -> int | None:
 # ── Intent classification ────────────────────────────────────────────────
 
 _INTENT_KEYWORDS = {
-    "quote": ["price", "quote", "trading", "current price", "stock price", "market price"],
+    "quote": ["price", "prices", "quote", "trading", "current price", "stock price", "market price"],
     "history": ["historical", "history", "chart", "trend", "performance", "past", "prices", "ohlcv"],
     "financials": ["financials", "financial statements", "income statement", "balance sheet",
                    "cash flow", "revenue", "earnings", "net income", "quarterly financials", "annual report"],
@@ -172,9 +173,8 @@ _INTENT_KEYWORDS = {
                 "edgar", "annual filing", "quarterly filing", "proxy"],
     "filing_markdown": ["filing markdown", "filing text", "filing content", "read filing",
                         "filing document", "full filing", "read the filing",
-                        "convert filing", "filing to markdown",
-                        "content", "markdown", "full text", "document text"],
-    "company_facts": ["company facts", "xbrl", "xbrl facts", "facts"],
+                        "convert filing", "filing to markdown"],
+    "company_facts": ["company facts", "xbrl facts", "xbrl data", "xbrl"],
     "macro": ["macro", "economic", "fed", "gdp", "cpi", "inflation", "unemployment",
               "interest rate", "treasury", "indicator", "monetary", "fiscal"],
     "company_info": ["company info", "about", "sector", "industry", "description", "profile", "overview"],
@@ -279,10 +279,16 @@ class IntentParser:
         return parsed
 
     def _classify_intent(self, query: str) -> str:
+        """Classify intent by keyword matching.
+
+        Scoring: each matching keyword adds its character length to the
+        intent's score.  This naturally prefers more-specific (longer)
+        keyword phrases over short generic ones when counts tie.
+        """
         lower = query.lower()
         scores: dict[str, int] = {}
         for intent, keywords in _INTENT_KEYWORDS.items():
-            score = sum(1 for kw in keywords if kw in lower)
+            score = sum(len(kw) for kw in keywords if kw in lower)
             if score > 0:
                 scores[intent] = score
         return max(scores, key=scores.get) if scores else "quote"

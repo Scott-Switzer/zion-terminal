@@ -123,3 +123,32 @@ class TestStrictMode:
         resp = orc.get_quote("AAPL", validate=False)
         assert resp.success
         orc._validation.validate_retrieval.assert_not_called()
+
+
+class TestLLMAssistedMetadata:
+    """Verify _llm_assisted flag is surfaced in OrchestratorResponse.metadata."""
+
+    def test_llm_assisted_surfaced_when_set(self, orc):
+        from zion_terminal.orchestrator.intent_parser import ParsedIntent
+        parsed = ParsedIntent(
+            raw_query="some unusual query",
+            intent="quote",
+            tickers=["AAPL"],
+            tasks=[{"source": "yahoo_finance", "ticker": "AAPL", "action": "quote"}],
+        )
+        parsed.params["_llm_assisted"] = True
+        orc._parser.parse.return_value = parsed
+        resp = orc.query("some unusual query")
+        assert resp.metadata.get("llm_assisted") is True
+
+    def test_llm_assisted_absent_when_not_set(self, orc):
+        from zion_terminal.orchestrator.intent_parser import ParsedIntent
+        parsed = ParsedIntent(
+            raw_query="AAPL price",
+            intent="quote",
+            tickers=["AAPL"],
+            tasks=[{"source": "yahoo_finance", "ticker": "AAPL", "action": "quote"}],
+        )
+        orc._parser.parse.return_value = parsed
+        resp = orc.query("AAPL price")
+        assert "llm_assisted" not in resp.metadata

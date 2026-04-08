@@ -84,12 +84,12 @@ EDGAR_IDENTITY=Your Name your.email@example.com
 LLM_PROVIDER=none              # none | openai | ollama
 OPENAI_API_KEY=                # only if LLM_PROVIDER=openai
 OPENAI_MODEL=gpt-4o-mini       # default model
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=llama3.1
 
 # Optional: cache configuration
 CACHE_DIR=.cache/zion
-CACHE_TTL=3600
+CACHE_TTL_SECONDS=3600
 ```
 
 ## Architecture
