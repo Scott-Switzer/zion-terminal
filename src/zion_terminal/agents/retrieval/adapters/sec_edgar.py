@@ -8,7 +8,6 @@ Filing-to-markdown conversion is experimental (Phase 1.5).
 from __future__ import annotations
 
 import logging
-import re
 import time
 from datetime import date
 from typing import Any
@@ -17,6 +16,7 @@ from zion_terminal.agents.retrieval.base_adapter import BaseAdapter
 from zion_terminal.agents.retrieval.retry import adapter_retry
 from zion_terminal.models.financial import FilingType, SECFiling
 from zion_terminal.models.responses import RetrievalResult
+from zion_terminal.pipeline.filing_pipeline import FilingPipeline
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,7 @@ class SECEdgarAdapter(BaseAdapter):
     def __init__(self, identity: str = "", **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._identity = identity
+        self._pipeline = FilingPipeline()
 
     def _init_edgar(self) -> None:
         from edgar import set_identity
@@ -196,11 +197,10 @@ class SECEdgarAdapter(BaseAdapter):
 
     @adapter_retry
     def _fetch_filing_markdown(self, ticker: str, params: dict) -> RetrievalResult:
-        """Phase 1.5: Fetch a specific filing and convert to markdown.
+        """Fetch a filing and process through the unified pipeline.
 
-        This is experimental. It fetches the primary document of the most
-        recent filing of the requested type and does best-effort HTML→markdown
-        conversion, preserving tables where possible.
+        Uses the shared FilingPipeline (converter + segmenter) instead of
+        a private conversion path. This is the single live filing path.
         """
         from edgar import Company
         _rate_limit()
@@ -216,11 +216,9 @@ class SECEdgarAdapter(BaseAdapter):
         _rate_limit()
 
         try:
-            # Get the filing HTML content
             filing_obj = filing.obj()
             html_content = None
 
-            # Try to get the document text
             if hasattr(filing_obj, "text"):
                 html_content = filing_obj.text
             elif hasattr(filing_obj, "html"):
@@ -234,8 +232,21 @@ class SECEdgarAdapter(BaseAdapter):
                     errors=[f"Could not extract content from {form} filing for {ticker}"],
                 )
 
-            # Convert HTML to markdown (best-effort)
-            markdown = _html_to_markdown(html_content)
+            # Run through the unified filing pipeline
+            filing_date_str = str(getattr(filing, "filing_date", ""))
+            pipeline_result = self._pipeline.process(
+                html=html_content,
+                ticker=ticker,
+                form=form,
+                filing_date=filing_date_str,
+                metadata={"ticker": ticker, "form": form, "source": self.SOURCE_NAME},
+            )
+
+            if not pipeline_result.success:
+                return RetrievalResult(
+                    success=False,
+                    errors=pipeline_result.errors,
+                )
 
             filing_data = SECFiling(
                 ticker=ticker,
@@ -245,137 +256,20 @@ class SECEdgarAdapter(BaseAdapter):
                 filing_date=filing.filing_date if isinstance(getattr(filing, "filing_date", None), date) else None,
                 accession_number=str(getattr(filing, "accession_no", "")),
                 document_url=str(getattr(filing, "homepage_url", "")),
-                description=f"{form} filing (markdown conversion)",
-                content_markdown=markdown[:100_000],  # cap at 100k chars
+                description=f"{form} filing (pipeline conversion)",
+                content_markdown=pipeline_result.markdown[:100_000],
                 source=self.SOURCE_NAME,
             )
-            return RetrievalResult(data=[filing_data.model_dump()], sources_used=[self.SOURCE_NAME])
+
+            result_data = filing_data.model_dump()
+            result_data["pipeline_metadata"] = pipeline_result.to_dict()
+
+            return RetrievalResult(data=[result_data], sources_used=[self.SOURCE_NAME])
 
         except Exception as exc:
-            logger.warning("Filing markdown conversion failed for %s: %s", ticker, exc)
+            logger.warning("Filing pipeline failed for %s: %s", ticker, exc)
             return RetrievalResult(
                 success=False,
-                errors=[f"Filing markdown conversion failed: {exc}"],
+                errors=[f"Filing pipeline failed: {exc}"],
             )
 
-
-def _html_to_markdown(html: str) -> str:
-    """DOM-based HTML to markdown conversion.
-
-    Uses BeautifulSoup for robust parsing of SEC filing HTML.
-    Preserves document structure (headers, tables, lists).
-    Falls back to simple regex stripping if BS4 is unavailable.
-    """
-    try:
-        from bs4 import BeautifulSoup, NavigableString, Tag
-    except ImportError:
-        # Fallback: just strip tags
-        text = re.sub(r"<[^>]+>", " ", html)
-        text = re.sub(r"\s+", " ", text)
-        return text.strip()
-
-    soup = BeautifulSoup(html, "lxml")
-
-    # Remove script, style, and hidden elements
-    for tag in soup.find_all(["script", "style", "meta", "link"]):
-        tag.decompose()
-
-    parts: list[str] = []
-
-    def _process(element) -> None:
-        if isinstance(element, NavigableString):
-            text = str(element).strip()
-            if text:
-                parts.append(text)
-            return
-
-        if not isinstance(element, Tag):
-            return
-
-        tag_name = element.name.lower() if element.name else ""
-
-        # Headers
-        if tag_name in ("h1", "h2", "h3", "h4", "h5", "h6"):
-            level = int(tag_name[1])
-            text = element.get_text(strip=True)
-            if text:
-                parts.append(f"\n\n{'#' * level} {text}\n")
-            return
-
-        # Paragraphs — recurse to preserve inline formatting
-        if tag_name == "p":
-            parts.append("\n\n")
-            for child in element.children:
-                _process(child)
-            parts.append("\n")
-            return
-
-        # Line breaks
-        if tag_name == "br":
-            parts.append("\n")
-            return
-
-        # Bold
-        if tag_name in ("b", "strong"):
-            text = element.get_text(strip=True)
-            if text:
-                parts.append(f"**{text}**")
-            return
-
-        # Italic
-        if tag_name in ("i", "em"):
-            text = element.get_text(strip=True)
-            if text:
-                parts.append(f"*{text}*")
-            return
-
-        # List items
-        if tag_name == "li":
-            text = element.get_text(strip=True)
-            if text:
-                parts.append(f"\n- {text}")
-            return
-
-        # Tables — convert to markdown tables
-        if tag_name == "table":
-            _process_table(element, parts)
-            return
-
-        # Recurse into other elements
-        for child in element.children:
-            _process(child)
-
-    def _process_table(table: Tag, parts: list[str]) -> None:
-        rows = table.find_all("tr")
-        if not rows:
-            return
-
-        md_rows: list[list[str]] = []
-        for row in rows:
-            cells = row.find_all(["td", "th"])
-            md_row = [cell.get_text(strip=True).replace("|", "/") for cell in cells]
-            if any(md_row):  # skip fully empty rows
-                md_rows.append(md_row)
-
-        if not md_rows:
-            return
-
-        # Normalize column count
-        max_cols = max(len(r) for r in md_rows)
-        for r in md_rows:
-            while len(r) < max_cols:
-                r.append("")
-
-        parts.append("\n\n")
-        # First row as header
-        parts.append("| " + " | ".join(md_rows[0]) + " |\n")
-        parts.append("| " + " | ".join(["---"] * max_cols) + " |\n")
-        for row in md_rows[1:]:
-            parts.append("| " + " | ".join(row) + " |\n")
-
-    _process(soup)
-    text = "".join(parts)
-
-    # Clean up excessive whitespace
-    text = re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip()

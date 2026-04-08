@@ -38,9 +38,16 @@ def _random_ticker(name: str) -> str:
 class SynthesisAgent:
     def __init__(self, llm: BaseLLMProvider | None = None) -> None:
         self._llm = llm or NoLLMProvider()
+        self._rng = random.Random()  # Instance-level RNG for determinism
 
     def generate(self, query: str, params: dict[str, Any] | None = None) -> SynthesisResult:
         params = params or {}
+        seed = params.get("seed")
+        if seed is not None:
+            self._rng = random.Random(seed)
+        else:
+            # Default deterministic seed from query for reproducibility
+            self._rng = random.Random(hash(query) & 0xFFFFFFFF)
         try:
             company = self._generate_company(params)
             income_stmt = self._generate_income_statement(company)
@@ -68,24 +75,24 @@ class SynthesisAgent:
             return SynthesisResult(success=False, errors=[f"Synthesis error: {exc}"])
 
     def _generate_company(self, params: dict[str, Any]) -> dict[str, Any]:
-        sector, industry = random.choice(_SECTORS)
-        name = f"{params.get('name_prefix') or random.choice(_NAME_PREFIXES)} {params.get('name_suffix') or random.choice(_NAME_SUFFIXES)}"
+        sector, industry = self._rng.choice(_SECTORS)
+        name = f"{params.get('name_prefix') or self._rng.choice(_NAME_PREFIXES)} {params.get('name_suffix') or self._rng.choice(_NAME_SUFFIXES)}"
         ticker = params.get("ticker") or _random_ticker(name)
         return {
             "name": name, "ticker": ticker, "sector": sector, "industry": industry,
-            "founded": random.randint(1985, 2020),
-            "headquarters": random.choice(["San Francisco, CA", "New York, NY", "Austin, TX", "Boston, MA", "Seattle, WA"]),
-            "employees": random.randint(500, 150_000),
-            "base_revenue": random.uniform(500_000_000, 50_000_000_000),
+            "founded": self._rng.randint(1985, 2020),
+            "headquarters": self._rng.choice(["San Francisco, CA", "New York, NY", "Austin, TX", "Boston, MA", "Seattle, WA"]),
+            "employees": self._rng.randint(500, 150_000),
+            "base_revenue": self._rng.uniform(500_000_000, 50_000_000_000),
             "description": f"{name} is a {industry.lower()} company in the {sector.lower()} sector.",
         }
 
     def _generate_income_statement(self, company: dict) -> dict[str, Any]:
         revenue_raw = company["base_revenue"] / 4
-        cogs_pct = random.uniform(0.30, 0.65)
-        sga_pct = random.uniform(0.10, 0.25)
-        rnd_pct = random.uniform(0.05, 0.20)
-        tax_rate = random.uniform(0.18, 0.25)
+        cogs_pct = self._rng.uniform(0.30, 0.65)
+        sga_pct = self._rng.uniform(0.10, 0.25)
+        rnd_pct = self._rng.uniform(0.05, 0.20)
+        tax_rate = self._rng.uniform(0.18, 0.25)
 
         # Round first, then derive — ensures exact accounting identities
         revenue = round(revenue_raw)
@@ -94,7 +101,7 @@ class SynthesisAgent:
         sga = round(revenue_raw * sga_pct)
         rnd = round(revenue_raw * rnd_pct)
         operating_income = gross_profit - sga - rnd  # exact
-        interest = round(random.uniform(0, revenue_raw * 0.03))
+        interest = round(self._rng.uniform(0, revenue_raw * 0.03))
         ebt = operating_income - interest  # exact
         tax = round(max(0, ebt * tax_rate))
         net_income = ebt - tax  # exact
@@ -111,20 +118,20 @@ class SynthesisAgent:
 
     def _generate_balance_sheet(self, company: dict, income: dict) -> dict[str, Any]:
         revenue = income["total_revenue"]
-        cash = round(revenue * random.uniform(0.5, 2.0))
-        receivables = round(revenue * random.uniform(0.10, 0.25))
-        inventory = round(income["cost_of_revenue"] * random.uniform(0.15, 0.35))
+        cash = round(revenue * self._rng.uniform(0.5, 2.0))
+        receivables = round(revenue * self._rng.uniform(0.10, 0.25))
+        inventory = round(income["cost_of_revenue"] * self._rng.uniform(0.15, 0.35))
         current_assets = cash + receivables + inventory
-        ppe = round(revenue * random.uniform(1.0, 4.0))
-        goodwill = round(revenue * random.uniform(0.2, 1.5))
+        ppe = round(revenue * self._rng.uniform(1.0, 4.0))
+        goodwill = round(revenue * self._rng.uniform(0.2, 1.5))
         total_assets = current_assets + ppe + goodwill
-        payables = round(income["cost_of_revenue"] * random.uniform(0.10, 0.25))
-        short_debt = round(revenue * random.uniform(0.05, 0.20))
+        payables = round(income["cost_of_revenue"] * self._rng.uniform(0.10, 0.25))
+        short_debt = round(revenue * self._rng.uniform(0.05, 0.20))
         current_liabilities = payables + short_debt
-        long_debt = round(revenue * random.uniform(0.5, 2.5))
+        long_debt = round(revenue * self._rng.uniform(0.5, 2.5))
         total_liabilities = current_liabilities + long_debt
         total_equity = total_assets - total_liabilities
-        retained_earnings = round(total_equity * random.uniform(0.3, 0.8))
+        retained_earnings = round(total_equity * self._rng.uniform(0.3, 0.8))
         return {
             "period": "Q4 2025",
             "cash_and_equivalents": cash, "accounts_receivable": receivables,
@@ -140,15 +147,15 @@ class SynthesisAgent:
 
     def _generate_cash_flow(self, company: dict, income: dict, bs: dict) -> dict[str, Any]:
         ni = income["net_income"]
-        depreciation = round(bs["property_plant_equipment"] * random.uniform(0.02, 0.05))
-        wc_change = round(ni * random.uniform(-0.15, 0.15))
+        depreciation = round(bs["property_plant_equipment"] * self._rng.uniform(0.02, 0.05))
+        wc_change = round(ni * self._rng.uniform(-0.15, 0.15))
         op_cf = ni + depreciation + wc_change
-        capex = -round(bs["property_plant_equipment"] * random.uniform(0.03, 0.08))
-        acq = -round(random.uniform(0, bs["goodwill"] * 0.1))
+        capex = -round(bs["property_plant_equipment"] * self._rng.uniform(0.03, 0.08))
+        acq = -round(self._rng.uniform(0, bs["goodwill"] * 0.1))
         inv_cf = capex + acq
-        debt_chg = round(random.uniform(-ni * 0.3, ni * 0.3))
-        dividends = -round(max(0, ni * random.uniform(0, 0.35)))
-        buybacks = -round(max(0, ni * random.uniform(0, 0.25)))
+        debt_chg = round(self._rng.uniform(-ni * 0.3, ni * 0.3))
+        dividends = -round(max(0, ni * self._rng.uniform(0, 0.35)))
+        buybacks = -round(max(0, ni * self._rng.uniform(0, 0.25)))
         fin_cf = debt_chg + dividends + buybacks
         net_change = op_cf + inv_cf + fin_cf
         ending_cash = bs["cash_and_equivalents"]

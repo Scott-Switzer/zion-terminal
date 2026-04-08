@@ -126,13 +126,32 @@ class Orchestrator:
     def get_financials(
         self, ticker: str, *, statement_type: str = "income",
         quarterly: bool = False, validate: bool = True,
+        source: str = "sec",
     ) -> OrchestratorResponse:
+        """Get financial statements. SEC is the primary source.
+
+        Args:
+            source: "sec" (default, primary) or "yahoo" (verification/fallback)
+        """
+        if source == "sec" and "sec_edgar" in self._retrieval.available_sources:
+            tasks = [{
+                "source": "sec_edgar", "ticker": ticker.upper(),
+                "action": "financials",
+                "statement_type": statement_type, "quarterly": quarterly,
+            }]
+        else:
+            # Yahoo Finance fallback
+            tasks = [{
+                "source": "yahoo_finance", "ticker": ticker.upper(),
+                "action": "financials",
+                "statement_type": statement_type, "quarterly": quarterly,
+            }]
         return self._fetch_and_validate(
-            tasks=[{"source": "yahoo_finance", "ticker": ticker.upper(), "action": "financials",
-                    "statement_type": statement_type, "quarterly": quarterly}],
+            tasks=tasks,
             query=f"{ticker} {statement_type} {'quarterly' if quarterly else 'annual'}",
             intent="financials",
             validate=validate,
+            metadata={"source_preference": source, "source_role": "primary" if source == "sec" else "fallback"},
         )
 
     def get_filings(

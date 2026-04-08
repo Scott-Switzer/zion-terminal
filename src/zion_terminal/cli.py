@@ -169,17 +169,21 @@ def history(ctx: click.Context, ticker: str, period: str, interval: str, fmt: st
               type=click.Choice(["income", "balance", "cash_flow"]),
               help="Statement type.")
 @click.option("--quarterly", "-q", is_flag=True, help="Get quarterly data instead of annual.")
+@click.option("--source", default="sec", show_default=True,
+              type=click.Choice(["sec", "yahoo"]),
+              help="Data source: sec (primary) or yahoo (fallback).")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
 @click.pass_context
-def financials(ctx: click.Context, ticker: str, statement: str, quarterly: bool, fmt: str) -> None:
+def financials(ctx: click.Context, ticker: str, statement: str, quarterly: bool, source: str, fmt: str) -> None:
     """Get financial statements.
 
+    SEC EDGAR is the primary source. Yahoo Finance is a fallback.
     Example: zion financials AAPL --statement balance --quarterly
     """
     orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        resp = orc.get_financials(ticker, statement_type=statement, quarterly=quarterly)
+        resp = orc.get_financials(ticker, statement_type=statement, quarterly=quarterly, source=source)
         _run_and_output(orc, resp, fmt)
     finally:
         orc.close()

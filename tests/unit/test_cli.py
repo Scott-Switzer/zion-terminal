@@ -98,7 +98,7 @@ class TestCLI:
         result = runner.invoke(main, ["financials", "AAPL", "--statement", "balance", "--quarterly"])
         assert result.exit_code == 0
         mock_orchestrator.get_financials.assert_called_once_with(
-            "AAPL", statement_type="balance", quarterly=True,
+            "AAPL", statement_type="balance", quarterly=True, source="sec",
         )
 
     @patch("zion_terminal.cli._build_orchestrator")

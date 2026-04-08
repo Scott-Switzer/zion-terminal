@@ -18,6 +18,7 @@ def orc():
         o._llm = MagicMock(name="test")
         o._strict = False
         o._retrieval = MagicMock()
+        o._retrieval.available_sources = ["yahoo_finance", "sec_edgar", "fred"]
         o._validation = MagicMock()
         o._synthesis = MagicMock()
         o._parser = MagicMock()
@@ -51,8 +52,16 @@ class TestOrchestratorPublicMethods:
         resp = orc.get_financials("AAPL", statement_type="balance", quarterly=True)
         assert resp.success
         args = orc._retrieval.fetch.call_args[0][0]
+        # Default source is SEC when available
+        assert args[0]["source"] == "sec_edgar"
         assert args[0]["statement_type"] == "balance"
         assert args[0]["quarterly"] is True
+
+    def test_get_financials_yahoo_fallback(self, orc):
+        resp = orc.get_financials("AAPL", statement_type="income", source="yahoo")
+        assert resp.success
+        args = orc._retrieval.fetch.call_args[0][0]
+        assert args[0]["source"] == "yahoo_finance"
 
     def test_get_filings(self, orc):
         resp = orc.get_filings("AAPL", form="10-K", limit=5)
