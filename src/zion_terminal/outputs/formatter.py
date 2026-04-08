@@ -171,6 +171,9 @@ def _format_retrieval_md(result: RetrievalResult) -> str:
         # SEC filing
         elif "filing_type" in item:
             parts.append(_format_filing_md(item))
+        # Company facts (XBRL)
+        elif item.get("type") == "company_facts":
+            parts.append(_format_company_facts_md(item))
         # Company info
         elif item.get("type") == "company_info":
             parts.append(_format_company_info_md(item))
@@ -317,6 +320,54 @@ def _format_company_info_md(item: dict) -> str:
         return f"## {ticker} — Company Info\n\n```json\n{json.dumps(data, indent=2, default=str)[:3000]}\n```\n"
 
     return f"## {ticker} — Company Info\n\n| Field | Value |\n|-------|-------|\n" + "\n".join(rows) + "\n"
+
+
+def _format_company_facts_md(item: dict) -> str:
+    """Format XBRL company facts into readable markdown."""
+    ticker = item.get("ticker", "?")
+    company = item.get("company_name", "")
+    cik = item.get("cik", "")
+    facts_count = item.get("facts_count")
+    sample_facts = item.get("sample_facts", [])
+    summary = item.get("facts_summary", "")
+
+    header = f"## {ticker} — Company Facts (XBRL)"
+    if company:
+        header += f"\n\n**Company:** {company}"
+    if cik:
+        header += f"  \n**CIK:** {cik}"
+    if facts_count is not None:
+        header += f"  \n**Total Facts:** {facts_count:,}"
+
+    parts = [header, ""]
+
+    if sample_facts:
+        # Build a table from sample facts
+        if sample_facts and isinstance(sample_facts[0], dict):
+            cols = list(sample_facts[0].keys())[:6]  # Limit columns for readability
+            parts.append("### Sample Facts\n")
+            parts.append("| " + " | ".join(_humanize(c) for c in cols) + " |")
+            parts.append("|" + "|".join(["------" for _ in cols]) + "|")
+            for fact in sample_facts[:15]:
+                vals = []
+                for c in cols:
+                    v = fact.get(c, "")
+                    if isinstance(v, float):
+                        vals.append(f"{v:,.2f}")
+                    elif isinstance(v, int):
+                        vals.append(f"{v:,}")
+                    else:
+                        vals.append(str(v)[:40])
+                parts.append("| " + " | ".join(vals) + " |")
+            if facts_count and facts_count > 15:
+                parts.append(f"\n*Showing 15 of {facts_count:,} facts.*")
+    elif summary:
+        parts.append("### Facts Summary\n")
+        parts.append(f"```\n{summary[:2000]}\n```")
+    else:
+        parts.append("No facts data available.")
+
+    return "\n".join(parts) + "\n"
 
 
 def _format_macro_md(item: dict) -> str:

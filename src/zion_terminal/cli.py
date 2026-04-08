@@ -64,11 +64,27 @@ def _validate_format(ctx: click.Context, param: click.Parameter, value: str) -> 
 
 
 def _run_and_output(orc: Orchestrator, resp, fmt: str) -> None:
-    """Format and print response, exit non-zero on failure."""
+    """Format and print response, exit non-zero on failure.
+
+    In strict mode (resp.success=False due to validation), data output
+    is suppressed to prevent consumers from trusting invalid data.
+    Only errors are printed to stderr.
+    """
+    if not resp.success:
+        # Print errors to stderr, suppress data output
+        for err in resp.errors:
+            console.print(f"[bold red]Error:[/] {err}", stderr=True)
+        # Still show validation details if available
+        from zion_terminal.models.responses import ValidationResult
+        for r in resp.results:
+            if isinstance(r, ValidationResult) and r.checks_failed > 0:
+                console.print(
+                    f"[yellow]Validation:[/] {r.checks_failed}/{r.checks_run} checks failed",
+                    stderr=True,
+                )
+        sys.exit(1)
     output = format_response(resp, OutputFormat(fmt))
     console.print(output)
-    if not resp.success:
-        sys.exit(1)
 
 
 # ── Root group ──────────────────────────────────────────────────────────

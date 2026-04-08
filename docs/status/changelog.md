@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.4.1 — Hardening Pass (2026-04-08)
+
+### Bugs Fixed
+- Removed dead `import re` from sec_edgar.py (leftover from deleted converter)
+- Fixed auto-routing: `financials` action now routes to SEC EDGAR first, with Yahoo fallback
+- Fixed convenience method `fetch_financials()` to prefer SEC when available
+- Fixed strict mode: invalid data is no longer printed to stdout; errors go to stderr
+- Updated sec_edgar.py docstring to reflect unified pipeline architecture
+
+### Improvements
+- Added `_format_company_facts_md()` formatter for structured XBRL facts output
+- Added 11 hardening tests covering dead code, routing, strict mode, live pipeline, formatting
+- Added 2 live pipeline benchmarks (small fixture, div-header fixture)
+
+### Documentation
+- 6 new context docs (hardening notes, known limitations, testing notes, strict mode, validation schema, company facts)
+- 3 new benchmark docs (README, methodology, known gaps)
+- Updated implementation status and open questions
+
+### Tests
+- 290+ tests (up from 277)
+
 ## v0.4.0 — Architecture Refactor (2026-04-08)
 
 ### Architecture Changes

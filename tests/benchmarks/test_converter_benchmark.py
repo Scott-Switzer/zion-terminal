@@ -164,3 +164,21 @@ class TestDivHeaderFixture:
         items = {s.item for s in sections}
         assert "Item 1" in items
         assert "Item 7" in items
+
+
+class TestLivePipelineBenchmarks:
+    """Benchmarks for the unified filing pipeline (the actual live path)."""
+
+    @pytest.fixture
+    def pipeline(self):
+        from zion_terminal.pipeline.filing_pipeline import FilingPipeline
+        return FilingPipeline()
+
+    def test_pipeline_process_small(self, benchmark, pipeline, sample_html):
+        """Benchmark the full pipeline (convert + segment + verify hooks)."""
+        benchmark(pipeline.process, sample_html, ticker="TEST", form="10-K")
+
+    def test_pipeline_process_div_headers(self, benchmark, pipeline):
+        """Benchmark pipeline on div-header fixture."""
+        html = (FIXTURES_DIR / "sample_html_filing_div_headers.html").read_text()
+        benchmark(pipeline.process, html, ticker="TEST", form="10-K")

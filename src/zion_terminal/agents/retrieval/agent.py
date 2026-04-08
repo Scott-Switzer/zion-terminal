@@ -77,8 +77,9 @@ class RetrievalAgent:
     def _find_adapter_for_task(self, task: dict[str, Any]) -> BaseAdapter | None:
         if "ticker" in task and "series_id" not in task:
             action = task.get("action", "quote")
-            if action in ("filings", "company_facts", "filing_markdown"):
-                return self._adapters.get("sec_edgar")
+            # SEC-first: financials and filing-related actions go to SEC EDGAR
+            if action in ("filings", "company_facts", "filing_markdown", "financials"):
+                return self._adapters.get("sec_edgar") or self._adapters.get("yahoo_finance")
             return self._adapters.get("yahoo_finance")
         if "series_id" in task:
             return self._adapters.get("fred")
@@ -92,7 +93,9 @@ class RetrievalAgent:
         return self.fetch([{"source": "yahoo_finance", "ticker": ticker, "action": "history", "period": period, "interval": interval}])
 
     def fetch_financials(self, ticker: str, statement_type: str = "income", quarterly: bool = False) -> RetrievalResult:
-        return self.fetch([{"source": "yahoo_finance", "ticker": ticker, "action": "financials", "statement_type": statement_type, "quarterly": quarterly}])
+        """Fetch financials. Routes to SEC EDGAR (primary) or Yahoo (fallback)."""
+        source = "sec_edgar" if "sec_edgar" in self._adapters else "yahoo_finance"
+        return self.fetch([{"source": source, "ticker": ticker, "action": "financials", "statement_type": statement_type, "quarterly": quarterly}])
 
     def fetch_macro(self, series_id: str) -> RetrievalResult:
         return self.fetch([{"source": "fred", "series_id": series_id}])

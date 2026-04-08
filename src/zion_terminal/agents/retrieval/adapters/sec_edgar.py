@@ -2,7 +2,14 @@
 
 Status: working. Requires EDGAR_IDENTITY (name + email) per SEC policy.
 Rate limit: SEC enforces ~10 req/sec; edgartools handles this internally.
-Filing-to-markdown conversion is experimental (Phase 1.5).
+
+SEC is the primary source for:
+  - Financial statements (via edgartools filing parser)
+  - Filing content (via unified FilingPipeline)
+  - Company facts (via XBRL/edgartools)
+
+Filing-to-markdown conversion uses the shared FilingPipeline
+(pipeline/filing_pipeline.py), not a private converter.
 """
 
 from __future__ import annotations
