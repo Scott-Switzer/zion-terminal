@@ -35,6 +35,9 @@ _TICKER_STOP_WORDS = {
     "MANY", "NEXT", "ONLY", "OVER", "SUCH", "TAKE", "THAN", "THEM",
     "THEN", "WELL", "WERE", "CURRENT", "QUARTERLY", "ANNUAL", "FISCAL",
     "NET", "INCOME", "REVENUE", "PRICE", "STOCK", "MARKET",
+    # Form types and financial terms that look like tickers
+    "K", "Q", "GDP", "CPI", "VIX", "XBRL", "FORM", "READ", "FULL",
+    "ABOUT", "FACTS", "LEVEL", "TEXT", "ITEM", "RISK",
 }
 
 # Common company name → ticker mappings
@@ -56,14 +59,24 @@ _COMPANY_TICKERS: dict[str, str] = {
 }
 
 
+def _word_boundary_match(name: str, text: str) -> bool:
+    """Check if `name` appears in `text` as a whole word (not as a substring).
+
+    Uses regex word boundaries to prevent false positives like
+    'meta' matching inside 'metadata'.
+    """
+    pattern = r"\b" + re.escape(name) + r"\b"
+    return bool(re.search(pattern, text))
+
+
 def extract_tickers(text: str) -> list[str]:
     """Pull likely stock tickers from a query. Supports UPPERCASE and known company names."""
     tickers: list[str] = []
 
-    # 1. Check for known company names (case-insensitive)
+    # 1. Check for known company names (case-insensitive, word-boundary matching)
     lower = text.lower()
     for name, ticker in _COMPANY_TICKERS.items():
-        if name in lower and ticker not in tickers:
+        if _word_boundary_match(name, lower) and ticker not in tickers:
             tickers.append(ticker)
 
     # 2. Extract uppercase ticker patterns
@@ -157,6 +170,11 @@ _INTENT_KEYWORDS = {
                    "cash flow", "revenue", "earnings", "net income", "quarterly financials", "annual report"],
     "filings": ["filing", "filings", "10-k", "10-q", "8-k", "sec filing", "sec filings",
                 "edgar", "annual filing", "quarterly filing", "proxy"],
+    "filing_markdown": ["filing markdown", "filing text", "filing content", "read filing",
+                        "filing document", "full filing", "read the filing",
+                        "convert filing", "filing to markdown",
+                        "content", "markdown", "full text", "document text"],
+    "company_facts": ["company facts", "xbrl", "xbrl facts", "facts"],
     "macro": ["macro", "economic", "fed", "gdp", "cpi", "inflation", "unemployment",
               "interest rate", "treasury", "indicator", "monetary", "fiscal"],
     "company_info": ["company info", "about", "sector", "industry", "description", "profile", "overview"],
@@ -175,7 +193,11 @@ class ParsedIntent:
 
     @property
     def needs_retrieval(self) -> bool:
-        return self.intent in ("quote", "history", "financials", "filings", "macro", "company_info", "multi")
+        return self.intent in (
+            "quote", "history", "financials", "filings",
+            "filing_markdown", "company_facts",
+            "macro", "company_info", "multi",
+        )
 
     @property
     def needs_synthesis(self) -> bool:
@@ -190,6 +212,11 @@ class IntentParser:
         tickers = extract_tickers(query)
         macro_series = detect_macro_series(query)
         intent = self._classify_intent(query)
+
+        # Override: if macro series detected but no tickers and intent is
+        # ambiguous (e.g. 'quote'), prefer macro intent
+        if macro_series and not tickers and intent not in ("macro", "synthesis", "multi"):
+            intent = "macro"
 
         # Extract optional params
         period = extract_period(query)
@@ -224,13 +251,20 @@ class IntentParser:
             tasks.append({"source": "fred", "series_id": sid})
 
         # Fallback: try LLM parsing if we have no tasks
+        llm_assisted = False
         if not tasks and self._llm.is_available and not isinstance(self._llm, NoLLMProvider):
+            logger.info("Rule-based parser found no tasks — falling back to LLM parsing")
             tasks = self._llm_parse(query)
+            if tasks:
+                llm_assisted = True
+                logger.info("LLM parser returned %d task(s)", len(tasks))
 
         parsed = ParsedIntent(
             raw_query=query, intent=intent, tickers=tickers,
             macro_series=macro_series, tasks=tasks,
         )
+        if llm_assisted:
+            parsed.params["_llm_assisted"] = True
         if "quarterly" in query.lower() or "quarter" in query.lower():
             parsed.params["quarterly"] = True
         if "annual" in query.lower():
@@ -264,6 +298,15 @@ class IntentParser:
             elif "8-k" in lower:
                 form = "8-K"
             return {"source": "sec_edgar", "ticker": ticker, "action": "filings", "form": form, "limit": 10}
+        elif intent == "filing_markdown":
+            form = "10-K"
+            if "10-q" in lower:
+                form = "10-Q"
+            elif "8-k" in lower:
+                form = "8-K"
+            return {"source": "sec_edgar", "ticker": ticker, "action": "filing_markdown", "form": form}
+        elif intent == "company_facts":
+            return {"source": "sec_edgar", "ticker": ticker, "action": "company_facts"}
         elif intent == "history":
             return {"source": "yahoo_finance", "ticker": ticker, "action": "history", "period": "1y", "interval": "1d"}
         elif intent == "financials":

@@ -1,4 +1,8 @@
-"""File-based caching with TTL support using diskcache."""
+"""File-based caching with TTL support using diskcache.
+
+Cache keys include a schema version so that format changes automatically
+invalidate stale entries without requiring a manual cache clear.
+"""
 
 from __future__ import annotations
 
@@ -15,6 +19,10 @@ logger = logging.getLogger(__name__)
 _DEFAULT_CACHE_DIR = Path(".cache/zion")
 _DEFAULT_TTL = 3600
 
+# Bump this when any adapter's output schema changes.
+# Old cached payloads will be ignored (key mismatch).
+CACHE_SCHEMA_VERSION = 1
+
 
 class CacheManager:
     def __init__(self, cache_dir: str | Path | None = None, default_ttl: int = _DEFAULT_TTL) -> None:
@@ -25,7 +33,11 @@ class CacheManager:
 
     @staticmethod
     def make_key(source: str, params: dict[str, Any]) -> str:
-        raw = json.dumps({"source": source, **params}, sort_keys=True, default=str)
+        raw = json.dumps(
+            {"_v": CACHE_SCHEMA_VERSION, "source": source, **params},
+            sort_keys=True,
+            default=str,
+        )
         return hashlib.sha256(raw.encode()).hexdigest()
 
     def get(self, key: str) -> Any | None:

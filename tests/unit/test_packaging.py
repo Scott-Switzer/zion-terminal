@@ -10,7 +10,7 @@ class TestPackageImports:
     def test_import_root(self):
         mod = importlib.import_module("zion_terminal")
         assert hasattr(mod, "__version__")
-        assert mod.__version__ == "0.2.0"
+        assert mod.__version__ == "0.3.0"
 
     def test_import_config(self):
         mod = importlib.import_module("zion_terminal.config")
@@ -71,6 +71,10 @@ class TestPackageImports:
     def test_import_cache(self):
         from zion_terminal.cache.cache_manager import CacheManager
         assert CacheManager is not None
+
+    def test_import_retry(self):
+        from zion_terminal.agents.retrieval.retry import adapter_retry
+        assert adapter_retry is not None
 
 
 class TestEntryPoint:

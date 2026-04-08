@@ -12,20 +12,12 @@ from typing import Any
 
 import pandas as pd
 import yfinance as yf
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-
 from zion_terminal.agents.retrieval.base_adapter import BaseAdapter
+from zion_terminal.agents.retrieval.retry import adapter_retry
 from zion_terminal.models.financial import FinancialStatement, StatementType, StockQuote, TimeSeriesData
 from zion_terminal.models.responses import RetrievalResult
 
 logger = logging.getLogger(__name__)
-
-_RETRY = retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=10),
-    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
-    reraise=True,
-)
 
 
 class YahooFinanceAdapter(BaseAdapter):
@@ -62,7 +54,7 @@ class YahooFinanceAdapter(BaseAdapter):
             logger.exception("Yahoo Finance fetch failed for %s", ticker)
             return RetrievalResult(success=False, errors=[f"Yahoo Finance error: {exc}"])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_quote(self, ticker: str, params: dict) -> RetrievalResult:
         stock = yf.Ticker(ticker)
         info = stock.info
@@ -85,7 +77,7 @@ class YahooFinanceAdapter(BaseAdapter):
         )
         return RetrievalResult(data=[quote.model_dump()], sources_used=[self.SOURCE_NAME])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_history(self, ticker: str, params: dict) -> RetrievalResult:
         period = params.get("period", "1y")
         interval = params.get("interval", "1d")
@@ -115,7 +107,7 @@ class YahooFinanceAdapter(BaseAdapter):
         )
         return RetrievalResult(data=[ts.model_dump()], sources_used=[self.SOURCE_NAME])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_financials(self, ticker: str, params: dict) -> RetrievalResult:
         stmt_type = params.get("statement_type", "income")
         quarterly = params.get("quarterly", False)
@@ -154,7 +146,7 @@ class YahooFinanceAdapter(BaseAdapter):
             results.append(stmt.model_dump())
         return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_info(self, ticker: str, params: dict) -> RetrievalResult:
         stock = yf.Ticker(ticker)
         info = stock.info

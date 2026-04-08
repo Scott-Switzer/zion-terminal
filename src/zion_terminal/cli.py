@@ -10,7 +10,9 @@ Commands:
   zion filings AAPL --form 10-K --limit 5
   zion macro GDP
   zion info AAPL
-  zion synthesis                      -- generate synthetic company data
+  zion filing-markdown AAPL --form 10-K  -- fetch filing as markdown (experimental)
+  zion company-facts AAPL               -- fetch XBRL company facts
+  zion synthesis                        -- generate synthetic company data
 """
 
 from __future__ import annotations
@@ -30,7 +32,7 @@ from zion_terminal.providers.base import build_provider
 console = Console()
 
 
-def _build_orchestrator() -> Orchestrator:
+def _build_orchestrator(strict: bool = False) -> Orchestrator:
     """Build the orchestrator from current settings."""
     s = get_settings()
     llm = build_provider(
@@ -46,6 +48,7 @@ def _build_orchestrator() -> Orchestrator:
         llm=llm,
         cache_dir=s.cache_dir,
         cache_ttl=s.cache_ttl,
+        strict=strict,
     )
 
 
@@ -60,17 +63,28 @@ def _validate_format(ctx: click.Context, param: click.Parameter, value: str) -> 
     return value
 
 
+def _run_and_output(orc: Orchestrator, resp, fmt: str) -> None:
+    """Format and print response, exit non-zero on failure."""
+    output = format_response(resp, OutputFormat(fmt))
+    console.print(output)
+    if not resp.success:
+        sys.exit(1)
+
+
 # ── Root group ──────────────────────────────────────────────────────────
 
 
 @click.group(invoke_without_command=True)
 @click.version_option(__version__, prog_name="zion-terminal")
 @click.option("--verbose", "-v", is_flag=True, help="Enable debug logging.")
+@click.option("--strict", is_flag=True, help="Fail on validation errors (strict mode).")
 @click.pass_context
-def main(ctx: click.Context, verbose: bool) -> None:
+def main(ctx: click.Context, verbose: bool, strict: bool) -> None:
     """Zion Terminal – unified financial data retrieval."""
     level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(level=level, format="%(name)s %(levelname)s: %(message)s")
+    ctx.ensure_object(dict)
+    ctx.obj["strict"] = strict
 
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
@@ -84,20 +98,18 @@ def main(ctx: click.Context, verbose: bool) -> None:
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
 @click.option("--no-validate", is_flag=True, help="Skip validation checks.")
-def query(text: str, fmt: str, no_validate: bool) -> None:
+@click.pass_context
+def query(ctx: click.Context, text: str, fmt: str, no_validate: bool) -> None:
     """Run a natural-language financial query.
 
     Examples:
       zion query "Get AAPL stock price"
       zion query "Show me Tesla financials" --format json
     """
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
         resp = orc.query(text, validate=not no_validate)
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -109,18 +121,16 @@ def query(text: str, fmt: str, no_validate: bool) -> None:
 @click.argument("ticker")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def quote(ticker: str, fmt: str) -> None:
+@click.pass_context
+def quote(ctx: click.Context, ticker: str, fmt: str) -> None:
     """Get a stock quote.
 
     Example: zion quote AAPL
     """
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        resp = orc.query(f"{ticker.upper()} stock price")
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        resp = orc.get_quote(ticker)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -136,30 +146,16 @@ def quote(ticker: str, fmt: str) -> None:
               help="Data interval: 1d, 5d, 1wk, 1mo")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def history(ticker: str, period: str, interval: str, fmt: str) -> None:
+@click.pass_context
+def history(ctx: click.Context, ticker: str, period: str, interval: str, fmt: str) -> None:
     """Get historical price data.
 
     Example: zion history AAPL --period 6mo --interval 1wk
     """
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        # Build tasks directly — bypass parser to honor exact CLI flags
-        from zion_terminal.models.responses import OrchestratorResponse
-        result = orc._retrieval.fetch([{
-            "source": "yahoo_finance",
-            "ticker": ticker.upper(),
-            "action": "history",
-            "period": period,
-            "interval": interval,
-        }])
-        resp = OrchestratorResponse(
-            success=result.success, query=f"{ticker} history {period} {interval}",
-            intent="history", results=[result], errors=result.errors,
-        )
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        resp = orc.get_history(ticker, period=period, interval=interval)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -175,30 +171,16 @@ def history(ticker: str, period: str, interval: str, fmt: str) -> None:
 @click.option("--quarterly", "-q", is_flag=True, help="Get quarterly data instead of annual.")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def financials(ticker: str, statement: str, quarterly: bool, fmt: str) -> None:
+@click.pass_context
+def financials(ctx: click.Context, ticker: str, statement: str, quarterly: bool, fmt: str) -> None:
     """Get financial statements.
 
     Example: zion financials AAPL --statement balance --quarterly
     """
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        from zion_terminal.models.responses import OrchestratorResponse
-        result = orc._retrieval.fetch([{
-            "source": "yahoo_finance",
-            "ticker": ticker.upper(),
-            "action": "financials",
-            "statement_type": statement,
-            "quarterly": quarterly,
-        }])
-        resp = OrchestratorResponse(
-            success=result.success,
-            query=f"{ticker} {statement} {'quarterly' if quarterly else 'annual'}",
-            intent="financials", results=[result], errors=result.errors,
-        )
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        resp = orc.get_financials(ticker, statement_type=statement, quarterly=quarterly)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -214,7 +196,8 @@ def financials(ticker: str, statement: str, quarterly: bool, fmt: str) -> None:
               help="Maximum number of filings to return.")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def filings(ticker: str, form: str | None, limit: int, fmt: str) -> None:
+@click.pass_context
+def filings(ctx: click.Context, ticker: str, form: str | None, limit: int, fmt: str) -> None:
     """Get SEC filings.
 
     Example: zion filings AAPL --form 10-K --limit 5
@@ -226,28 +209,10 @@ def filings(ticker: str, form: str | None, limit: int, fmt: str) -> None:
                        "Set it in .env or export EDGAR_IDENTITY='...'")
         sys.exit(1)
 
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        from zion_terminal.models.responses import OrchestratorResponse
-        task: dict = {
-            "source": "sec_edgar",
-            "ticker": ticker.upper(),
-            "action": "filings",
-            "limit": limit,
-        }
-        if form:
-            task["form"] = form
-
-        result = orc._retrieval.fetch([task])
-        resp = OrchestratorResponse(
-            success=result.success,
-            query=f"{ticker} filings form={form} limit={limit}",
-            intent="filings", results=[result], errors=result.errors,
-        )
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        resp = orc.get_filings(ticker, form=form, limit=limit)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -257,9 +222,13 @@ def filings(ticker: str, form: str | None, limit: int, fmt: str) -> None:
 
 @main.command()
 @click.argument("series")
+@click.option("--start", "start_date", default=None, help="Start date (YYYY-MM-DD).")
+@click.option("--end", "end_date", default=None, help="End date (YYYY-MM-DD).")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def macro(series: str, fmt: str) -> None:
+@click.pass_context
+def macro(ctx: click.Context, series: str, start_date: str | None, end_date: str | None,
+          fmt: str) -> None:
     """Get macroeconomic data from FRED.
 
     Example: zion macro GDP
@@ -270,18 +239,10 @@ def macro(series: str, fmt: str) -> None:
                        "Get a free key at https://fred.stlouisfed.org/docs/api/api_key.html")
         sys.exit(1)
 
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        from zion_terminal.models.responses import OrchestratorResponse
-        result = orc._retrieval.fetch([{"source": "fred", "series_id": series.upper()}])
-        resp = OrchestratorResponse(
-            success=result.success, query=f"FRED {series}",
-            intent="macro", results=[result], errors=result.errors,
-        )
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        resp = orc.get_macro(series, start_date=start_date, end_date=end_date)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -293,27 +254,79 @@ def macro(series: str, fmt: str) -> None:
 @click.argument("ticker")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
-def info(ticker: str, fmt: str) -> None:
+@click.pass_context
+def info(ctx: click.Context, ticker: str, fmt: str) -> None:
     """Get company information.
 
     Example: zion info AAPL
     """
-    orc = _build_orchestrator()
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        from zion_terminal.models.responses import OrchestratorResponse
-        result = orc._retrieval.fetch([{
-            "source": "yahoo_finance",
-            "ticker": ticker.upper(),
-            "action": "info",
-        }])
-        resp = OrchestratorResponse(
-            success=result.success, query=f"{ticker} company info",
-            intent="company_info", results=[result], errors=result.errors,
-        )
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        resp = orc.get_info(ticker)
+        _run_and_output(orc, resp, fmt)
+    finally:
+        orc.close()
+
+
+# ── zion filing-markdown ────────────────────────────────────────────────
+
+
+@main.command("filing-markdown")
+@click.argument("ticker")
+@click.option("--form", "-f", default="10-K", show_default=True,
+              help="Filing type: 10-K, 10-Q, 8-K, etc.")
+@click.option("--format", "fmt", default="markdown", callback=_validate_format,
+              help=f"Output format: {', '.join(_VALID_FORMATS)}")
+@click.pass_context
+def filing_markdown(ctx: click.Context, ticker: str, form: str, fmt: str) -> None:
+    """Fetch an SEC filing and convert to markdown (experimental).
+
+    Fetches the most recent filing of the given type and converts
+    the primary document from HTML to markdown.
+
+    Example: zion filing-markdown AAPL --form 10-K
+    """
+    s = get_settings()
+    if not s.edgar_identity:
+        console.print("[bold red]Error:[/] EDGAR_IDENTITY not set. "
+                       "SEC requires an identity string (e.g. 'Name email@example.com').\n"
+                       "Set it in .env or export EDGAR_IDENTITY='...'")
+        sys.exit(1)
+
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
+    try:
+        resp = orc.get_filing_markdown(ticker, form=form)
+        _run_and_output(orc, resp, fmt)
+    finally:
+        orc.close()
+
+
+# ── zion company-facts ──────────────────────────────────────────────────
+
+
+@main.command("company-facts")
+@click.argument("ticker")
+@click.option("--format", "fmt", default="markdown", callback=_validate_format,
+              help=f"Output format: {', '.join(_VALID_FORMATS)}")
+@click.pass_context
+def company_facts(ctx: click.Context, ticker: str, fmt: str) -> None:
+    """Fetch XBRL company facts from SEC EDGAR.
+
+    Returns structured XBRL financial facts reported by the company.
+
+    Example: zion company-facts AAPL
+    """
+    s = get_settings()
+    if not s.edgar_identity:
+        console.print("[bold red]Error:[/] EDGAR_IDENTITY not set. "
+                       "SEC requires an identity string (e.g. 'Name email@example.com').\n"
+                       "Set it in .env or export EDGAR_IDENTITY='...'")
+        sys.exit(1)
+
+    orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
+    try:
+        resp = orc.get_company_facts(ticker)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 
@@ -332,10 +345,7 @@ def synthesis(fmt: str) -> None:
     orc = _build_orchestrator()
     try:
         resp = orc.query("generate synthetic company")
-        output = format_response(resp, OutputFormat(fmt))
-        console.print(output)
-        if not resp.success:
-            sys.exit(1)
+        _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
 

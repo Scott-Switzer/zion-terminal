@@ -13,9 +13,8 @@ import time
 from datetime import date
 from typing import Any
 
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-
 from zion_terminal.agents.retrieval.base_adapter import BaseAdapter
+from zion_terminal.agents.retrieval.retry import adapter_retry
 from zion_terminal.models.financial import FilingType, SECFiling
 from zion_terminal.models.responses import RetrievalResult
 
@@ -25,13 +24,6 @@ _FORM_MAP: dict[str, FilingType] = {
     "10-K": FilingType.TEN_K, "10-Q": FilingType.TEN_Q,
     "8-K": FilingType.EIGHT_K, "DEF 14A": FilingType.PROXY,
 }
-
-_RETRY = retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=15),
-    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
-    reraise=True,
-)
 
 # Simple rate limiter: track last request time
 _last_request_time: float = 0.0
@@ -90,7 +82,7 @@ class SECEdgarAdapter(BaseAdapter):
             logger.exception("SEC EDGAR fetch failed for %s", ticker)
             return RetrievalResult(success=False, errors=[f"SEC EDGAR error: {exc}"])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_filings(self, ticker: str, params: dict) -> RetrievalResult:
         from edgar import Company
         _rate_limit()
@@ -131,7 +123,7 @@ class SECEdgarAdapter(BaseAdapter):
 
         return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_financials(self, ticker: str, params: dict) -> RetrievalResult:
         from edgar import Company
         _rate_limit()
@@ -175,7 +167,7 @@ class SECEdgarAdapter(BaseAdapter):
             return RetrievalResult(success=False, errors=[f"No parseable financial data found for {ticker}"])
         return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_company_facts(self, ticker: str, params: dict) -> RetrievalResult:
         from edgar import Company
         _rate_limit()
@@ -202,7 +194,7 @@ class SECEdgarAdapter(BaseAdapter):
 
         return RetrievalResult(data=[facts_data], sources_used=[self.SOURCE_NAME])
 
-    @_RETRY
+    @adapter_retry
     def _fetch_filing_markdown(self, ticker: str, params: dict) -> RetrievalResult:
         """Phase 1.5: Fetch a specific filing and convert to markdown.
 
@@ -268,52 +260,122 @@ class SECEdgarAdapter(BaseAdapter):
 
 
 def _html_to_markdown(html: str) -> str:
-    """Best-effort HTML to markdown conversion.
+    """DOM-based HTML to markdown conversion.
 
-    Strips boilerplate, preserves tables and headers.
-    This is intentionally simple — no heavy dependencies.
+    Uses BeautifulSoup for robust parsing of SEC filing HTML.
+    Preserves document structure (headers, tables, lists).
+    Falls back to simple regex stripping if BS4 is unavailable.
     """
-    text = html
+    try:
+        from bs4 import BeautifulSoup, NavigableString, Tag
+    except ImportError:
+        # Fallback: just strip tags
+        text = re.sub(r"<[^>]+>", " ", html)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
 
-    # Strip script/style blocks
-    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    soup = BeautifulSoup(html, "lxml")
 
-    # Convert headers
-    for i in range(1, 7):
-        text = re.sub(rf"<h{i}[^>]*>(.*?)</h{i}>", rf"\n{'#' * i} \1\n", text, flags=re.IGNORECASE | re.DOTALL)
+    # Remove script, style, and hidden elements
+    for tag in soup.find_all(["script", "style", "meta", "link"]):
+        tag.decompose()
 
-    # Convert paragraphs
-    text = re.sub(r"<p[^>]*>", "\n\n", text, flags=re.IGNORECASE)
-    text = re.sub(r"</p>", "", text, flags=re.IGNORECASE)
+    parts: list[str] = []
 
-    # Convert line breaks
-    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    def _process(element) -> None:
+        if isinstance(element, NavigableString):
+            text = str(element).strip()
+            if text:
+                parts.append(text)
+            return
 
-    # Convert bold/italic
-    text = re.sub(r"<b[^>]*>(.*?)</b>", r"**\1**", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<strong[^>]*>(.*?)</strong>", r"**\1**", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<i[^>]*>(.*?)</i>", r"*\1*", text, flags=re.IGNORECASE | re.DOTALL)
-    text = re.sub(r"<em[^>]*>(.*?)</em>", r"*\1*", text, flags=re.IGNORECASE | re.DOTALL)
+        if not isinstance(element, Tag):
+            return
 
-    # Convert list items
-    text = re.sub(r"<li[^>]*>", "\n- ", text, flags=re.IGNORECASE)
-    text = re.sub(r"</li>", "", text, flags=re.IGNORECASE)
+        tag_name = element.name.lower() if element.name else ""
 
-    # Simple table conversion (best-effort)
-    text = re.sub(r"<tr[^>]*>", "\n| ", text, flags=re.IGNORECASE)
-    text = re.sub(r"</tr>", " |", text, flags=re.IGNORECASE)
-    text = re.sub(r"<t[dh][^>]*>", " ", text, flags=re.IGNORECASE)
-    text = re.sub(r"</t[dh]>", " | ", text, flags=re.IGNORECASE)
+        # Headers
+        if tag_name in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            level = int(tag_name[1])
+            text = element.get_text(strip=True)
+            if text:
+                parts.append(f"\n\n{'#' * level} {text}\n")
+            return
 
-    # Strip remaining HTML tags
-    text = re.sub(r"<[^>]+>", "", text)
+        # Paragraphs — recurse to preserve inline formatting
+        if tag_name == "p":
+            parts.append("\n\n")
+            for child in element.children:
+                _process(child)
+            parts.append("\n")
+            return
 
-    # Decode common entities
-    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-    text = text.replace("&nbsp;", " ").replace("&quot;", '"').replace("&#39;", "'")
+        # Line breaks
+        if tag_name == "br":
+            parts.append("\n")
+            return
 
-    # Collapse excessive whitespace
+        # Bold
+        if tag_name in ("b", "strong"):
+            text = element.get_text(strip=True)
+            if text:
+                parts.append(f"**{text}**")
+            return
+
+        # Italic
+        if tag_name in ("i", "em"):
+            text = element.get_text(strip=True)
+            if text:
+                parts.append(f"*{text}*")
+            return
+
+        # List items
+        if tag_name == "li":
+            text = element.get_text(strip=True)
+            if text:
+                parts.append(f"\n- {text}")
+            return
+
+        # Tables — convert to markdown tables
+        if tag_name == "table":
+            _process_table(element, parts)
+            return
+
+        # Recurse into other elements
+        for child in element.children:
+            _process(child)
+
+    def _process_table(table: Tag, parts: list[str]) -> None:
+        rows = table.find_all("tr")
+        if not rows:
+            return
+
+        md_rows: list[list[str]] = []
+        for row in rows:
+            cells = row.find_all(["td", "th"])
+            md_row = [cell.get_text(strip=True).replace("|", "/") for cell in cells]
+            if any(md_row):  # skip fully empty rows
+                md_rows.append(md_row)
+
+        if not md_rows:
+            return
+
+        # Normalize column count
+        max_cols = max(len(r) for r in md_rows)
+        for r in md_rows:
+            while len(r) < max_cols:
+                r.append("")
+
+        parts.append("\n\n")
+        # First row as header
+        parts.append("| " + " | ".join(md_rows[0]) + " |\n")
+        parts.append("| " + " | ".join(["---"] * max_cols) + " |\n")
+        for row in md_rows[1:]:
+            parts.append("| " + " | ".join(row) + " |\n")
+
+    _process(soup)
+    text = "".join(parts)
+
+    # Clean up excessive whitespace
     text = re.sub(r"\n{3,}", "\n\n", text)
-    text = re.sub(r"[ \t]+", " ", text)
-
     return text.strip()

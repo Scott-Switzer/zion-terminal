@@ -1,0 +1,22 @@
+[
+  {"query": "Get AAPL stock price", "expected_intent": "quote", "expected_tickers": ["AAPL"]},
+  {"query": "Show me Apple's balance sheet", "expected_intent": "financials", "expected_tickers": ["AAPL"]},
+  {"query": "TSLA historical prices last 6 months weekly", "expected_intent": "history", "expected_tickers": ["TSLA"]},
+  {"query": "What is the current GDP?", "expected_intent": "macro", "expected_macro_series": ["GDP"]},
+  {"query": "Show me MSFT 10-K filings", "expected_intent": "filings", "expected_tickers": ["MSFT"]},
+  {"query": "Get unemployment rate data", "expected_intent": "macro", "expected_macro_series": ["UNRATE"]},
+  {"query": "Tell me about Tesla", "expected_intent": "company_info", "expected_tickers": ["TSLA"]},
+  {"query": "Generate a synthetic company", "expected_intent": "synthesis", "expected_tickers": []},
+  {"query": "meta stock price", "expected_intent": "quote", "expected_tickers": ["META"]},
+  {"query": "Show me metadata about the system", "expected_intent": "company_info", "expected_tickers": [], "note": "about triggers company_info intent; metadata does NOT match meta ticker (word boundary)"},
+  {"query": "NVDA GOOGL comparison prices", "expected_intent": "quote", "expected_tickers": ["NVDA", "GOOGL"]},
+  {"query": "CPI and inflation data", "expected_intent": "macro", "expected_macro_series": ["CPIAUCSL"]},
+  {"query": "Read AAPL filing content", "expected_intent": "filing_markdown", "expected_tickers": ["AAPL"]},
+  {"query": "AAPL company facts xbrl data", "expected_intent": "company_facts", "expected_tickers": ["AAPL"]},
+  {"query": "Get the fed funds rate", "expected_intent": "macro", "expected_macro_series": ["FEDFUNDS"]},
+  {"query": "What is Amazon's quarterly cash flow?", "expected_intent": "financials", "expected_tickers": ["AMZN"]},
+  {"query": "Boeing SEC filings", "expected_intent": "filings", "expected_tickers": ["BA"]},
+  {"query": "Show me AMD price and GDP at the same time", "expected_intent": "multi", "expected_tickers": ["AMD"], "expected_macro_series": ["GDP"]},
+  {"query": "Create a mock financial company", "expected_intent": "synthesis", "expected_tickers": []},
+  {"query": "current vix level today", "expected_intent": "macro", "expected_macro_series": ["VIXCLS"]}
+]

@@ -10,9 +10,8 @@ from datetime import date
 from typing import Any
 
 import pandas as pd
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-
 from zion_terminal.agents.retrieval.base_adapter import BaseAdapter
+from zion_terminal.agents.retrieval.retry import adapter_retry
 from zion_terminal.models.financial import MacroIndicator
 from zion_terminal.models.responses import RetrievalResult
 
@@ -36,14 +35,6 @@ def _resolve_series_id(raw: str) -> str:
     return SERIES_ALIASES.get(normalised, raw.strip().upper())
 
 
-_RETRY = retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=10),
-    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
-    reraise=True,
-)
-
-
 class FREDAdapter(BaseAdapter):
     SOURCE_NAME = "fred"
     SUPPORTED_CATEGORIES = ["macro", "economic", "interest_rate", "indicator"]
@@ -64,7 +55,13 @@ class FREDAdapter(BaseAdapter):
             return RetrievalResult(success=False, errors=["Missing required parameter: series_id"])
 
         series_id = _resolve_series_id(raw_id)
-        cache_params = {"series_id": series_id}
+        start_date = params.get("start_date")
+        end_date = params.get("end_date")
+        cache_params: dict[str, Any] = {"series_id": series_id}
+        if start_date:
+            cache_params["start_date"] = str(start_date)
+        if end_date:
+            cache_params["end_date"] = str(end_date)
         cached = self._cache_get(cache_params)
         if cached is not None:
             return RetrievalResult(data=cached, sources_used=[self.SOURCE_NAME], cached=True)
@@ -79,7 +76,7 @@ class FREDAdapter(BaseAdapter):
             logger.exception("FRED fetch failed for %s", raw_id)
             return RetrievalResult(success=False, errors=[f"FRED API error: {exc}"])
 
-    @_RETRY
+    @adapter_retry
     def _do_fetch(self, series_id: str, params: dict) -> list[dict]:
         fred = self._get_fred()
         info = fred.get_series_info(series_id)
