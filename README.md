@@ -6,7 +6,8 @@ Unified financial data retrieval with validation, caching, and synthetic data ge
 
 Zion Terminal fetches financial data from multiple sources through a single interface:
 
-- **Stock Data** — quotes, historical prices, financials, company info (Yahoo Finance)
+- **Financial Statements** — SEC EDGAR is the primary source; Yahoo Finance as fallback
+- **Stock Data** — quotes, historical prices, company info (Yahoo Finance)
 - **SEC Filings** — filing lists, filing-to-markdown conversion, XBRL company facts (SEC EDGAR)
 - **Macro Data** — GDP, CPI, unemployment, Fed Funds rate, 40+ indicators (FRED)
 - **Synthetic Data** — deterministic generation of fictional companies with consistent financials
@@ -41,7 +42,8 @@ zion quote AAPL
 zion history TSLA --period 6mo --interval 1wk
 
 # Financial statements
-zion financials MSFT --statement balance --quarterly
+zion financials MSFT --statement balance --quarterly          # SEC (default)
+zion financials MSFT --statement income --source yahoo         # Yahoo fallback
 
 # SEC filings
 zion filings AAPL --form 10-K --limit 5
