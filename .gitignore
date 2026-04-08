@@ -1,39 +1,68 @@
-# Python
+# ── Secrets (NEVER commit these) ─────────────────────────────────
+.env
+.env.*
+.env.local
+.env.production
+.env.staging
+!.env.example
+
+# ── Python ───────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 *.egg-info/
 *.egg
 dist/
 build/
+.eggs/
 *.whl
+pip-wheel-metadata/
 
-# Virtual environments
+# ── Virtual environments ─────────────────────────────────────────
 .venv/
 venv/
 env/
+ENV/
 
-# IDE
+# ── IDE ──────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
+.project
+.classpath
+.settings/
 
-# Environment
-.env
-
-# Cache
-.cache/
-.pytest_cache/
-
-# OS
+# ── OS junk ──────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 
-# Coverage
-htmlcov/
+# ── Testing / coverage ──────────────────────────────────────────
+.pytest_cache/
 .coverage
-.coverage.*
+htmlcov/
+.tox/
+.nox/
 
-# mypy
+# ── mypy / ruff ──────────────────────────────────────────────────
 .mypy_cache/
+.ruff_cache/
+
+# ── Cache / data ─────────────────────────────────────────────────
+.cache/
+*.db
+*.sqlite3
+
+# ── Notebooks ────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Logs ─────────────────────────────────────────────────────────
+*.log
+logs/

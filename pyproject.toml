@@ -4,44 +4,42 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zion-terminal"
-version = "0.1.0"
-description = "One interface to pull real financial data and generate realistic synthetic financial data."
+version = "0.2.0"
+description = "Unified financial data retrieval and synthetic data generation."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
-authors = [
-    {name = "Zion Terminal Team"}
-]
+authors = [{name = "Zion Terminal Team"}]
 
 dependencies = [
     "yfinance>=0.2.36",
     "fredapi>=0.5.2",
     "edgartools>=3.0.0",
-    "openai>=1.30.0",
     "pandas>=2.1.0",
     "pydantic>=2.5.0",
     "rich>=13.7.0",
     "click>=8.1.0",
     "python-dotenv>=1.0.0",
-    "tiktoken>=0.6.0",
     "diskcache>=5.6.0",
+    "tenacity>=8.2.0",
 ]
 
 [project.optional-dependencies]
+openai = ["openai>=1.30.0", "tiktoken>=0.6.0"]
+ollama = ["openai>=1.30.0"]
+llm = ["openai>=1.30.0", "tiktoken>=0.6.0"]
 dev = [
     "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
     "pytest-mock>=3.12.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",
 ]
 
 [project.scripts]
-zion = "src.cli:main"
+zion = "zion_terminal.cli:main"
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
+where = ["src"]
 
 [tool.ruff]
 line-length = 100
@@ -52,7 +50,7 @@ select = ["E", "F", "I", "W"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["src"]
 markers = [
-    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "integration: marks tests requiring network (deselect with '-m not integration')",
 ]

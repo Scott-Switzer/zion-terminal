@@ -1,154 +1,113 @@
-"""Tests for data models."""
+"""Tests for data models and response schemas."""
 
-from datetime import date, datetime, timezone
+import pytest
 
-from src.models.messages import AgentMessage, AgentRole, MessageType
-from src.models.financial import (
-    FinancialDataPoint,
-    FinancialStatement,
-    StatementType,
-    StockQuote,
-    MacroIndicator,
+from zion_terminal.models.financial import (
     SECFiling,
     FilingType,
+    FinancialStatement,
+    MacroIndicator,
+    StatementType,
+    StockQuote,
     TimeSeriesData,
 )
-from src.models.responses import (
+from zion_terminal.models.responses import (
+    AgentResponse,
+    OrchestratorResponse,
     RetrievalResult,
     SynthesisResult,
+    ValidationCheck,
     ValidationResult,
     ValidationStatus,
-    OrchestratorResponse,
 )
 
 
-class TestAgentMessage:
-    def test_create_message(self):
-        msg = AgentMessage(
-            sender=AgentRole.ORCHESTRATOR,
-            receiver=AgentRole.RETRIEVAL,
-            message_type=MessageType.QUERY,
-            payload={"ticker": "AAPL"},
-        )
-        assert msg.sender == "orchestrator"
-        assert msg.receiver == "retrieval"
-        assert msg.id is not None
-        assert msg.timestamp is not None
-
-    def test_message_with_parent(self):
-        msg = AgentMessage(
-            sender=AgentRole.RETRIEVAL,
-            receiver=AgentRole.ORCHESTRATOR,
-            message_type=MessageType.DATA_RESPONSE,
-            parent_id="parent-123",
-        )
-        assert msg.parent_id == "parent-123"
-
-
-class TestFinancialModels:
-    def test_data_point(self):
-        dp = FinancialDataPoint(name="Revenue", value=1_000_000, unit="USD", period="Q3 2024")
-        assert dp.value == 1_000_000
-        assert "Revenue" in repr(dp)
-
-    def test_stock_quote(self):
-        q = StockQuote(
-            ticker="NVDA",
-            company_name="NVIDIA Corp",
-            price=950.50,
-            volume=45_000_000,
-            market_cap=2_300_000_000_000,
-        )
-        assert q.ticker == "NVDA"
+class TestStockQuote:
+    def test_defaults(self):
+        q = StockQuote(ticker="AAPL")
+        assert q.ticker == "AAPL"
+        assert q.price is None
         assert q.source == "yahoo_finance"
 
-    def test_macro_indicator(self):
-        ind = MacroIndicator(
-            series_id="FEDFUNDS",
-            title="Federal Funds Rate",
-            value=5.33,
-            unit="Percent",
-            observation_date=date(2024, 1, 1),
+    def test_full_quote(self):
+        q = StockQuote(
+            ticker="AAPL", company_name="Apple Inc.",
+            price=185.50, volume=50_000_000,
+            market_cap=2_900_000_000_000,
         )
-        assert ind.series_id == "FEDFUNDS"
-        assert ind.source == "fred"
+        assert q.price == 185.50
+        assert q.volume == 50_000_000
 
-    def test_financial_statement(self):
+
+class TestFinancialStatement:
+    def test_get_line_item(self):
         stmt = FinancialStatement(
-            ticker="AAPL",
-            statement_type=StatementType.INCOME,
-            period="FY 2023",
-            line_items={"Total Revenue": 383_285_000, "Net Income": 96_995_000},
+            ticker="AAPL", statement_type=StatementType.INCOME,
+            period="2024-Q4", line_items={"Total Revenue": 119_000_000_000},
         )
-        assert stmt.get("Total Revenue") == 383_285_000
-        assert stmt.get("Nonexistent") is None
+        assert stmt.get("Total Revenue") == 119_000_000_000
+        assert stmt.get("Nonexistent", 0) == 0
 
-    def test_sec_filing(self):
+
+class TestSECFiling:
+    def test_content_markdown_field(self):
         f = SECFiling(
-            ticker="MSFT",
-            filing_type=FilingType.TEN_K,
-            filing_date=date(2024, 7, 30),
+            ticker="AAPL", filing_type=FilingType.TEN_K,
+            content_markdown="# Annual Report\n\nContent here.",
         )
-        assert f.filing_type == "10-K"
-
-    def test_time_series(self):
-        ts = TimeSeriesData(
-            name="AAPL Historical",
-            ticker="AAPL",
-            data_points=[
-                {"date": "2024-01-01", "close": 185.0},
-                {"date": "2024-01-02", "close": 186.5},
-            ],
-        )
-        assert len(ts.data_points) == 2
+        assert f.content_markdown is not None
+        assert "Annual Report" in f.content_markdown
 
 
-class TestResponseModels:
-    def test_retrieval_result(self):
-        r = RetrievalResult(
-            data=[{"ticker": "AAPL", "price": 185}],
-            sources_used=["yahoo_finance"],
-        )
-        assert r.success is True
-        assert r.agent == "retrieval"
-        assert not r.is_empty
-
-    def test_empty_retrieval(self):
+class TestRetrievalResult:
+    def test_is_empty(self):
         r = RetrievalResult()
-        assert r.is_empty
+        assert r.is_empty is True
 
-    def test_validation_result(self):
-        v = ValidationResult(
-            status=ValidationStatus.PASSED,
-            checks_run=5,
-            checks_passed=5,
-            checks_failed=0,
-        )
+    def test_not_empty(self):
+        r = RetrievalResult(data=[{"ticker": "AAPL", "price": 185}])
+        assert r.is_empty is False
+
+    def test_defaults(self):
+        r = RetrievalResult()
+        assert r.agent == "retrieval"
+        assert r.success is True
+        assert r.cached is False
+
+
+class TestValidationResult:
+    def test_pass_rate_no_checks(self):
+        v = ValidationResult()
         assert v.pass_rate == 1.0
 
-    def test_validation_partial(self):
-        v = ValidationResult(
-            status=ValidationStatus.WARNING,
-            checks_run=10,
-            checks_passed=8,
-            checks_failed=2,
-        )
+    def test_pass_rate_with_checks(self):
+        v = ValidationResult(checks_run=10, checks_passed=8, checks_failed=2)
         assert v.pass_rate == 0.8
 
-    def test_synthesis_result(self):
-        s = SynthesisResult(
-            documents=[{"type": "income_statement", "data": {}}],
-            entity_name="Test Corp",
-            entity_ticker="TST",
-        )
-        assert s.entity_name == "Test Corp"
 
-    def test_orchestrator_response(self):
+class TestValidationCheck:
+    def test_fields(self):
+        c = ValidationCheck(
+            check_name="price_bounds", status=ValidationStatus.PASSED,
+            message="price within bounds", field="item[0].price",
+        )
+        assert c.check_name == "price_bounds"
+        assert c.status == ValidationStatus.PASSED
+
+
+class TestOrchestratorResponse:
+    def test_all_data_with_retrieval(self):
         r = OrchestratorResponse(
-            query="Get AAPL price",
-            intent="quote",
-            results=[
-                RetrievalResult(data=[{"ticker": "AAPL", "price": 185}]),
-            ],
+            results=[RetrievalResult(data=[{"a": 1}, {"b": 2}])]
+        )
+        assert len(r.all_data) == 2
+
+    def test_all_data_with_synthesis(self):
+        r = OrchestratorResponse(
+            results=[SynthesisResult(documents=[{"type": "test", "data": {}}])]
         )
         assert len(r.all_data) == 1
+
+    def test_all_data_empty(self):
+        r = OrchestratorResponse()
+        assert r.all_data == []

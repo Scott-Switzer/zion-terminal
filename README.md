@@ -1,241 +1,184 @@
 # Zion Terminal
 
-**One interface to pull real financial data and generate realistic synthetic financial data.**
+Unified financial data retrieval and synthetic data generation from the command line.
 
-> **Status:** Proof of concept. Under active development. Not production-ready.
+## What It Does (Honestly)
 
----
+Zion Terminal pulls real financial data from **free, public sources** and provides it through a clean CLI and Python API. It also generates synthetic company data with mathematically consistent financial statements.
 
-## Why This Project Exists
+### Working Now
 
-Financial data work is full of friction that has nothing to do with actual analysis.
+| Feature | Source | API Key Required |
+|---------|--------|-----------------|
+| Stock quotes (price, volume, market cap, etc.) | Yahoo Finance | No |
+| Historical price data (OHLCV) | Yahoo Finance | No |
+| Financial statements (income, balance, cash flow) | Yahoo Finance | No |
+| Company info/profile | Yahoo Finance | No |
+| SEC filings list (10-K, 10-Q, 8-K) | SEC EDGAR | `EDGAR_IDENTITY` (free) |
+| Filing-to-markdown conversion | SEC EDGAR | `EDGAR_IDENTITY` (free) |
+| XBRL company facts | SEC EDGAR | `EDGAR_IDENTITY` (free) |
+| Macroeconomic data (GDP, CPI, rates, etc.) | FRED | `FRED_API_KEY` (free) |
+| Synthetic company generation | Built-in | No |
+| Output: Markdown, JSON, CSV | Built-in | No |
 
-**Getting data is a mess.** If you want stock prices you use one API. Macro data like interest rates? A different one. SEC filings? A third. Each has its own auth model, its own schema, its own rate limits and failure modes. You end up writing and maintaining glue code for every single source. Most of the time you are plumbing, not analyzing.
+### Requires LLM (Optional)
 
-**Realistic fake data does not exist.** Say you are building a model, testing a pipeline, or demoing a product. You need data that looks real: a company with quarterly earnings, SEC filings, press releases, where the numbers actually add up across documents. You cannot just use real company data (licensing, compliance). Random numbers will not cut it because nothing will be consistent. There is no off-the-shelf solution for this.
+- **Synthetic press releases** — generated with OpenAI or Ollama; skipped without LLM
+- **Ambiguous query fallback** — natural language queries that the rule-based parser can't handle
 
-Zion Terminal addresses both problems through a shared agent architecture. Small specialized LLM-powered agents each handle one job (fetch data, generate a document, check consistency). An orchestrator decides who does what. You can swap, test, or improve any piece without breaking the rest.
+### Not Implemented
 
----
+- Alpha Vantage, Polygon, or Bloomberg data sources
+- Real-time streaming or WebSocket feeds
+- Portfolio tracking or position management
+- Backtesting or strategy simulation
 
-## Phased Delivery
+## Installation
 
-This project is split into two phases. Phase 1 is the current focus.
+```bash
+# Core (no LLM required)
+pip install -e .
 
-### Phase 1: Unified Data Retrieval (current PoC)
+# With OpenAI support
+pip install -e ".[openai]"
 
-A single natural-language query interface that pulls and caches financial data from public sources. Instead of juggling five APIs you ask one system in plain English and get clean structured data back.
+# With Ollama support
+pip install -e ".[ollama]"
 
-### Phase 2: Synthetic Entity Engine (planned)
+# Development
+pip install -e ".[dev]"
+```
 
-A generation layer that produces semi-fictional public companies with internally consistent financial statements, SEC filings, press releases, and analyst coverage. Every generated document passes through a validation agent before anything is served downstream.
+Requires Python 3.11+.
 
----
+## Configuration
 
-## Who Would Use This
+Copy `.env.example` to `.env` and fill in your values. **All keys are optional.**
 
-| Audience | Why |
-|---|---|
-| **Quants and researchers** | Spend less time on data plumbing, more on analysis |
-| **ML engineers** | Realistic labeled training data without licensing headaches |
-| **Fintech teams** | Demo and test against believable financial data, no compliance risk |
-| **LLM application builders** | Structured financial context to feed into models |
-| **Students and educators** | Accessible sandbox for financial data exploration |
+```bash
+cp .env.example .env
+```
 
----
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LLM_PROVIDER` | No | `none` (default), `openai`, or `ollama` |
+| `OPENAI_API_KEY` | Only if `LLM_PROVIDER=openai` | OpenAI API key |
+| `OPENAI_MODEL` | No | Default: `gpt-4o-mini` |
+| `OLLAMA_BASE_URL` | No | Default: `http://localhost:11434/v1` |
+| `OLLAMA_MODEL` | No | Default: `llama3.1` |
+| `FRED_API_KEY` | For macro data | Free from [FRED](https://fred.stlouisfed.org/docs/api/api_key.html) |
+| `EDGAR_IDENTITY` | For SEC data | Your name + email per [SEC policy](https://www.sec.gov/os/accessing-edgar-data) |
+
+## CLI Usage
+
+```bash
+# Natural language query (no LLM needed for supported patterns)
+zion query "Get AAPL stock price"
+zion query "Show me Tesla quarterly financials" --format json
+
+# Direct commands
+zion quote AAPL
+zion history AAPL --period 6mo --interval 1wk
+zion financials AAPL --statement balance --quarterly
+zion filings AAPL --form 10-K --limit 5
+zion macro GDP
+zion info AAPL
+zion synthesis
+
+# Output formats: markdown (default), json, csv
+zion quote AAPL --format csv
+```
+
+Every flag shown above actually works. There are no decorative flags.
+
+## Python API
+
+```python
+from zion_terminal.orchestrator.orchestrator import Orchestrator
+from zion_terminal.outputs.formatter import format_response, OutputFormat
+
+orc = Orchestrator()  # no API keys needed for basic stock data
+resp = orc.query("Get AAPL stock price")
+print(format_response(resp, OutputFormat.MARKDOWN))
+orc.close()
+```
 
 ## Architecture
 
 ```
-                         ┌──────────────┐
-               query ──▶ │ Orchestrator │ ◀── config / routing rules
-                         └──────┬───────┘
-                                │
-                 ┌──────────────┼──────────────┐
-                 ▼              ▼              ▼
-        ┌────────────┐  ┌────────────┐  ┌────────────┐
-        │  Retrieval  │  │  Synthesis  │  │ Validation │
-        │   Agent     │  │   Agent     │  │   Agent    │
-        └──────┬─────┘  └──────┬─────┘  └──────┬─────┘
-               │               │               │
-        data sources     LLM generation    rule engine
-        + cache layer    + templates       + consistency
+src/zion_terminal/
+├── __init__.py              # version
+├── cli.py                   # Click CLI with real flags
+├── config/
+│   └── settings.py          # pydantic settings from .env
+├── providers/
+│   └── base.py              # LLM abstraction: NoLLM, OpenAI, Ollama
+├── models/
+│   ├── financial.py         # StockQuote, FinancialStatement, SECFiling, etc.
+│   ├── messages.py          # Agent message types
+│   └── responses.py         # AgentResponse, RetrievalResult, ValidationResult, etc.
+├── cache/
+│   └── cache_manager.py     # diskcache wrapper
+├── agents/
+│   ├── retrieval/
+│   │   ├── agent.py         # Routes tasks to adapters
+│   │   ├── base_adapter.py  # Adapter interface
+│   │   └── adapters/
+│   │       ├── yahoo_finance.py  # Quotes, history, financials, company info
+│   │       ├── fred.py           # Macro data from FRED
+│   │       └── sec_edgar.py      # Filings, XBRL facts, filing-to-markdown
+│   ├── validation/
+│   │   └── agent.py         # Machine-readable validation checks
+│   └── synthesis/
+│       └── agent.py         # Synthetic company generation
+├── orchestrator/
+│   ├── orchestrator.py      # Single entry point for all queries
+│   └── intent_parser.py     # Rule-based NL parser (no LLM required)
+└── outputs/
+    └── formatter.py         # Markdown, JSON, CSV formatters
 ```
 
-**Design principles:**
-
-- Each agent is independently testable and replaceable.
-- The orchestrator knows *what* to call, not *how* each agent works.
-- All inter-agent communication uses a standardized message format.
-- Components are modular so the team can work on agents in parallel.
-
----
-
-## Core Components
-
-### 1. Unified Data Retrieval Layer (Phase 1)
-
-Accepts a natural-language query. Resolves it to one or more data sources. Handles errors and rate limits. Caches results. Returns clean structured output.
-
-**Example:**
+### Data Flow
 
 ```
-"Pull NVDA's quarterly financials and the current Fed Funds rate."
+User query → IntentParser (rule-based) → RetrievalAgent → Adapters → ValidationAgent → Formatter
+                                                                              ↓
+                                                                    OrchestratorResponse
 ```
 
-**What happens under the hood:**
+### LLM Provider Abstraction
 
-1. The orchestrator parses intent and routes to the retrieval agent.
-2. The retrieval agent selects the right source adapters (SEC EDGAR for financials, FRED for the Fed Funds rate).
-3. Each adapter fetches, normalizes, and caches the response.
-4. Results are merged into a single standardized output.
+The system defaults to `LLM_PROVIDER=none`. All core retrieval, validation, and formatting works without any LLM. The LLM is only used for:
 
-**Supported data sources** (planned and in progress):
+1. Synthetic press release generation (optional enhancement)
+2. Ambiguous query parsing fallback (if rule-based parser fails)
 
-| Category | Sources |
-|---|---|
-| **Equities** | Yahoo Finance, Alpha Vantage, Polygon |
-| **Macro indicators** | FRED (Federal Reserve Economic Data) |
-| **SEC filings** | EDGAR (10-K, 10-Q, 8-K, proxy statements) |
-| **Planned** | Earnings call transcripts, FOMC minutes, global indices |
+Three providers are supported:
+- **none** — default, no LLM calls, everything degrades gracefully
+- **openai** — requires `OPENAI_API_KEY` and `pip install 'zion-terminal[openai]'`
+- **ollama** — requires running Ollama server and `pip install 'zion-terminal[ollama]'`
 
-### 2. Synthetic Entity Engine (Phase 2)
-
-Generates semi-fictional public companies with internally consistent financial documents.
-
-**Use cases:**
-
-- Stress-testing data pipelines without licensing real data.
-- Training and evaluating ML models on diverse labeled financial scenarios.
-- Building demos and prototypes without compliance concerns.
-- Creating controlled test environments where you define the financial narrative.
-
-**Generated document types:**
-
-| Document | Description |
-|---|---|
-| **Income Statement** | Revenue, COGS, operating expenses, net income |
-| **Balance Sheet** | Assets, liabilities, equity. Period-over-period consistent. |
-| **Cash Flow Statement** | Operating, investing, financing. Reconciled to balance sheet. |
-| **10-K / 10-Q filings** | Full-text SEC-style filings with embedded financial tables |
-| **8-K filings** | Material event disclosures (earnings, M&A, leadership changes) |
-| **Press releases** | Earnings announcements, guidance updates |
-| **Analyst notes** | Third-party-style coverage with target prices and ratings |
-
-Every generated document passes through the validation agent before it is served.
-
-### 3. Orchestrator
-
-The orchestrator is the single entry point for all requests.
-
-- Parses incoming requests (natural language or structured).
-- Determines which agents to invoke and in what order.
-- Manages coordination for multi-step tasks (e.g. generate a company then validate all its documents).
-- Returns a unified response regardless of which agents were involved.
-
-### 4. Validation Agent
-
-Enforces correctness across all generated and retrieved content.
-
-- **Field-level checks.** Data types, required fields, numeric bounds.
-- **Intra-document consistency.** Net income = revenue minus expenses.
-- **Cross-document consistency.** Cash on the balance sheet matches the ending balance on the cash flow statement. 10-K narrative references match the embedded tables.
-- **Temporal consistency.** Year-over-year figures tell a coherent story.
-
-Documents that fail validation are rejected with specific error details so the synthesis agent can regenerate them.
-
----
-
-## Output Formats
-
-All outputs are optimized for LLM consumption and data pipeline integration.
-
-| Format | Use Case |
-|---|---|
-| **Markdown** | LLM-friendly. Human-readable reports and filings. |
-| **CSV** | Tabular data. Direct import into pandas, spreadsheets, databases. |
-| **JSON** | Structured metadata. API responses. Programmatic access. |
-
----
-
-## Project Structure
-
-```
-zion-terminal/
-├── src/
-│   ├── orchestrator/       # Request routing and agent coordination
-│   ├── agents/
-│   │   ├── retrieval/      # Data retrieval agent + source adapters
-│   │   ├── synthesis/      # Synthetic entity and document generation
-│   │   └── validation/     # Consistency and correctness checks
-│   ├── cache/              # Caching layer (query results, generated docs)
-│   ├── models/             # Shared data models and schemas
-│   └── outputs/            # Output formatters (md, csv, json)
-├── tests/
-│   ├── unit/
-│   └── integration/
-├── config/                 # Source configs, agent parameters, prompts
-├── docs/                   # Extended documentation
-├── README.md
-├── pyproject.toml
-├── LICENSE
-└── .env.example
-```
-
----
-
-## Getting Started
-
-> Full setup instructions will be added as the prototype matures.
-
-**Prerequisites:**
-
-- Python 3.11+
-- API keys for the data sources you want to use (see `.env.example`)
-- An OpenAI-compatible API key for the LLM-powered agents
+## Testing
 
 ```bash
-git clone https://github.com/zion-terminal/zion-terminal.git
-cd zion-terminal
-pip install -e ".[dev]"
-cp .env.example .env
+# Unit tests only (no network)
+pytest -m "not integration"
+
+# All tests including integration (requires network)
+pytest
+
+# With coverage
+pytest --cov=zion_terminal
 ```
 
-Add your API keys to `.env` and you are ready to go.
+## Known Limitations
 
----
-
-## Roadmap
-
-### Phase 1: Data Retrieval (complete)
-
-- [x] Project scaffolding and architecture design
-- [x] Retrieval agent: Yahoo Finance adapter (quotes, history, financials, company info)
-- [x] Retrieval agent: FRED adapter (30+ macro indicators with aliases)
-- [x] Retrieval agent: SEC EDGAR adapter (filings, XBRL financials, company facts)
-- [x] Caching layer (diskcache with TTL support)
-- [x] Orchestrator: NLP intent parsing + agent dispatch + response merging
-- [x] CLI interface (query, quote, financials, macro, filings, history, synthesize, sources)
-- [x] Output formatting (markdown, csv, json)
-- [x] Validation agent: field-level and cross-document checks
-- [x] Unit tests (68 tests) and integration tests (6 tests)
-
-### Phase 2: Synthetic Entities (in progress)
-
-- [x] Synthesis agent: financial statement generation (income, balance sheet, cash flow)
-- [x] Validation agent: cross-document consistency checks
-- [x] End-to-end entity generation pipeline
-- [ ] Synthesis agent: SEC filing generation (10-K, 10-Q, 8-K)
-- [ ] Synthesis agent: press releases and analyst notes (LLM-powered)
-
-### Future
-
-- [ ] Web UI
-- [ ] Additional data sources (earnings transcripts, FOMC minutes, global indices)
-- [ ] Plugin system for custom adapters
-
----
+- Yahoo Finance uses an unofficial API that may break or rate-limit with heavy use.
+- SEC EDGAR filing-to-markdown conversion is best-effort. Complex HTML tables may not convert cleanly.
+- The intent parser uses regex and keyword matching. Unusual phrasing may not parse correctly. The LLM fallback helps but is optional.
+- Synthetic data uses random generation seeded at call time. Results differ between runs.
+- Validation checks are basic: price bounds, volume signs, income math, accounting identity, cash reconciliation. They don't catch all possible data quality issues.
 
 ## License
 
-[MIT](LICENSE)
+MIT

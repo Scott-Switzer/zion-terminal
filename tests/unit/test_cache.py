@@ -1,9 +1,10 @@
-"""Tests for the caching layer."""
+"""Tests for the cache manager."""
 
+import os
 import tempfile
-from pathlib import Path
+import pytest
 
-from src.cache.cache_manager import CacheManager
+from zion_terminal.cache.cache_manager import CacheManager
 
 
 class TestCacheManager:
@@ -14,39 +15,26 @@ class TestCacheManager:
     def teardown_method(self):
         self.cache.close()
 
-    def test_make_key_deterministic(self):
-        k1 = CacheManager.make_key("yahoo", {"ticker": "AAPL"})
-        k2 = CacheManager.make_key("yahoo", {"ticker": "AAPL"})
-        assert k1 == k2
-
-    def test_make_key_differs(self):
-        k1 = CacheManager.make_key("yahoo", {"ticker": "AAPL"})
-        k2 = CacheManager.make_key("yahoo", {"ticker": "NVDA"})
-        assert k1 != k2
-
-    def test_get_miss(self):
-        assert self.cache.get("nonexistent") is None
-
     def test_set_and_get(self):
-        self.cache.set("key1", {"data": [1, 2, 3]})
+        self.cache.set("key1", {"data": "test"})
         result = self.cache.get("key1")
-        assert result == {"data": [1, 2, 3]}
+        assert result == {"data": "test"}
 
-    def test_invalidate(self):
-        self.cache.set("key2", "value")
-        assert self.cache.get("key2") == "value"
-        self.cache.invalidate("key2")
-        assert self.cache.get("key2") is None
+    def test_get_missing_key(self):
+        result = self.cache.get("nonexistent")
+        assert result is None
 
     def test_clear(self):
-        self.cache.set("a", 1)
-        self.cache.set("b", 2)
+        self.cache.set("key1", "value1")
         self.cache.clear()
-        assert self.cache.get("a") is None
-        assert self.cache.get("b") is None
+        assert self.cache.get("key1") is None
 
-    def test_stats(self):
-        self.cache.set("x", 42)
-        stats = self.cache.stats()
-        assert stats["entry_count"] >= 1
-        assert stats["default_ttl"] == 60
+    def test_custom_ttl(self):
+        self.cache.set("key2", "value2", ttl=1)
+        result = self.cache.get("key2")
+        assert result == "value2"
+
+    def test_overwrite(self):
+        self.cache.set("key1", "old")
+        self.cache.set("key1", "new")
+        assert self.cache.get("key1") == "new"

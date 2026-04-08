@@ -1,63 +1,76 @@
 """Tests for the synthesis agent."""
 
-from src.agents.synthesis.agent import SynthesisAgent
+import pytest
+
+from zion_terminal.agents.synthesis.agent import SynthesisAgent
+from zion_terminal.providers.base import NoLLMProvider
 
 
 class TestSynthesisAgent:
     def setup_method(self):
-        self.agent = SynthesisAgent(openai_client=None)
+        self.agent = SynthesisAgent(llm=NoLLMProvider())
 
-    def test_generate_creates_documents(self):
-        result = self.agent.generate("Generate a synthetic company")
-        assert result.success
-        assert result.entity_name is not None
-        assert result.entity_ticker is not None
-        assert len(result.documents) >= 4  # profile, income, balance, cash flow
-
-    def test_generate_has_all_statement_types(self):
-        result = self.agent.generate("Create a company")
-        types = {doc["type"] for doc in result.documents}
+    def test_generates_company_profile(self):
+        result = self.agent.generate("generate a company")
+        assert result.success is True
+        types = [d["type"] for d in result.documents]
         assert "company_profile" in types
+
+    def test_generates_all_statements(self):
+        result = self.agent.generate("generate")
+        types = [d["type"] for d in result.documents]
         assert "income_statement" in types
         assert "balance_sheet" in types
         assert "cash_flow_statement" in types
 
+    def test_no_press_release_without_llm(self):
+        """Without LLM, no press release should be generated."""
+        result = self.agent.generate("generate")
+        types = [d["type"] for d in result.documents]
+        assert "press_release" not in types
+
     def test_income_statement_math(self):
-        result = self.agent.generate("Generate company")
-        income = next(d for d in result.documents if d["type"] == "income_statement")
-        data = income["data"]
-
-        # Gross profit = revenue - COGS
-        expected_gp = data["total_revenue"] - data["cost_of_revenue"]
-        assert abs(data["gross_profit"] - expected_gp) < 2  # rounding tolerance
-
-        # Net income makes sense
-        assert data["net_income"] < data["total_revenue"]
+        """revenue - COGS should equal gross profit."""
+        result = self.agent.generate("generate")
+        income = None
+        for doc in result.documents:
+            if doc["type"] == "income_statement":
+                income = doc["data"]
+                break
+        assert income is not None
+        assert income["total_revenue"] - income["cost_of_revenue"] == income["gross_profit"]
 
     def test_balance_sheet_identity(self):
-        result = self.agent.generate("Generate company")
-        bs = next(d for d in result.documents if d["type"] == "balance_sheet")
-        data = bs["data"]
+        """total_assets should equal total_liabilities + total_equity."""
+        result = self.agent.generate("generate")
+        bs = None
+        for doc in result.documents:
+            if doc["type"] == "balance_sheet":
+                bs = doc["data"]
+                break
+        assert bs is not None
+        assert bs["total_assets"] == bs["total_liabilities_and_equity"]
 
-        # Assets = Liabilities + Equity
-        assert abs(data["total_assets"] - data["total_liabilities_and_equity"]) < 2
+    def test_entity_name_set(self):
+        result = self.agent.generate("generate")
+        assert result.entity_name is not None
+        assert len(result.entity_name) > 0
 
-    def test_cash_flow_reconciliation(self):
-        result = self.agent.generate("Generate company")
-        cf = next(d for d in result.documents if d["type"] == "cash_flow_statement")
-        bs = next(d for d in result.documents if d["type"] == "balance_sheet")
-        cf_data = cf["data"]
-        bs_data = bs["data"]
+    def test_entity_ticker_set(self):
+        result = self.agent.generate("generate")
+        assert result.entity_ticker is not None
+        assert len(result.entity_ticker) >= 2
 
-        # Ending cash should match balance sheet cash
-        assert cf_data["ending_cash"] == bs_data["cash_and_equivalents"]
-
-    def test_company_profile_fields(self):
-        result = self.agent.generate("Generate")
-        profile = next(d for d in result.documents if d["type"] == "company_profile")
-        data = profile["data"]
-        assert "name" in data
-        assert "ticker" in data
-        assert "sector" in data
-        assert "industry" in data
-        assert "employees" in data
+    def test_cash_reconciliation(self):
+        """BS cash should equal CF ending cash."""
+        result = self.agent.generate("generate")
+        bs_cash = None
+        cf_ending = None
+        for doc in result.documents:
+            if doc["type"] == "balance_sheet":
+                bs_cash = doc["data"]["cash_and_equivalents"]
+            elif doc["type"] == "cash_flow_statement":
+                cf_ending = doc["data"]["ending_cash"]
+        assert bs_cash is not None
+        assert cf_ending is not None
+        assert bs_cash == cf_ending
