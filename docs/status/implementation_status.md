@@ -1,6 +1,6 @@
 # Implementation Status
 
-## Implemented (v0.4.1)
+## Implemented (v0.4.3)
 
 | Feature | Status | Notes |
 |---|---|---|
@@ -18,17 +18,34 @@
 | Auto-routing for financials | Done | _find_adapter_for_task routes financials to SEC |
 | Live pipeline benchmarks | Done | FilingPipeline.process() benchmarked alongside converter |
 | Dead code removal | Done | No unused imports or stale conversion paths |
+| TOC discrimination | Done | Filters dense Item clusters in first 20% as TOC entries |
+| Synthesis regeneration scaffold | Done | generate_with_retry() retries with perturbed seeds on validation failure |
+| Extended validation schema | Done | checks_warned, checks_skipped, checks_unavailable fields |
+| XBRL fact mapping module | Done | verification/fact_mapping.py — Arelle → canonical CanonicalFact schema |
+| Markdown numeric extractor | Done | verification/markdown_extractor.py — parse_numeric, extract_tables, extract_values |
+| XBRL reconciler module | Done | verification/reconciler.py — matched/scale_mismatch/sign_mismatch/label_mismatch/missing |
+| Parser corpus expansion | Done | 110+ queries across 10 categories (up from 66) |
+| Benchmark runner script | Done | scripts/run_benchmarks.py |
+| Doc consistency checker | Done | scripts/check_doc_consistency.py |
 
 ## Not Yet Implemented
 
 | Feature | Priority | Notes |
 |---|---|---|
 | Parser SEC-awareness | Medium | NL parser still assigns yahoo_finance to some financial queries |
-| Automated cross-source reconciliation | Medium | Hooks exist, comparison logic not implemented |
+| Automated cross-source reconciliation | Medium | Hooks exist, comparison logic not wired into live pipeline |
 | Wrapper filing detection | Medium | Fixture exists, detection not automated |
 | iXBRL inline parsing | Low | Arelle supports it, not wired |
 | Historical filing comparison | Low | Compare across multiple years |
-| TOC vs section discrimination | Medium | Heuristic improvement needed |
+| XBRL reconciliation in live pipeline | High | fact_mapping + reconciler modules exist; FilingPipeline.process() integration pending |
+| XBRL reconciliation in ValidationAgent | High | reconciler.py not yet called from ValidationAgent |
+| Table fidelity metric | Medium | Benchmark metric defined in ADR-0016 but not implemented in runner |
+| Numeric fidelity metric (end-to-end) | High | markdown_extractor.py implemented; benchmark runner integration pending |
 | CI/CD pipeline | Medium | Not yet set up |
+| Arelle in CI | Medium | Required for XBRL reconciliation metrics |
 | mypy type checking | Low | Not enforced |
 | Real SEC filing benchmarks | Medium | Only synthetic fixtures |
+| Adversarial parser corpus | Low | No injection or adversarial queries in corpus |
+| Multi-column table extraction | Low | markdown_extractor.py only parses first data column |
+| Inline text numeric extraction | Low | Only table-based extraction implemented |
+| Parser label matching improvement | Medium | Fuzzy label matching in reconciler.py can produce false positives |

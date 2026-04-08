@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.4.3 — Prompt B+C Hardening + Benchmarking (2026-04-08)
+
+### New Modules
+- verification/fact_mapping.py — XBRL→canonical fact schema
+- verification/reconciler.py — fact vs markdown comparison
+- verification/markdown_extractor.py — numeric extraction from markdown tables
+
+### Improvements
+- Parser corpus expanded from 66 to 110+ queries
+- Dead code removed (_KNOWN_AMBIGUOUS_TICKERS)
+- README test count fixed (218→300+)
+- Benchmark runner script (scripts/run_benchmarks.py)
+- Doc consistency checker (scripts/check_doc_consistency.py)
+
+### Documentation
+- 4 schema docs, 4 runbooks, 3 benchmark artifacts, 4 context docs, 2 ADRs
+- All docs inventoried against code for consistency
+
+### Tests
+- 310+ tests (verification modules, expanded corpus)
+
 ## v0.4.2 — Prompt A Completion Pass (2026-04-08)
 
 ### Bug Fixes
