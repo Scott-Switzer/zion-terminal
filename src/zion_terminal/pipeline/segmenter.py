@@ -134,6 +134,11 @@ class FilingSegmenter:
                         title = _KNOWN_TITLES.get(item_num, "")
                     matches.append((i, item_num, title))
 
+        # TOC filter: if many items cluster in a small range near the document top,
+        # they are likely table-of-contents entries, not real section headers.
+        if len(matches) > 3:
+            matches = self._filter_toc_entries(matches, len(lines))
+
         if not matches:
             # No items found — return the whole thing as one section
             return [FilingSection(
@@ -157,6 +162,51 @@ class FilingSegmenter:
             ))
 
         return sections
+
+    @staticmethod
+    def _filter_toc_entries(
+        matches: list[tuple[int, str, str]], total_lines: int,
+    ) -> list[tuple[int, str, str]]:
+        """Remove likely TOC entries from matches.
+
+        TOC entries cluster densely near the top of the document.
+        Real section headers are spread throughout the document body.
+        If a cluster of 3+ items appears within 30 lines in the first
+        20% of the document, and later matches exist, discard the cluster.
+
+        Guards against false positives:
+        - Only activates on documents with 200+ lines (short docs are
+          unlikely to have a meaningful TOC region).
+        - The early cluster must have < 5 lines between consecutive
+          items (real sections have content between them).
+        """
+        if len(matches) < 4:
+            return matches
+
+        # Short documents are unlikely to have a separate TOC region
+        if total_lines < 200:
+            return matches
+
+        # Find dense clusters in the first 20% of the document
+        cutoff_line = max(total_lines // 5, 50)
+        early_matches = [m for m in matches if m[0] < cutoff_line]
+        late_matches = [m for m in matches if m[0] >= cutoff_line]
+
+        if len(early_matches) >= 3 and late_matches:
+            # Check if early matches are dense (span < 30 lines)
+            early_span = early_matches[-1][0] - early_matches[0][0]
+            if early_span < 30:
+                # Also verify density: average gap between consecutive items < 5 lines
+                gaps = [
+                    early_matches[j + 1][0] - early_matches[j][0]
+                    for j in range(len(early_matches) - 1)
+                ]
+                avg_gap = sum(gaps) / len(gaps) if gaps else 0
+                if avg_gap < 5:
+                    # These are likely TOC entries — keep only late matches
+                    return late_matches
+
+        return matches
 
     @staticmethod
     def get_section(sections: list[FilingSection], item: str) -> FilingSection | None:

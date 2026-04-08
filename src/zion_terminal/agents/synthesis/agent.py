@@ -74,6 +74,51 @@ class SynthesisAgent:
             logger.exception("Synthesis failed")
             return SynthesisResult(success=False, errors=[f"Synthesis error: {exc}"])
 
+    def generate_with_retry(
+        self, query: str, params: dict[str, Any] | None = None,
+        max_retries: int = 3,
+        validator=None,
+    ) -> SynthesisResult:
+        """Generate with retry on validation failure (strict mode scaffold).
+
+        If a validator is provided and the result fails validation,
+        retries with a perturbed seed up to max_retries times.
+        This is a scaffold — the validation integration is partial.
+
+        Args:
+            query: Generation query
+            params: Generation parameters (including optional seed)
+            max_retries: Maximum retry attempts
+            validator: Optional ValidationAgent instance
+        """
+        params = params or {}
+        base_seed = params.get("seed", hash(query) & 0xFFFFFFFF)
+
+        for attempt in range(max_retries):
+            params["seed"] = base_seed + attempt
+            result = self.generate(query, params)
+
+            if not result.success:
+                continue
+
+            if validator is None:
+                return result
+
+            validation = validator.validate_synthesis(result)
+            if validation.checks_failed == 0:
+                return result
+
+            logger.warning(
+                "Synthesis attempt %d/%d failed validation (%d checks failed), retrying",
+                attempt + 1, max_retries, validation.checks_failed,
+            )
+
+        # All retries exhausted
+        return SynthesisResult(
+            success=False,
+            errors=[f"Synthesis failed validation after {max_retries} attempts"],
+        )
+
     def _generate_company(self, params: dict[str, Any]) -> dict[str, Any]:
         sector, industry = self._rng.choice(_SECTORS)
         name = f"{params.get('name_prefix') or self._rng.choice(_NAME_PREFIXES)} {params.get('name_suffix') or self._rng.choice(_NAME_SUFFIXES)}"

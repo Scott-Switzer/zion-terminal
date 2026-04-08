@@ -19,6 +19,8 @@ import time
 from datetime import date
 from typing import Any
 
+import pandas as pd
+
 from zion_terminal.agents.retrieval.base_adapter import BaseAdapter
 from zion_terminal.agents.retrieval.retry import adapter_retry
 from zion_terminal.models.financial import FilingType, SECFiling
@@ -154,18 +156,29 @@ class SECEdgarAdapter(BaseAdapter):
                             try:
                                 df = stmt.to_dataframe() if hasattr(stmt, "to_dataframe") else None
                                 if df is not None and not df.empty:
+                                    # Convert DataFrame to line_items dict for formatter compatibility
+                                    # Use the first (most recent) column as values
+                                    line_items = {}
+                                    for idx in df.index:
+                                        val = df.iloc[:, 0].loc[idx] if len(df.columns) > 0 else None
+                                        line_items[str(idx)] = float(val) if pd.notna(val) else None
                                     results.append({
-                                        "ticker": ticker, "type": "financial_statement",
-                                        "statement": stmt_name,
+                                        "ticker": ticker,
+                                        "statement_type": stmt_name,
+                                        "period": str(df.columns[0]) if len(df.columns) > 0 else "",
+                                        "line_items": line_items,
                                         "filing_date": str(getattr(filing, "filing_date", "")),
-                                        "data": df.to_dict(), "source": self.SOURCE_NAME,
+                                        "source": self.SOURCE_NAME,
                                     })
                             except Exception:
                                 results.append({
-                                    "ticker": ticker, "type": "financial_statement",
-                                    "statement": stmt_name,
+                                    "ticker": ticker,
+                                    "statement_type": stmt_name,
+                                    "period": str(getattr(filing, "filing_date", "")),
+                                    "line_items": {},
                                     "filing_date": str(getattr(filing, "filing_date", "")),
-                                    "data": str(stmt)[:2000], "source": self.SOURCE_NAME,
+                                    "raw_text": str(stmt)[:2000],
+                                    "source": self.SOURCE_NAME,
                                 })
             except Exception as exc:
                 logger.warning("Could not parse filing %d for %s: %s", i, ticker, exc)

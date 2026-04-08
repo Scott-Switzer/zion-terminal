@@ -152,11 +152,21 @@ class XBRLVerifier:
                 xbrl_fact.period_instant = str(inst)
 
     def _run_validation(self, source: str, extract_facts: bool) -> XBRLValidationResult:
-        """Run Arelle validation on a source (URL or file path)."""
-        from arelle import Cntlr
+        """Run Arelle validation on a source (URL or file path).
+
+        Uses correct Arelle Python API patterns:
+          fact.concept.qname.localName  — concept name
+          fact.value / fact.xValue      — raw/typed value
+          fact.context.startDatetime    — period start
+          fact.context.endDatetime      — period end
+          fact.context.instantDatetime  — instant date
+          str(fact.unit.measures[0][0]) — unit string
+        """
+        from arelle import Cntlr, ModelManager
 
         ctrl = Cntlr.Cntlr(logFileName="logToPrint")
-        model_xbrl = ctrl.modelManager.load(source)
+        ctrl.startLogging(logFileName="logToPrint")
+        model_xbrl = ModelManager.initialize(ctrl).load(source)
 
         errors: list[str] = []
         warnings: list[str] = []
@@ -166,6 +176,14 @@ class XBRLVerifier:
                 valid=False,
                 errors=[f"Could not load XBRL document from {source}"],
             )
+
+        # Run validation
+        try:
+            from arelle import ValidateXbrl
+            validator = ValidateXbrl.ValidateXbrl(model_xbrl)
+            validator.validate()
+        except Exception as exc:
+            warnings.append(f"Validation step failed: {exc}")
 
         # Check for loading/validation errors
         if hasattr(model_xbrl, "errors") and model_xbrl.errors:
@@ -179,9 +197,9 @@ class XBRLVerifier:
                 try:
                     xbrl_fact = XBRLFact(
                         concept=self._extract_concept_name(fact),
-                        value=getattr(fact, "value", None),
+                        value=getattr(fact, "xValue", None) or getattr(fact, "value", None),
                         context_id=str(getattr(fact, "contextID", "")),
-                        unit=str(getattr(fact, "unitID", "")),
+                        unit=self._extract_unit(fact),
                         decimals=str(getattr(fact, "decimals", "")),
                     )
                     self._extract_period_info(fact, xbrl_fact)
@@ -203,3 +221,17 @@ class XBRLVerifier:
             facts=facts,
             metadata={"source": source},
         )
+
+    @staticmethod
+    def _extract_unit(fact) -> str | None:
+        """Extract unit string from Arelle fact using correct API."""
+        unit = getattr(fact, "unit", None)
+        if unit is None:
+            return None
+        try:
+            measures = getattr(unit, "measures", None)
+            if measures and len(measures) > 0 and len(measures[0]) > 0:
+                return str(measures[0][0])
+        except Exception:
+            pass
+        return str(unit) if unit else None

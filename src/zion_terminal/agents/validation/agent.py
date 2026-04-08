@@ -207,15 +207,19 @@ class ValidationAgent:
     @staticmethod
     def _build_result(checks: list[ValidationCheck]) -> ValidationResult:
         passed = sum(1 for c in checks if c.status == ValidationStatus.PASSED)
+        warned = sum(1 for c in checks if c.status == ValidationStatus.WARNING)
         failed = sum(1 for c in checks if c.status == ValidationStatus.FAILED)
         status = ValidationStatus.PASSED
         if failed > 0:
             status = ValidationStatus.WARNING if failed < len(checks) / 2 else ValidationStatus.FAILED
+        elif warned > 0:
+            status = ValidationStatus.WARNING
         return ValidationResult(
             success=failed == 0,
             status=status,
             checks_run=len(checks),
             checks_passed=passed,
+            checks_warned=warned,
             checks_failed=failed,
             details=checks,
             warnings=[c.message for c in checks if c.status == ValidationStatus.WARNING],

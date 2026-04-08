@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.4.2 — Prompt A Completion Pass (2026-04-08)
+
+### Bug Fixes
+- Fixed SEC financials schema mismatch: adapter now outputs `line_items` + `statement_type` (formatter-compatible)
+- Fixed Arelle wrapper to use correct API: `ModelManager.initialize()`, `ValidateXbrl`, `fact.xValue`, `unit.measures`
+
+### New Features
+- TOC discrimination in segmenter: filters dense Item clusters in first 20% as TOC entries
+- Synthesis regeneration scaffold: `generate_with_retry()` retries with perturbed seeds on validation failure
+- Extended validation schema: `checks_warned`, `checks_skipped`, `checks_unavailable` fields
+
+### Documentation
+- 3 new context docs: what_not_to_break, project_intent, design_principles
+- 3 new agent handoff docs: next_steps, current_risks, benchmark_readme
+- 2 new/updated ADRs: ADR-0007 (TOC heuristics), ADR-0008 (Arelle boundaries)
+- TOC-heavy HTML fixture
+
+### Tests
+- 302 tests (up from 291): 11 new tests for schema alignment, TOC filtering, regeneration, validation fields
+
 ## v0.4.1 — Hardening Pass (2026-04-08)
 
 ### Bugs Fixed

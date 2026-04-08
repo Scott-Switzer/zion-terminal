@@ -57,7 +57,10 @@ class ValidationResult(AgentResponse):
     status: ValidationStatus = ValidationStatus.PASSED
     checks_run: int = 0
     checks_passed: int = 0
+    checks_warned: int = 0
     checks_failed: int = 0
+    checks_skipped: int = 0
+    checks_unavailable: int = 0
     details: list[ValidationCheck] = Field(default_factory=list)
 
     @property
