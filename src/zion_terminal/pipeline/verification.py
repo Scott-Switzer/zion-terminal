@@ -46,6 +46,7 @@ class VerificationResult:
     reconciliation_status: str = "not_run"  # not_run | reconciled_pass | reconciled_partial | reconciled_fail | error | no_period_match
     reconciliation_report: dict[str, Any] = field(default_factory=dict)
     period_matched: str = ""  # e.g. "FY2023" or "Q2 2021"
+    period_match_mode: str = ""  # exact_period | year_only | no_period_match | no_filing_date | ambiguous
     facts_extracted_xbrl: int = 0
     facts_extracted_markdown: int = 0
     facts_matched: int = 0
@@ -65,6 +66,7 @@ class VerificationResult:
             "reconciliation_status": self.reconciliation_status,
             "reconciliation_report": self.reconciliation_report,
             "period_matched": self.period_matched,
+            "period_match_mode": self.period_match_mode,
             "facts_extracted_xbrl": self.facts_extracted_xbrl,
             "facts_extracted_markdown": self.facts_extracted_markdown,
             "facts_matched": self.facts_matched,
@@ -121,21 +123,22 @@ def _company_facts_to_canonical(
                 if not isinstance(entries, list) or not entries:
                     continue
 
-                # Strict period matching — no "most recent" fallback
+                # Strict period matching — NO hidden fallback
                 if target_fy is not None:
-                    matching = [
-                        e for e in entries
-                        if e.get("fy") == target_fy
-                        and (target_fp is None or e.get("fp") == target_fp)
-                    ]
-                    if not matching:
-                        # Relax: try fiscal year only
+                    if target_fp is not None:
+                        # Exact: match both fiscal year AND period
+                        matching = [
+                            e for e in entries
+                            if e.get("fy") == target_fy and e.get("fp") == target_fp
+                        ]
+                    else:
+                        # Year-only: no specific period requested
                         matching = [e for e in entries if e.get("fy") == target_fy]
                     if not matching:
-                        continue  # No period match — skip concept
+                        continue  # No match — skip concept entirely
                     entry = matching[-1]
                 else:
-                    entry = entries[-1]  # Only used when no target period
+                    entry = entries[-1]  # Only when no target period at all
 
                 val = entry.get("val")
                 if val is None:
@@ -156,6 +159,95 @@ def _company_facts_to_canonical(
                 ))
 
     return results
+
+
+def _derive_fiscal_period(
+    filing_date: str, form: str, company_facts: dict | None,
+) -> tuple[int | None, str | None, str]:
+    """Derive the target fiscal year and period from available metadata.
+
+    Uses company facts metadata (``fy`` and ``fp`` fields from XBRL entries)
+    as the primary source when available, falling back to filing-date
+    heuristics only when necessary.
+
+    Returns:
+        (target_fy, target_fp, match_mode) where match_mode is one of:
+        - "exact_period": both FY and FP determined from XBRL metadata
+        - "year_only": FY determined but FP could not be resolved
+        - "heuristic": derived from filing date (less reliable)
+        - "no_filing_date": no filing date available
+    """
+    if not filing_date:
+        return None, None, "no_filing_date"
+
+    # Try to determine fiscal year from filing date
+    try:
+        year = int(filing_date[:4])
+        month = int(filing_date[5:7])
+    except (ValueError, IndexError):
+        return None, None, "no_filing_date"
+
+    # For 10-K: determine FY. Most companies file 10-K within 60-90 days
+    # of fiscal year end.  If filed in Q4 or Q1, FY is likely that year
+    # or the prior year.
+    if form == "10-K":
+        # Check company facts for the most likely FY
+        candidate_fy = year if month > 6 else year - 1
+        if company_facts and "facts" in company_facts:
+            # Look for any entry with this FY to validate
+            for ns_data in company_facts.get("facts", {}).values():
+                if not isinstance(ns_data, dict):
+                    continue
+                for concept_data in ns_data.values():
+                    if not isinstance(concept_data, dict):
+                        continue
+                    for entries in concept_data.get("units", {}).values():
+                        if not isinstance(entries, list):
+                            continue
+                        for e in entries:
+                            if e.get("fy") == candidate_fy and e.get("fp") == "FY":
+                                return candidate_fy, "FY", "exact_period"
+        # Heuristic fallback
+        return candidate_fy, "FY", "heuristic"
+
+    elif form == "10-Q":
+        # For 10-Q: try to determine exact quarter from company facts
+        candidate_fy = year if month > 6 else year - 1
+        if company_facts and "facts" in company_facts:
+            # Find the quarter that was filed closest to filing_date
+            best_fp = None
+            for ns_data in company_facts.get("facts", {}).values():
+                if not isinstance(ns_data, dict):
+                    continue
+                for concept_data in ns_data.values():
+                    if not isinstance(concept_data, dict):
+                        continue
+                    for entries in concept_data.get("units", {}).values():
+                        if not isinstance(entries, list):
+                            continue
+                        for e in entries:
+                            if (e.get("fy") == candidate_fy
+                                    and e.get("fp", "").startswith("Q")
+                                    and e.get("filed") == filing_date):
+                                best_fp = e["fp"]
+                                return candidate_fy, best_fp, "exact_period"
+            # If no exact filed-date match, try quarter from filing month
+            # Q1=months 1-3, Q2=4-6, Q3=7-9 of the filing year
+            q_map = {1: "Q1", 2: "Q1", 3: "Q1", 4: "Q2", 5: "Q2",
+                     6: "Q2", 7: "Q3", 8: "Q3", 9: "Q3", 10: "Q4", 11: "Q4", 12: "Q4"}
+            # 10-Q is filed ~40 days after quarter end, so filing in May = Q1 report
+            quarter_of_filing = q_map.get(month, "Q1")
+            # The quarter being REPORTED is usually the one before the filing quarter
+            report_q_map = {"Q1": "Q4", "Q2": "Q1", "Q3": "Q2", "Q4": "Q3"}
+            reported_quarter = report_q_map.get(quarter_of_filing, None)
+            if reported_quarter:
+                return candidate_fy, reported_quarter, "heuristic"
+        return candidate_fy, None, "year_only"
+
+    else:
+        # Other form types: year-only
+        candidate_fy = year if month > 6 else year - 1
+        return candidate_fy, None, "year_only"
 
 
 class FilingVerifier:
@@ -242,24 +334,22 @@ class FilingVerifier:
         period as the filing being verified.  Never silently uses "most recent."
         """
         try:
-            # Derive target fiscal period from filing metadata
-            target_fy = None
-            target_fp = None
-            if filing_date:
-                try:
-                    year = int(filing_date[:4])
-                    month = int(filing_date[5:7])
-                    # FY is usually the calendar year of the period end
-                    target_fy = year if month > 6 else year - 1
-                    target_fp = "FY" if form in ("10-K", "") else None
-                except (ValueError, IndexError):
-                    pass
+            # Derive target fiscal period from filing metadata + company facts
+            target_fy, target_fp, match_mode = _derive_fiscal_period(
+                filing_date, form, company_facts,
+            )
+            result.period_match_mode = match_mode
 
             if target_fy:
-                period_label = f"FY{target_fy}" if target_fp == "FY" else f"{target_fp or ''} {target_fy}"
+                if target_fp:
+                    period_label = f"{target_fp}{target_fy}" if target_fp == "FY" else f"{target_fp} {target_fy}"
+                else:
+                    period_label = f"FY{target_fy} (year_only)"
                 result.period_matched = period_label
+            else:
+                result.period_matched = "unknown"
 
-            # Extract facts from both sources with strict period matching
+            # Extract facts with strict period matching
             xbrl_facts = _company_facts_to_canonical(company_facts, target_fy, target_fp)
             md_values = extract_values(markdown)
 
@@ -286,11 +376,14 @@ class FilingVerifier:
                 report.facts_scale_mismatch + report.facts_sign_mismatch
             )
 
-            # Determine reconciliation status based on match rate
+            # Determine reconciliation status based on match rate AND period quality
             if report.facts_compared == 0:
                 result.reconciliation_status = "no_comparable_facts"
-            elif report.match_rate >= 0.8:
+            elif report.match_rate >= 0.8 and match_mode == "exact_period":
                 result.reconciliation_status = "reconciled_pass"
+            elif report.match_rate >= 0.8:
+                # Good match rate but period was heuristic — downgrade
+                result.reconciliation_status = "reconciled_partial"
             elif report.match_rate >= 0.5:
                 result.reconciliation_status = "reconciled_partial"
             else:

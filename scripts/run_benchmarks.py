@@ -69,24 +69,46 @@ def count_parser_corpus() -> dict:
 
 
 def benchmark_fixtures() -> list[dict]:
-    """Run the actual converter+segmenter on all HTML fixtures."""
+    """Run the converter+segmenter+verification on all HTML fixtures.
+
+    For fixtures that have a matching company_facts JSON file, runs
+    company-facts-based reconciliation to prove verification works.
+    """
     from zion_terminal.pipeline.filing_pipeline import FilingPipeline
 
     pipeline = FilingPipeline()
     html_files = sorted(FIXTURES_DIR.glob("*.html"))
+    company_facts_path = FIXTURES_DIR / "sample_company_facts.json"
+    company_facts = None
+    if company_facts_path.exists():
+        company_facts = json.loads(company_facts_path.read_text())
+
+    # Fixtures that should be benchmarked WITH company facts reconciliation
+    _RECONCILIATION_FIXTURES = {
+        "sample_filing_with_tables.html",
+        "sample_filing_scale_mismatch.html",
+    }
+
     results = []
 
     for f in html_files:
         html = f.read_text()
+        metadata: dict = {"fixture": f.name}
+        # Attach company facts for reconciliation-eligible fixtures
+        if f.name in _RECONCILIATION_FIXTURES and company_facts:
+            metadata["company_facts"] = company_facts
+
         start = time.perf_counter()
         result = pipeline.process(
             html=html,
             ticker="BENCH",
             form="10-K",
-            metadata={"fixture": f.name},
+            filing_date="2023-11-03",
+            metadata=metadata,
         )
         duration_ms = round((time.perf_counter() - start) * 1000, 1)
 
+        verification = result.verification or {}
         results.append({
             "name": f.name,
             "size_kb": round(f.stat().st_size / 1024, 1),
@@ -97,7 +119,11 @@ def benchmark_fixtures() -> list[dict]:
             "raw_char_count": len(html),
             "markdown_char_count": result.markdown_char_count,
             "compression_ratio": round(result.markdown_char_count / max(len(html), 1), 3),
-            "verification_status": result.verification.get("status", "unknown"),
+            "verification_status": verification.get("status", "unknown"),
+            "verification_depth": verification.get("verification_depth", "none"),
+            "reconciliation_status": verification.get("reconciliation_status", "not_run"),
+            "period_match_mode": verification.get("period_match_mode", ""),
+            "facts_matched": verification.get("facts_matched", 0),
             "warnings": result.warnings,
         })
 

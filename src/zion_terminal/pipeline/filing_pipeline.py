@@ -43,6 +43,11 @@ class FilingPipelineResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
+    def to_cleaned_document(self) -> "CleanedDocument":
+        """Convert to a team-compatible CleanedDocument."""
+        from zion_terminal.models.documents import CleanedDocument
+        return CleanedDocument.from_pipeline_result(self)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "success": self.success,

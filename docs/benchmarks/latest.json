@@ -1,13 +1,13 @@
 {
-  "run_date": "2026-04-09T04:50:03.189905+00:00",
-  "commit": "fcba8dc",
-  "version": "0.7.0",
+  "run_date": "2026-04-09T05:06:28.373796+00:00",
+  "commit": "7e37f76",
+  "version": "0.7.1",
   "runner": "scripts/run_benchmarks.py",
   "python_version": "3.12.8",
   "arelle_installed": false,
   "test_suite": {
-    "total": 374,
-    "passed": 374,
+    "total": 389,
+    "passed": 389,
     "failed": 0
   },
   "fixtures": [
@@ -17,11 +17,15 @@
       "success": true,
       "sections_extracted": 1,
       "converter": "dom",
-      "duration_ms": 78.6,
+      "duration_ms": 79.9,
       "raw_char_count": 710,
       "markdown_char_count": 463,
       "compression_ratio": 0.652,
-      "verification_status": "structural_only",
+      "verification_status": "reconciled_pass",
+      "verification_depth": "reconciled",
+      "reconciliation_status": "reconciled_pass",
+      "period_match_mode": "exact_period",
+      "facts_matched": 8,
       "warnings": []
     },
     {
@@ -30,11 +34,15 @@
       "success": true,
       "sections_extracted": 1,
       "converter": "dom",
-      "duration_ms": 1.6,
+      "duration_ms": 1.2,
       "raw_char_count": 746,
       "markdown_char_count": 499,
       "compression_ratio": 0.669,
-      "verification_status": "structural_only",
+      "verification_status": "reconciled_pass",
+      "verification_depth": "reconciled",
+      "reconciliation_status": "reconciled_pass",
+      "period_match_mode": "exact_period",
+      "facts_matched": 8,
       "warnings": []
     },
     {
@@ -48,6 +56,10 @@
       "markdown_char_count": 1685,
       "compression_ratio": 0.774,
       "verification_status": "structural_only",
+      "verification_depth": "structural_only",
+      "reconciliation_status": "no_company_facts",
+      "period_match_mode": "",
+      "facts_matched": 0,
       "warnings": []
     },
     {
@@ -56,11 +68,15 @@
       "success": true,
       "sections_extracted": 5,
       "converter": "dom",
-      "duration_ms": 1.2,
+      "duration_ms": 1.4,
       "raw_char_count": 1369,
       "markdown_char_count": 892,
       "compression_ratio": 0.652,
       "verification_status": "structural_only",
+      "verification_depth": "structural_only",
+      "reconciliation_status": "no_company_facts",
+      "period_match_mode": "",
+      "facts_matched": 0,
       "warnings": []
     },
     {
@@ -74,6 +90,10 @@
       "markdown_char_count": 2247,
       "compression_ratio": 0.723,
       "verification_status": "structural_only",
+      "verification_depth": "structural_only",
+      "reconciliation_status": "no_company_facts",
+      "period_match_mode": "",
+      "facts_matched": 0,
       "warnings": []
     },
     {
@@ -87,6 +107,10 @@
       "markdown_char_count": 1146,
       "compression_ratio": 0.82,
       "verification_status": "structural_only",
+      "verification_depth": "structural_only",
+      "reconciliation_status": "no_company_facts",
+      "period_match_mode": "",
+      "facts_matched": 0,
       "warnings": []
     },
     {
@@ -95,11 +119,15 @@
       "success": true,
       "sections_extracted": 5,
       "converter": "dom",
-      "duration_ms": 1.7,
+      "duration_ms": 1.6,
       "raw_char_count": 1821,
       "markdown_char_count": 1373,
       "compression_ratio": 0.754,
       "verification_status": "structural_only",
+      "verification_depth": "structural_only",
+      "reconciliation_status": "no_company_facts",
+      "period_match_mode": "",
+      "facts_matched": 0,
       "warnings": []
     }
   ],

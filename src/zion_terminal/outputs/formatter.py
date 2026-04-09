@@ -49,7 +49,11 @@ def format_response(response: OrchestratorResponse, fmt: OutputFormat = OutputFo
 
 
 def _to_json(response: OrchestratorResponse) -> str:
-    """Stable JSON schema output."""
+    """Stable JSON schema output.
+
+    Includes reconciliation, fallback, and verification metadata so
+    JSON consumers get the same truth as markdown consumers.
+    """
     payload: dict[str, Any] = {
         "success": response.success,
         "query": response.query,
@@ -63,6 +67,15 @@ def _to_json(response: OrchestratorResponse) -> str:
     for r in response.results:
         if isinstance(r, RetrievalResult):
             payload["data"].extend(r.data)
+            # Surface fallback truth in JSON
+            if r.fallback_used:
+                payload.setdefault("warnings", []).append(
+                    f"Fallback used: data from {r.actual_source} instead of SEC"
+                )
+            if r.actual_source:
+                payload["metadata"]["actual_source"] = r.actual_source
+            if r.fallback_used:
+                payload["metadata"]["fallback_used"] = True
         elif isinstance(r, SynthesisResult):
             payload["data"].extend(r.documents)
         elif isinstance(r, ValidationResult):
