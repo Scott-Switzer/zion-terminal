@@ -35,6 +35,7 @@ class TestArchivalFilingRetrieval:
                 "recent": {
                     "accessionNumber": ["0000320193-24-000123"],
                     "filingDate": ["2024-11-01"],
+                    "reportDate": ["2024-09-28"],
                     "form": ["10-K"],
                     "primaryDocument": ["aapl-20240928.htm"],
                     "primaryDocDescription": ["10-K"],
@@ -50,6 +51,7 @@ class TestArchivalFilingRetrieval:
         return {
             "accessionNumber": ["0000320193-15-000100"],
             "filingDate": ["2015-10-28"],
+            "reportDate": ["2015-09-26"],
             "form": ["10-K"],
             "primaryDocument": ["aapl-20150926.htm"],
             "primaryDocDescription": ["10-K"],

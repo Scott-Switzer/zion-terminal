@@ -125,7 +125,8 @@ class SECClient:
         filings in ``filings.recent``.  Older filings are paginated into
         separate JSON files listed in ``filings.files``.
 
-        Each file has the same columnar structure as ``filings.recent``.
+        Each file has the same columnar structure as ``filings.recent``,
+        including ``reportDate`` (the fiscal period end date).
         """
         all_filings: list[dict[str, Any]] = []
         for file_ref in older_files:
@@ -144,6 +145,7 @@ class SECClient:
                     filing = {
                         "accessionNumber": data["accessionNumber"][i],
                         "filingDate": data["filingDate"][i],
+                        "reportDate": data.get("reportDate", [""])[i] if i < len(data.get("reportDate", [])) else "",
                         "form": data["form"][i],
                         "primaryDocument": data.get("primaryDocument", [""])[i] if i < len(data.get("primaryDocument", [])) else "",
                         "primaryDocDescription": data.get("primaryDocDescription", [""])[i] if i < len(data.get("primaryDocDescription", [])) else "",
@@ -171,17 +173,24 @@ class SECClient:
         Args:
             ticker: Stock ticker symbol
             form: Filter by form type (e.g. "10-K", "10-Q")
-            year: Filter by filing year
-            quarter: Filter by fiscal quarter (1-4)
-            date_from: Filter filings on or after this date (YYYY-MM-DD)
-            date_to: Filter filings on or before this date (YYYY-MM-DD)
+            year: Filter by fiscal year (uses ``reportDate``, not ``filingDate``)
+            quarter: Filter by fiscal quarter (1-4, derived from ``reportDate``)
+            date_from: Filter filings on or after this date (YYYY-MM-DD, uses filingDate)
+            date_to: Filter filings on or before this date (YYYY-MM-DD, uses filingDate)
             limit: Maximum number of filings to return
             include_archival: Walk older filing files when recent filings
                 don't satisfy the query.  Defaults to True.
 
         Returns:
             List of filing metadata dicts with keys:
-            accessionNumber, filingDate, form, primaryDocument, etc.
+            accessionNumber, filingDate, reportDate, form, primaryDocument, etc.
+
+        Note:
+            ``year`` and ``quarter`` filter on ``reportDate`` (the fiscal period
+            end date), NOT ``filingDate`` (the date the filing was accepted by SEC).
+            This is critical for fiscal correctness: a FY2023 10-K filed in
+            January 2024 has reportDate=2023-09-30, filingDate=2024-01-05.
+            Requesting year=2023 must return this filing.
         """
         cik = self.resolve_cik(ticker)
         if not cik:
@@ -232,13 +241,18 @@ class SECClient:
     def _columnar_to_filings(
         columnar: dict[str, Any], cik: str, ticker: str, company_name: str,
     ) -> list[dict[str, Any]]:
-        """Convert SEC's columnar filing data to a list of dicts."""
+        """Convert SEC's columnar filing data to a list of dicts.
+
+        Includes ``reportDate`` (fiscal period end date) alongside
+        ``filingDate`` (SEC acceptance date).
+        """
         count = len(columnar.get("accessionNumber", []))
         filings: list[dict[str, Any]] = []
         for i in range(count):
             filing = {
                 "accessionNumber": columnar["accessionNumber"][i],
                 "filingDate": columnar["filingDate"][i],
+                "reportDate": columnar.get("reportDate", [""])[i] if i < len(columnar.get("reportDate", [])) else "",
                 "form": columnar["form"][i],
                 "primaryDocument": columnar.get("primaryDocument", [""])[i] if i < len(columnar.get("primaryDocument", [])) else "",
                 "primaryDocDescription": columnar.get("primaryDocDescription", [""])[i] if i < len(columnar.get("primaryDocDescription", [])) else "",
@@ -259,14 +273,29 @@ class SECClient:
         date_from: str | None = None,
         date_to: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Apply form/year/quarter/date filters to a filing list."""
+        """Apply form/year/quarter/date filters to a filing list.
+
+        ``year`` and ``quarter`` filter on ``reportDate`` (the fiscal period
+        end date from the filing, e.g. 2023-09-30 for Apple's FY2023 10-K).
+        ``date_from`` and ``date_to`` filter on ``filingDate`` (the SEC
+        acceptance date), which is appropriate for date-range queries.
+
+        Falls back to ``filingDate`` for year/quarter only when ``reportDate``
+        is missing or empty (legacy filings before SEC provided this field).
+        """
         filtered = filings
         if form:
             filtered = [f for f in filtered if f["form"] == form]
         if year:
-            filtered = [f for f in filtered if f["filingDate"][:4] == str(year)]
+            filtered = [
+                f for f in filtered
+                if _filing_year(f) == year
+            ]
         if quarter:
-            filtered = [f for f in filtered if _filing_in_quarter(f["filingDate"], quarter)]
+            filtered = [
+                f for f in filtered
+                if _filing_in_quarter_by_report_date(f, quarter)
+            ]
         if date_from:
             filtered = [f for f in filtered if f["filingDate"] >= date_from]
         if date_to:
@@ -305,10 +334,35 @@ class SECClient:
         return f"{_SEC_BASE}/Archives/edgar/data/{cik.lstrip('0') or '0'}/{accession_no_dashes}/{primary_document}"
 
 
-def _filing_in_quarter(filing_date: str, quarter: int) -> bool:
-    """Check if a filing date falls in the given calendar quarter."""
+def _filing_year(filing: dict[str, Any]) -> int | None:
+    """Extract the fiscal year from a filing's reportDate.
+
+    ``reportDate`` is the period-of-report date from SEC's submissions
+    endpoint.  For 10-K filings it is the fiscal year end date; for 10-Q
+    it is the quarter end date.  This is the semantically correct field
+    for fiscal-year filtering.
+
+    Falls back to ``filingDate`` when ``reportDate`` is missing (some very
+    old filings or non-standard forms may not have it).
+    """
+    report_date = filing.get("reportDate", "")
+    date_str = report_date if report_date else filing.get("filingDate", "")
     try:
-        month = int(filing_date[5:7])
+        return int(date_str[:4])
+    except (ValueError, IndexError):
+        return None
+
+
+def _filing_in_quarter_by_report_date(filing: dict[str, Any], quarter: int) -> bool:
+    """Check if a filing's fiscal period falls in the given calendar quarter.
+
+    Uses ``reportDate`` (period end date) to derive the quarter, falling
+    back to ``filingDate`` when ``reportDate`` is unavailable.
+    """
+    report_date = filing.get("reportDate", "")
+    date_str = report_date if report_date else filing.get("filingDate", "")
+    try:
+        month = int(date_str[5:7])
         q = (month - 1) // 3 + 1
         return q == quarter
     except (ValueError, IndexError):

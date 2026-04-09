@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from zion_terminal.sec.client import SECClient, _filing_in_quarter
+from zion_terminal.sec.client import SECClient, _filing_in_quarter_by_report_date, _filing_year
 
 
 class TestTickerResolution:
@@ -83,6 +83,12 @@ class TestFilingDiscovery:
                         "2022-10-28",
                         "2022-05-06",
                     ],
+                    "reportDate": [
+                        "2024-09-28",
+                        "2023-09-30",
+                        "2022-09-24",
+                        "2022-03-26",
+                    ],
                     "form": ["10-K", "10-K", "10-K", "10-Q"],
                     "primaryDocument": [
                         "aapl-20240928.htm",
@@ -109,23 +115,25 @@ class TestFilingDiscovery:
             assert all(f["form"] == "10-K" for f in filings)
 
     def test_get_filings_year_filter(self, client, mock_submissions):
+        """year= filters on reportDate. reportDates have 2 in 2022, 1 in 2023, 1 in 2024."""
         with patch.object(client, "get_submissions", return_value=mock_submissions):
             filings = client.get_filings("AAPL", year=2022)
-            assert len(filings) == 2  # Two filings in 2022
+            assert len(filings) == 2  # reportDate 2022-09-24 and 2022-03-26
 
     def test_get_filings_form_and_year(self, client, mock_submissions):
         with patch.object(client, "get_submissions", return_value=mock_submissions):
             filings = client.get_filings("AAPL", form="10-K", year=2022)
             assert len(filings) == 1
             assert filings[0]["form"] == "10-K"
-            assert filings[0]["filingDate"].startswith("2022")
+            assert filings[0]["reportDate"].startswith("2022")
 
     def test_get_filings_quarter_filter(self, client, mock_submissions):
+        """quarter= filters on reportDate. reportDate 2022-03-26 is Q1."""
         with patch.object(client, "get_submissions", return_value=mock_submissions):
-            filings = client.get_filings("AAPL", quarter=2)
-            # Only the 2022-05-06 filing is in Q2
+            filings = client.get_filings("AAPL", quarter=1)
+            # reportDate 2022-03-26 is in Q1
             assert len(filings) == 1
-            assert filings[0]["filingDate"] == "2022-05-06"
+            assert filings[0]["reportDate"] == "2022-03-26"
 
     def test_get_filings_limit(self, client, mock_submissions):
         with patch.object(client, "get_submissions", return_value=mock_submissions):
@@ -149,15 +157,36 @@ class TestFilingURL:
 
 
 class TestQuarterHelper:
+    """Tests for _filing_in_quarter_by_report_date and _filing_year.
+
+    These use reportDate first, falling back to filingDate.
+    """
     def test_q1(self):
-        assert _filing_in_quarter("2022-02-15", 1) is True
+        assert _filing_in_quarter_by_report_date({"reportDate": "2022-02-15"}, 1) is True
     def test_q2(self):
-        assert _filing_in_quarter("2022-05-06", 2) is True
+        assert _filing_in_quarter_by_report_date({"reportDate": "2022-05-06"}, 2) is True
     def test_q3(self):
-        assert _filing_in_quarter("2022-08-01", 3) is True
+        assert _filing_in_quarter_by_report_date({"reportDate": "2022-08-01"}, 3) is True
     def test_q4(self):
-        assert _filing_in_quarter("2022-11-03", 4) is True
+        assert _filing_in_quarter_by_report_date({"reportDate": "2022-11-03"}, 4) is True
     def test_wrong_quarter(self):
-        assert _filing_in_quarter("2022-11-03", 1) is False
+        assert _filing_in_quarter_by_report_date({"reportDate": "2022-11-03"}, 1) is False
     def test_bad_date(self):
-        assert _filing_in_quarter("bad", 1) is False
+        assert _filing_in_quarter_by_report_date({"reportDate": "bad"}, 1) is False
+    def test_fallback_to_filing_date(self):
+        """When reportDate is missing, should fall back to filingDate."""
+        assert _filing_in_quarter_by_report_date({"filingDate": "2022-05-06"}, 2) is True
+    def test_report_date_preferred_over_filing_date(self):
+        """reportDate takes precedence when both present."""
+        filing = {"reportDate": "2022-03-31", "filingDate": "2022-05-06"}
+        assert _filing_in_quarter_by_report_date(filing, 1) is True  # Q1 from reportDate
+        assert _filing_in_quarter_by_report_date(filing, 2) is False  # NOT Q2 from filingDate
+
+    def test_filing_year_from_report_date(self):
+        assert _filing_year({"reportDate": "2023-09-30", "filingDate": "2024-01-05"}) == 2023
+    def test_filing_year_fallback_to_filing_date(self):
+        assert _filing_year({"reportDate": "", "filingDate": "2024-01-05"}) == 2024
+    def test_filing_year_no_report_date_key(self):
+        assert _filing_year({"filingDate": "2024-01-05"}) == 2024
+    def test_filing_year_bad_data(self):
+        assert _filing_year({"reportDate": "bad"}) is None

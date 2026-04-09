@@ -2,7 +2,7 @@
 
 **Unified financial data retrieval, validation, and synthetic data generation.**
 
-> **Status:** Proof of concept (v0.8.3). Under active development. Not production-ready.
+> **Status:** Proof of concept (v0.9.1). Under active development. Not production-ready.
 
 ---
 
@@ -102,7 +102,7 @@ zion-terminal/
 │   ├── config/               # Settings from env / .env
 │   └── cli.py                # Click-based CLI
 ├── tests/
-│   ├── unit/                 # 300+ unit tests
+│   ├── unit/                 # 440+ unit tests
 │   ├── integration/          # End-to-end tests (mocked)
 │   ├── benchmarks/           # Converter and parser benchmarks
 │   └── fixtures/             # HTML filing fixtures, query corpus
@@ -167,7 +167,7 @@ python -m pytest tests/ -p no:benchmark
 python -m pytest tests/unit/test_regression_fixes.py -v
 ```
 
-Current: **413 tests passing, 1 skipped** (v0.8.3).
+Current: **447 tests passing, 1 skipped** (v0.9.1).
 
 ---
 
@@ -179,7 +179,7 @@ Latest results (from actual measurements, not estimates):
 
 | Metric | Value |
 |--------|-------|
-| Tests | 413 passing, 1 skipped |
+| Tests | 447 passing, 1 skipped |
 | Reconciliation fixtures | 2 tested, 2 passed (company-facts, no Arelle needed) |
 | HTML fixtures | 5 (all passing, live verification) |
 | Parser corpus | 109 queries, 100% accuracy |
@@ -198,8 +198,10 @@ See `docs/benchmarks/latest.md` for full results.
 - **Company facts** pagination works but namespace filtering depends on edgartools DataFrame column names.
 - **Cross-source reconciliation** is structural only — no live SEC-vs-Yahoo comparison yet.
 - **Filing-markdown** is experimental. Wrapper filings may produce incomplete results.
-- **Historical retrieval** depends on SEC submissions endpoint, which returns ~1000 most recent filings. Very old filings may not be available.
+- **Historical retrieval** walks archival filing files beyond the ~1000 most recent filings. Very old filings (pre-EDGAR) may not be available.
+- **Fiscal period selection** uses ``reportDate`` (period-of-report) from SEC metadata for year/quarter filtering. Falls back to ``filingDate`` for filings that lack ``reportDate``.
 - **Verification status** is `structural_only` in most environments (XBRL and cross-source require additional setup).
+- **Period derivation** in verification uses company-facts XBRL metadata when available, filing-date heuristics otherwise. Heuristic results are labeled as such, never claimed as exact.
 
 ---
 
