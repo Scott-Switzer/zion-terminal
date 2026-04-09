@@ -135,6 +135,7 @@ class FilingPipeline:
                 xbrl_url=xbrl_url,
                 yahoo_data=yahoo_data,
                 company_facts=company_facts,
+                filing_date=filing_date,
             )
             result.verification = verification_result.to_dict()
             result.pipeline_metadata["verification"] = {

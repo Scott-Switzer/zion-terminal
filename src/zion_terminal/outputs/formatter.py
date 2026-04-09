@@ -296,7 +296,52 @@ def _format_filing_md(item: dict) -> str:
         line += f" [link]({url})"
     if md:
         line += f"\n\n<details><summary>Filing content (markdown)</summary>\n\n{md[:5000]}\n\n</details>"
+
+    # Append reconciliation summary if available
+    pipeline_meta = item.get("pipeline_metadata", {})
+    verification = pipeline_meta.get("verification", {}) if isinstance(pipeline_meta, dict) else {}
+    if not verification:
+        # Also check top-level verification from pipeline result
+        verification = item.get("verification", {})
+    recon_summary = _format_reconciliation_summary(verification)
+    if recon_summary:
+        line += recon_summary
+
     return line
+
+
+def _format_reconciliation_summary(verification: dict) -> str:
+    """Format a concise XBRL↔markdown reconciliation summary for CLI output."""
+    if not verification:
+        return ""
+    recon_status = verification.get("reconciliation_status", "not_run")
+    if recon_status in ("not_run", "no_company_facts", ""):
+        status = verification.get("status", "unknown")
+        if status == "structural_only":
+            return "\n\n---\n### Verification: structural only (no XBRL reconciliation)\n"
+        return ""
+
+    lines = [
+        "",
+        "---",
+        "### Verification Summary",
+        f"- **Status:** {verification.get('status', 'unknown')}",
+        f"- **Depth:** {verification.get('verification_depth', 'unknown')}",
+    ]
+    period = verification.get("period_matched", "")
+    if period:
+        lines.append(f"- **Period:** {period}")
+    lines.extend([
+        f"- **XBRL facts extracted:** {verification.get('facts_extracted_xbrl', 0)}",
+        f"- **Markdown facts extracted:** {verification.get('facts_extracted_markdown', 0)}",
+        f"- **Facts matched:** {verification.get('facts_matched', 0)}",
+        f"- **Facts mismatched:** {verification.get('facts_mismatched', 0)}",
+    ])
+    report = verification.get("reconciliation_report", {})
+    if report:
+        lines.append(f"- **Match rate:** {report.get('match_rate', 0):.0%}")
+        lines.append(f"- **Scale mismatches:** {report.get('facts_scale_mismatch', 0)}")
+    return "\n".join(lines) + "\n"
 
 
 def _format_company_info_md(item: dict) -> str:

@@ -43,8 +43,9 @@ class VerificationResult:
     xbrl_facts_extracted: int = 0
     xbrl_errors: list[str] = field(default_factory=list)
     # Reconciliation fields — XBRL↔markdown fact comparison
-    reconciliation_status: str = "not_run"  # not_run | reconciled_pass | reconciled_partial | reconciled_fail | error
+    reconciliation_status: str = "not_run"  # not_run | reconciled_pass | reconciled_partial | reconciled_fail | error | no_period_match
     reconciliation_report: dict[str, Any] = field(default_factory=dict)
+    period_matched: str = ""  # e.g. "FY2023" or "Q2 2021"
     facts_extracted_xbrl: int = 0
     facts_extracted_markdown: int = 0
     facts_matched: int = 0
@@ -63,6 +64,7 @@ class VerificationResult:
             "xbrl_errors": self.xbrl_errors,
             "reconciliation_status": self.reconciliation_status,
             "reconciliation_report": self.reconciliation_report,
+            "period_matched": self.period_matched,
             "facts_extracted_xbrl": self.facts_extracted_xbrl,
             "facts_extracted_markdown": self.facts_extracted_markdown,
             "facts_matched": self.facts_matched,
@@ -86,26 +88,21 @@ _CORE_CONCEPTS = {
 }
 
 
-def _company_facts_to_canonical(facts_json: dict) -> list[CanonicalFact]:
+def _company_facts_to_canonical(
+    facts_json: dict,
+    target_fy: int | None = None,
+    target_fp: str | None = None,
+) -> list[CanonicalFact]:
     """Convert SEC company facts JSON to a list of CanonicalFact objects.
 
-    The SEC companyfacts JSON has this structure::
+    Strict period matching: only extracts facts from the target fiscal
+    year (``target_fy``) and period (``target_fp``).  Never silently
+    falls back to "most recent".
 
-        {
-          "facts": {
-            "us-gaap": {
-              "Revenues": {
-                "units": {
-                  "USD": [
-                    {"val": 383285000000, "fy": 2023, "fp": "FY", ...}
-                  ]
-                }
-              }
-            }
-          }
-        }
-
-    We extract only the most recent value for each core concept.
+    Args:
+        facts_json: SEC companyfacts JSON response.
+        target_fy: Target fiscal year (e.g. 2023).  If None, takes latest.
+        target_fp: Target fiscal period ("FY", "Q1", "Q2", "Q3", "Q4").
     """
     results: list[CanonicalFact] = []
     if not facts_json or "facts" not in facts_json:
@@ -123,8 +120,23 @@ def _company_facts_to_canonical(facts_json: dict) -> list[CanonicalFact]:
             for unit_name, entries in units.items():
                 if not isinstance(entries, list) or not entries:
                     continue
-                # Take the most recent entry (last in the list)
-                entry = entries[-1]
+
+                # Strict period matching — no "most recent" fallback
+                if target_fy is not None:
+                    matching = [
+                        e for e in entries
+                        if e.get("fy") == target_fy
+                        and (target_fp is None or e.get("fp") == target_fp)
+                    ]
+                    if not matching:
+                        # Relax: try fiscal year only
+                        matching = [e for e in entries if e.get("fy") == target_fy]
+                    if not matching:
+                        continue  # No period match — skip concept
+                    entry = matching[-1]
+                else:
+                    entry = entries[-1]  # Only used when no target period
+
                 val = entry.get("val")
                 if val is None:
                     continue
@@ -164,6 +176,7 @@ class FilingVerifier:
         xbrl_url: str | None = None,
         yahoo_data: dict | None = None,
         company_facts: dict | None = None,
+        filing_date: str = "",
     ) -> VerificationResult:
         result = VerificationResult()
         
@@ -180,7 +193,7 @@ class FilingVerifier:
         # This is the core verification: does the markdown preserve
         # the same financial facts as the XBRL source?
         if company_facts:
-            self._check_reconciliation(result, markdown, company_facts)
+            self._check_reconciliation(result, markdown, company_facts, form, filing_date)
         else:
             result.reconciliation_status = "no_company_facts"
         
@@ -221,16 +234,33 @@ class FilingVerifier:
 
     def _check_reconciliation(
         self, result: VerificationResult, markdown: str, company_facts: dict,
+        form: str = "", filing_date: str = "",
     ) -> None:
         """Reconcile XBRL facts from SEC company facts JSON against markdown.
 
-        Does NOT require Arelle. Uses the company facts JSON from SEC's
-        XBRL API to get canonical facts and compares them to values
-        extracted from the generated markdown tables.
+        Strict period matching: only compares facts from the same fiscal
+        period as the filing being verified.  Never silently uses "most recent."
         """
         try:
-            # Extract facts from both sources
-            xbrl_facts = _company_facts_to_canonical(company_facts)
+            # Derive target fiscal period from filing metadata
+            target_fy = None
+            target_fp = None
+            if filing_date:
+                try:
+                    year = int(filing_date[:4])
+                    month = int(filing_date[5:7])
+                    # FY is usually the calendar year of the period end
+                    target_fy = year if month > 6 else year - 1
+                    target_fp = "FY" if form in ("10-K", "") else None
+                except (ValueError, IndexError):
+                    pass
+
+            if target_fy:
+                period_label = f"FY{target_fy}" if target_fp == "FY" else f"{target_fp or ''} {target_fy}"
+                result.period_matched = period_label
+
+            # Extract facts from both sources with strict period matching
+            xbrl_facts = _company_facts_to_canonical(company_facts, target_fy, target_fp)
             md_values = extract_values(markdown)
 
             result.facts_extracted_xbrl = len(xbrl_facts)

@@ -1,8 +1,37 @@
-"""Extract numeric values from markdown tables for reconciliation."""
+"""Extract numeric values from markdown tables for reconciliation.
+
+Includes scale inference: detects "in millions", "in thousands", etc.
+from markdown text context and applies the multiplier to extracted values.
+"""
 from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Any
+
+# Scale detection patterns — ordered longest first
+_SCALE_PATTERNS: list[tuple[re.Pattern, int]] = [
+    (re.compile(r"\$\s*in\s+billions?", re.IGNORECASE), 1_000_000_000),
+    (re.compile(r"\$\s*in\s+millions?", re.IGNORECASE), 1_000_000),
+    (re.compile(r"\$\s*in\s+thousands?", re.IGNORECASE), 1_000),
+    (re.compile(r"\(in\s+billions?\)", re.IGNORECASE), 1_000_000_000),
+    (re.compile(r"\(in\s+millions?\)", re.IGNORECASE), 1_000_000),
+    (re.compile(r"\(in\s+thousands?\)", re.IGNORECASE), 1_000),
+    (re.compile(r"\bin\s+billions?", re.IGNORECASE), 1_000_000_000),
+    (re.compile(r"\bin\s+millions?", re.IGNORECASE), 1_000_000),
+    (re.compile(r"\bin\s+thousands?", re.IGNORECASE), 1_000),
+]
+
+
+def detect_scale_context(text: str) -> int:
+    """Detect scale multiplier from text context.
+
+    Scans for phrases like "in millions", "$ in thousands", etc.
+    Returns the multiplier (1_000, 1_000_000, 1_000_000_000, or 1).
+    """
+    for pattern, scale in _SCALE_PATTERNS:
+        if pattern.search(text):
+            return scale
+    return 1
 
 
 @dataclass
@@ -13,6 +42,8 @@ class ExtractedValue:
     raw_text: str = ""
     table_index: int = 0
     row_index: int = 0
+    scale_applied: int = 1
+    scaled_value: float | None = None
 
 
 def extract_tables(markdown: str) -> list[list[list[str]]]:
@@ -101,7 +132,12 @@ def parse_numeric(text: str) -> float | None:
 
 
 def extract_values(markdown: str) -> list[ExtractedValue]:
-    """Extract labeled numeric values from markdown tables."""
+    """Extract labeled numeric values from markdown tables.
+
+    Detects scale context ("in millions", etc.) from nearby text and
+    applies the multiplier to produce ``scaled_value``.
+    """
+    scale = detect_scale_context(markdown)
     results: list[ExtractedValue] = []
     tables = extract_tables(markdown)
     
@@ -121,6 +157,8 @@ def extract_values(markdown: str) -> list[ExtractedValue]:
                             raw_text=row[c_idx].strip(),
                             table_index=t_idx,
                             row_index=r_idx,
+                            scale_applied=scale,
+                            scaled_value=val * scale if scale != 1 else val,
                         ))
                         break  # Take first numeric column
     

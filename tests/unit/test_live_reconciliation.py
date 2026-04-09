@@ -145,10 +145,16 @@ class TestReconciliationInPipeline:
             assert depth == "reconciled", f"Expected depth 'reconciled', got '{depth}'"
 
 
-class TestReconciliationScaleMismatch:
-    """Test that scale mismatches between XBRL (raw $) and markdown (millions) are detected."""
+class TestReconciliationScaleInference:
+    """Test that scale context ('in millions') is auto-detected and applied."""
 
-    def test_scale_mismatch_detected(self, scale_mismatch_html, company_facts):
+    def test_scale_auto_resolved(self, scale_mismatch_html, company_facts):
+        """When markdown says 'in millions', scale detection should auto-resolve.
+
+        The HTML fixture has '(in millions)' in the heading, so values like
+        383,285 should be scaled to 383,285,000,000 before reconciliation.
+        This means they MATCH the XBRL facts (no mismatch expected).
+        """
         pipeline = FilingPipeline()
         result = pipeline.process(
             html=scale_mismatch_html,
@@ -157,11 +163,19 @@ class TestReconciliationScaleMismatch:
             metadata={"company_facts": company_facts},
         )
         report = result.verification.get("reconciliation_report", {})
-        scale_mismatches = report.get("facts_scale_mismatch", 0)
-        assert scale_mismatches > 0, (
-            f"Expected scale mismatches > 0, got {scale_mismatches}. "
-            f"Report: {report}"
+        matched = report.get("facts_matched", 0)
+        assert matched > 0, (
+            f"Scale inference should auto-resolve 'in millions' — expected matches > 0, "
+            f"got {matched}. Report: {report}"
         )
+
+    def test_scale_detection_in_markdown(self):
+        """Verify detect_scale_context picks up 'in millions'."""
+        from zion_terminal.verification.markdown_extractor import detect_scale_context
+        assert detect_scale_context("Amounts in millions") == 1_000_000
+        assert detect_scale_context("(in thousands)") == 1_000
+        assert detect_scale_context("$ in billions") == 1_000_000_000
+        assert detect_scale_context("Regular text") == 1
 
 
 class TestReconciliationMissingFacts:

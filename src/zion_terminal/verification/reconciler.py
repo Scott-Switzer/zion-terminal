@@ -136,9 +136,11 @@ class Reconciler:
         )
 
     def _compare(self, fact: CanonicalFact, mv: ExtractedValue) -> ReconciliationMatch:
-        """Compare a matched pair."""
+        """Compare a matched pair.  Uses scaled_value when scale was detected."""
         xv = float(fact.value) if isinstance(fact.value, (int, float)) else 0
-        mdv = mv.value if mv.value is not None else 0
+        # Prefer scaled_value (accounts for "in millions" etc.) over raw value
+        scaled = getattr(mv, "scaled_value", None)
+        mdv = scaled if scaled is not None else (mv.value if mv.value is not None else 0)
         
         delta = abs(xv - mdv)
         denom = max(abs(xv), abs(mdv), 1)

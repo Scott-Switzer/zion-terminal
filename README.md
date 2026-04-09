@@ -2,7 +2,7 @@
 
 **Unified financial data retrieval, validation, and synthetic data generation.**
 
-> **Status:** Proof of concept (v0.5.0). Under active development. Not production-ready.
+> **Status:** Proof of concept (v0.7.0). Under active development. Not production-ready.
 
 ---
 
@@ -167,7 +167,7 @@ python -m pytest tests/ -p no:benchmark
 python -m pytest tests/unit/test_regression_fixes.py -v
 ```
 
-Current: **382 tests passing** (v0.6.0).
+Current: **385 tests passing, 1 skipped** (v0.7.0).
 
 ---
 
@@ -179,7 +179,7 @@ Latest results (from actual measurements, not estimates):
 
 | Metric | Value |
 |--------|-------|
-| Tests | 382 passing |
+| Tests | 385 passing, 1 skipped |
 | HTML fixtures | 5 (all passing, live verification) |
 | Parser corpus | 109 queries, 100% accuracy |
 | Converter engine | BeautifulSoup DOM (with regex fallback) |
