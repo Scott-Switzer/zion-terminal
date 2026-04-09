@@ -81,6 +81,14 @@ class ValidationAgent:
             if item.get("statement_type") == "income_statement":
                 self._check_income_math(item, prefix, checks)
 
+            # Check: balance sheet identity (A = L + E)
+            if item.get("statement_type") == "balance_sheet":
+                self._check_balance_identity(item, prefix, checks)
+
+            # Check: scale plausibility on financial line items
+            if item.get("line_items") and isinstance(item["line_items"], dict):
+                self._check_scale_plausibility(item, prefix, checks)
+
             # Check: time series chronological order
             if "data_points" in item and isinstance(item["data_points"], list) and len(item["data_points"]) > 1:
                 dates = [dp.get("date", "") for dp in item["data_points"] if dp.get("date")]
@@ -202,6 +210,63 @@ class ValidationAgent:
                     check_name="income_math", status=ValidationStatus.WARNING,
                     message=f"{prefix}: gross profit mismatch ({expected:,.0f} vs {gp:,.0f})",
                     field=f"{prefix}.line_items", expected=expected, actual=gp,
+                ))
+
+    def _check_balance_identity(self, item: dict, prefix: str, checks: list[ValidationCheck]) -> None:
+        """Check that Assets = Liabilities + Equity in balance sheet."""
+        li = item.get("line_items", {})
+        if not li:
+            return
+        assets = li.get("Total Assets") or li.get("total_assets")
+        liabilities = li.get("Total Liabilities") or li.get("total_liabilities")
+        equity = li.get("Total Equity") or li.get("total_equity") or li.get("Total Stockholders Equity")
+        if assets is not None and liabilities is not None and equity is not None:
+            expected = liabilities + equity
+            tol = abs(assets) * 0.01 if assets != 0 else 1
+            if abs(assets - expected) <= tol:
+                checks.append(ValidationCheck(
+                    check_name="balance_identity", status=ValidationStatus.PASSED,
+                    message=f"{prefix}: A = L + E", field=f"{prefix}.line_items",
+                ))
+            else:
+                checks.append(ValidationCheck(
+                    check_name="balance_identity", status=ValidationStatus.WARNING,
+                    message=f"{prefix}: A({assets:,.0f}) != L({liabilities:,.0f}) + E({equity:,.0f})",
+                    field=f"{prefix}.line_items", expected=expected, actual=assets,
+                ))
+
+    def _check_scale_plausibility(self, item: dict, prefix: str, checks: list[ValidationCheck]) -> None:
+        """Detect obvious scale problems (e.g. revenue of $5 for a public company)."""
+        li = item.get("line_items", {})
+        revenue_keys = ["Total Revenue", "total_revenue", "Revenue", "Revenues"]
+        revenue = None
+        for k in revenue_keys:
+            if li.get(k) is not None:
+                revenue = li[k]
+                break
+        if revenue is not None and isinstance(revenue, (int, float)):
+            abs_rev = abs(revenue)
+            # Flag if revenue is suspiciously small for a public company
+            # (less than $1000 likely means data is in millions/billions but unlabeled)
+            if 0 < abs_rev < 1000:
+                checks.append(ValidationCheck(
+                    check_name="scale_plausibility", status=ValidationStatus.WARNING,
+                    message=f"{prefix}: revenue={revenue:,.2f} — may be in millions/billions",
+                    field=f"{prefix}.line_items",
+                ))
+            else:
+                checks.append(ValidationCheck(
+                    check_name="scale_plausibility", status=ValidationStatus.PASSED,
+                    message=f"{prefix}: revenue scale plausible",
+                    field=f"{prefix}.line_items",
+                ))
+
+            # Sign check: revenue should generally be positive
+            if revenue < 0:
+                checks.append(ValidationCheck(
+                    check_name="sign_plausibility", status=ValidationStatus.WARNING,
+                    message=f"{prefix}: negative revenue={revenue:,.0f}",
+                    field=f"{prefix}.line_items",
                 ))
 
     @staticmethod

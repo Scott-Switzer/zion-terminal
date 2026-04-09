@@ -56,9 +56,13 @@ class TestFilingPipeline:
         assert result.success or len(result.errors) > 0
 
     def test_verification_hooks_present(self, pipeline, sample_html):
+        """Verification is now live — status must not be 'pending'."""
         result = pipeline.process(sample_html)
         assert "status" in result.verification
-        assert result.verification["status"] == "pending"
+        assert result.verification["status"] != "pending", (
+            "Verification status is still placeholder 'pending'"
+        )
+        assert result.verification["status"] in ("passed", "partial", "failed", "error")
 
     def test_pipeline_is_the_only_converter_path(self):
         """Regression: sec_edgar adapter must NOT have its own _html_to_markdown."""

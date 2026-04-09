@@ -133,14 +133,42 @@ class SECEdgarAdapter(BaseAdapter):
 
         return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
 
+    # Map user-facing statement type names to edgartools attribute names
+    _STMT_ATTR_MAP: dict[str, str] = {
+        "income": "income_statement",
+        "income_statement": "income_statement",
+        "balance": "balance_sheet",
+        "balance_sheet": "balance_sheet",
+        "cash_flow": "cash_flow_statement",
+        "cash_flow_statement": "cash_flow_statement",
+    }
+
     @adapter_retry
     def _fetch_financials(self, ticker: str, params: dict) -> RetrievalResult:
+        """Fetch financial statements from SEC EDGAR.
+
+        Honors:
+          - statement_type: "income" | "balance" | "cash_flow" (default: all)
+          - quarterly: True → 10-Q filings, False → 10-K filings
+          - limit: max number of filings to process (default 3)
+        """
         from edgar import Company
         _rate_limit()
 
         company = Company(ticker)
-        filings = company.get_filings(form="10-K")
+        quarterly = params.get("quarterly", False)
+        form = "10-Q" if quarterly else "10-K"
+        filings = company.get_filings(form=form)
         limit = params.get("limit", 3)
+        requested_type = params.get("statement_type", "")
+
+        # Determine which statements to extract
+        if requested_type and requested_type in self._STMT_ATTR_MAP:
+            stmt_attrs = [self._STMT_ATTR_MAP[requested_type]]
+        else:
+            # No specific type requested — return all three
+            stmt_attrs = ["income_statement", "balance_sheet", "cash_flow_statement"]
+
         results: list[dict[str, Any]] = []
 
         for i, filing in enumerate(filings):
@@ -150,7 +178,7 @@ class SECEdgarAdapter(BaseAdapter):
             try:
                 filing_obj = filing.obj()
                 if hasattr(filing_obj, "financials") and filing_obj.financials is not None:
-                    for stmt_name in ["income_statement", "balance_sheet", "cash_flow_statement"]:
+                    for stmt_name in stmt_attrs:
                         stmt = getattr(filing_obj.financials, stmt_name, None)
                         if stmt is not None:
                             try:
@@ -168,6 +196,7 @@ class SECEdgarAdapter(BaseAdapter):
                                         "period": str(df.columns[0]) if len(df.columns) > 0 else "",
                                         "line_items": line_items,
                                         "filing_date": str(getattr(filing, "filing_date", "")),
+                                        "form": form,
                                         "source": self.SOURCE_NAME,
                                     })
                             except Exception:
@@ -177,6 +206,7 @@ class SECEdgarAdapter(BaseAdapter):
                                     "period": str(getattr(filing, "filing_date", "")),
                                     "line_items": {},
                                     "filing_date": str(getattr(filing, "filing_date", "")),
+                                    "form": form,
                                     "raw_text": str(stmt)[:2000],
                                     "source": self.SOURCE_NAME,
                                 })
@@ -185,11 +215,19 @@ class SECEdgarAdapter(BaseAdapter):
                 continue
 
         if not results:
-            return RetrievalResult(success=False, errors=[f"No parseable financial data found for {ticker}"])
+            return RetrievalResult(success=False, errors=[f"No parseable financial data found for {ticker} ({form})"])
         return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
 
     @adapter_retry
     def _fetch_company_facts(self, ticker: str, params: dict) -> RetrievalResult:
+        """Fetch XBRL company facts from SEC EDGAR.
+
+        Supports:
+          - namespace: filter by taxonomy namespace (e.g. "us-gaap", "dei")
+          - concept: filter by concept name substring
+          - limit: max facts to return (default 100, 0 = all)
+          - offset: pagination offset (default 0)
+        """
         from edgar import Company
         _rate_limit()
 
@@ -202,12 +240,46 @@ class SECEdgarAdapter(BaseAdapter):
             "source": self.SOURCE_NAME,
         }
 
+        namespace_filter = params.get("namespace", "").lower()
+        concept_filter = params.get("concept", "").lower()
+        limit = params.get("limit", 100)
+        offset = params.get("offset", 0)
+
         if facts is not None:
             try:
                 df = facts.to_pandas() if hasattr(facts, "to_pandas") else None
                 if df is not None and not df.empty:
-                    facts_data["facts_count"] = len(df)
-                    facts_data["sample_facts"] = df.head(20).to_dict(orient="records")
+                    facts_data["total_facts"] = len(df)
+
+                    # Apply namespace filter
+                    filtered = df
+                    if namespace_filter:
+                        ns_cols = [c for c in df.columns if "namespace" in c.lower() or "taxonomy" in c.lower()]
+                        if ns_cols:
+                            filtered = filtered[filtered[ns_cols[0]].str.lower().str.contains(namespace_filter, na=False)]
+
+                    # Apply concept filter
+                    if concept_filter:
+                        concept_cols = [c for c in filtered.columns if "concept" in c.lower() or "label" in c.lower() or "name" in c.lower()]
+                        if concept_cols:
+                            mask = filtered[concept_cols[0]].str.lower().str.contains(concept_filter, na=False)
+                            filtered = filtered[mask]
+
+                    facts_data["filtered_facts"] = len(filtered)
+
+                    # Pagination
+                    page = filtered.iloc[offset:offset + limit] if limit > 0 else filtered.iloc[offset:]
+                    facts_data["facts_count"] = len(page)
+                    facts_data["offset"] = offset
+                    facts_data["limit"] = limit
+                    facts_data["has_more"] = (offset + len(page)) < len(filtered)
+                    facts_data["sample_facts"] = page.to_dict(orient="records")
+
+                    # Group by namespace/category for overview
+                    ns_cols = [c for c in df.columns if "namespace" in c.lower() or "taxonomy" in c.lower()]
+                    if ns_cols:
+                        groups = df[ns_cols[0]].value_counts().to_dict()
+                        facts_data["namespace_summary"] = {str(k): int(v) for k, v in groups.items()}
                 else:
                     facts_data["facts_summary"] = str(facts)[:3000]
             except Exception:

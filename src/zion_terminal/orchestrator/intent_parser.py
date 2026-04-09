@@ -291,6 +291,12 @@ class IntentParser:
         return max(scores, key=scores.get) if scores else "quote"
 
     def _build_equity_task(self, ticker: str, intent: str, query: str) -> dict[str, Any]:
+        """Build a task dict for a single ticker.
+
+        SEC-first routing: financials, filings, filing_markdown, and
+        company_facts all target ``sec_edgar``.  Market data (quote,
+        history) and company info target ``yahoo_finance``.
+        """
         lower = query.lower()
         if intent == "filings":
             form = None
@@ -313,13 +319,14 @@ class IntentParser:
         elif intent == "history":
             return {"source": "yahoo_finance", "ticker": ticker, "action": "history", "period": "1y", "interval": "1d"}
         elif intent == "financials":
+            # SEC-first: route financial statement queries to SEC EDGAR
             stmt_type = "income"
             if "balance" in lower:
                 stmt_type = "balance"
             elif "cash flow" in lower:
                 stmt_type = "cash_flow"
             quarterly = "quarterly" in lower or "quarter" in lower
-            return {"source": "yahoo_finance", "ticker": ticker, "action": "financials",
+            return {"source": "sec_edgar", "ticker": ticker, "action": "financials",
                     "statement_type": stmt_type, "quarterly": quarterly}
         elif intent == "company_info":
             return {"source": "yahoo_finance", "ticker": ticker, "action": "info"}

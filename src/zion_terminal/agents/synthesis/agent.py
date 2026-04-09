@@ -4,10 +4,15 @@ Status: experimental (Phase 2).
 Works without LLM: generates template-based financials.
 With LLM: can generate press releases.
 Validation is run on all output before serving.
+
+Determinism: when no explicit seed is provided, a stable seed is derived
+from the query string using hashlib.sha256 (not Python's built-in hash(),
+which varies across processes due to PYTHONHASHSEED randomization).
 """
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import random
 from typing import Any
@@ -46,8 +51,11 @@ class SynthesisAgent:
         if seed is not None:
             self._rng = random.Random(seed)
         else:
-            # Default deterministic seed from query for reproducibility
-            self._rng = random.Random(hash(query) & 0xFFFFFFFF)
+            # Stable deterministic seed from query using hashlib (not hash())
+            # hash() varies across processes due to PYTHONHASHSEED randomization.
+            digest = hashlib.sha256(query.encode("utf-8")).digest()
+            stable_seed = int.from_bytes(digest[:8], "big")
+            self._rng = random.Random(stable_seed)
         try:
             company = self._generate_company(params)
             income_stmt = self._generate_income_statement(company)
@@ -92,7 +100,9 @@ class SynthesisAgent:
             validator: Optional ValidationAgent instance
         """
         params = params or {}
-        base_seed = params.get("seed", hash(query) & 0xFFFFFFFF)
+        digest = hashlib.sha256(query.encode("utf-8")).digest()
+        default_seed = int.from_bytes(digest[:8], "big")
+        base_seed = params.get("seed", default_seed)
 
         for attempt in range(max_retries):
             params["seed"] = base_seed + attempt

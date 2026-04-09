@@ -10,6 +10,7 @@ from typing import Any
 
 from zion_terminal.pipeline.converter import FilingConverter
 from zion_terminal.pipeline.segmenter import FilingSegmenter, FilingSection
+from zion_terminal.pipeline.verification import FilingVerifier
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,7 @@ class FilingPipeline:
     def __init__(self, max_length: int = 200_000) -> None:
         self._converter = FilingConverter(max_length=max_length)
         self._segmenter = FilingSegmenter()
+        self._verifier = FilingVerifier()
     
     def process(
         self,
@@ -120,13 +122,33 @@ class FilingPipeline:
         except Exception as exc:
             result.warnings.append(f"Segmentation failed: {exc}")
         
-        # Stage 3: Verification hooks (populated by callers / verification module)
-        result.verification = {
-            "status": "pending",
-            "xbrl_available": False,
-            "cross_source_checked": False,
-        }
-        
+        # Stage 3: Live verification
+        try:
+            xbrl_url = (metadata or {}).get("xbrl_url")
+            yahoo_data = (metadata or {}).get("yahoo_data")
+            verification_result = self._verifier.verify(
+                markdown=result.markdown,
+                sections=result.sections if result.sections else None,
+                ticker=ticker,
+                form=form,
+                xbrl_url=xbrl_url,
+                yahoo_data=yahoo_data,
+            )
+            result.verification = verification_result.to_dict()
+            result.pipeline_metadata["verification"] = {
+                "status": verification_result.status,
+                "xbrl_status": verification_result.xbrl_status,
+                "structural_checks_count": len(verification_result.structural_checks),
+            }
+            if verification_result.warnings:
+                result.warnings.extend(verification_result.warnings)
+        except Exception as exc:
+            result.warnings.append(f"Verification failed: {exc}")
+            result.verification = {
+                "status": "error",
+                "error": str(exc),
+            }
+
         result.success = True
         result.pipeline_metadata["source_role"] = "primary"
         result.pipeline_metadata["source"] = "sec_edgar"

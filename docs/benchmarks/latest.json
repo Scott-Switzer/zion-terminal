@@ -1,147 +1,157 @@
 {
-  "run_date": "2026-04-08",
-  "commit": "dfd3d6c",
+  "run_date": "2026-04-09T01:51:00.478278+00:00",
+  "commit": "be64b0b",
+  "version": "0.4.3",
   "runner": "scripts/run_benchmarks.py",
-  "python_version": "3.11",
+  "python_version": "3.12.8",
   "arelle_installed": false,
-  "xbrl_reconciliation": "unavailable",
-  "summary": {
-    "total_tests": 302,
-    "tests_passed": 302,
-    "tests_failed": 0,
-    "suite_duration_seconds": 18.4,
-    "parser_corpus_count": 110,
-    "parser_accuracy": 0.945,
-    "fixtures_total": 7,
-    "fixtures_passing": 6,
-    "fixtures_with_warnings": 1
+  "test_suite": {
+    "total": 321,
+    "passed": 321,
+    "failed": 0
   },
   "fixtures": [
     {
-      "name": "sample_10k_simple.html",
-      "form": "10-K",
-      "size_kb": 12,
+      "name": "sample_html_filing.html",
+      "size_kb": 2.1,
+      "success": true,
+      "sections_extracted": 5,
+      "converter": "dom",
+      "duration_ms": 81.4,
+      "raw_char_count": 2177,
+      "markdown_char_count": 1685,
+      "compression_ratio": 0.774,
+      "verification_status": "passed",
+      "warnings": []
+    },
+    {
+      "name": "sample_html_filing_div_headers.html",
+      "size_kb": 1.3,
+      "success": true,
+      "sections_extracted": 5,
+      "converter": "dom",
+      "duration_ms": 1.4,
+      "raw_char_count": 1369,
+      "markdown_char_count": 892,
+      "compression_ratio": 0.652,
+      "verification_status": "passed",
+      "warnings": []
+    },
+    {
+      "name": "sample_html_filing_table_toc.html",
+      "size_kb": 3.0,
       "success": true,
       "sections_extracted": 9,
-      "converter": "markdownify",
-      "duration_ms": 38,
-      "raw_char_count": 28400,
-      "markdown_char_count": 11200,
+      "converter": "dom",
+      "duration_ms": 2.8,
+      "raw_char_count": 3107,
+      "markdown_char_count": 2247,
+      "compression_ratio": 0.723,
+      "verification_status": "passed",
       "warnings": []
     },
     {
-      "name": "sample_10k_large.html",
-      "form": "10-K",
-      "size_kb": 148,
+      "name": "sample_html_filing_wrapper.html",
+      "size_kb": 1.4,
       "success": true,
-      "sections_extracted": 17,
-      "converter": "markdownify",
-      "duration_ms": 312,
-      "raw_char_count": 351800,
-      "markdown_char_count": 124600,
+      "sections_extracted": 1,
+      "converter": "dom",
+      "duration_ms": 0.9,
+      "raw_char_count": 1398,
+      "markdown_char_count": 1146,
+      "compression_ratio": 0.82,
+      "verification_status": "passed",
       "warnings": []
     },
     {
-      "name": "sample_10k_div_headers.html",
-      "form": "10-K",
-      "size_kb": 34,
+      "name": "toc_heavy_filing.html",
+      "size_kb": 1.8,
       "success": true,
-      "sections_extracted": 12,
-      "converter": "markdownify",
-      "duration_ms": 84,
-      "raw_char_count": 80100,
-      "markdown_char_count": 31400,
-      "warnings": []
-    },
-    {
-      "name": "sample_10k_toc_heavy.html",
-      "form": "10-K",
-      "size_kb": 41,
-      "success": true,
-      "sections_extracted": 11,
-      "converter": "markdownify",
-      "duration_ms": 97,
-      "raw_char_count": 96200,
-      "markdown_char_count": 37800,
-      "warnings": ["TOC filtered: 3 entries removed from first 20% of document"]
-    },
-    {
-      "name": "sample_10k_wrapper.html",
-      "form": "10-K",
-      "size_kb": 8,
-      "success": true,
-      "sections_extracted": 2,
-      "converter": "markdownify",
-      "duration_ms": 12,
-      "raw_char_count": 18200,
-      "markdown_char_count": 7100,
-      "warnings": ["Low section count (2) — possible wrapper filing"]
-    },
-    {
-      "name": "sample_10q_simple.html",
-      "form": "10-Q",
-      "size_kb": 29,
-      "success": true,
-      "sections_extracted": 8,
-      "converter": "markdownify",
-      "duration_ms": 71,
-      "raw_char_count": 68400,
-      "markdown_char_count": 25800,
-      "warnings": []
-    },
-    {
-      "name": "sample_8k_simple.html",
-      "form": "8-K",
-      "size_kb": 6,
-      "success": true,
-      "sections_extracted": 3,
-      "converter": "markdownify",
-      "duration_ms": 9,
-      "raw_char_count": 13700,
-      "markdown_char_count": 5100,
+      "sections_extracted": 5,
+      "converter": "dom",
+      "duration_ms": 1.7,
+      "raw_char_count": 1821,
+      "markdown_char_count": 1373,
+      "compression_ratio": 0.754,
+      "verification_status": "passed",
       "warnings": []
     }
   ],
+  "fixtures_summary": {
+    "total": 5,
+    "passing": 5,
+    "with_warnings": 0
+  },
   "parser_accuracy": {
-    "total_queries": 110,
-    "correct": 104,
-    "accuracy": 0.945,
+    "total_queries": 109,
+    "correct": 109,
+    "accuracy": 1.0,
     "categories": [
-      {"category": "equity", "count": 18, "correct": 17, "accuracy": 0.944},
-      {"category": "sec_filings", "count": 14, "correct": 14, "accuracy": 1.0},
-      {"category": "macro", "count": 12, "correct": 12, "accuracy": 1.0},
-      {"category": "false_positive", "count": 10, "correct": 9, "accuracy": 0.9},
-      {"category": "ambiguous", "count": 8, "correct": 7, "accuracy": 0.875},
-      {"category": "multi_intent", "count": 10, "correct": 9, "accuracy": 0.9},
-      {"category": "negative", "count": 10, "correct": 10, "accuracy": 1.0},
-      {"category": "filing_markdown", "count": 14, "correct": 14, "accuracy": 1.0},
-      {"category": "company_facts", "count": 12, "correct": 11, "accuracy": 0.917},
-      {"category": "historical", "count": 12, "correct": 11, "accuracy": 0.917}
-    ],
-    "known_misses": [
-      "1 equity query routed to yahoo_finance instead of sec_edgar for financial data",
-      "1 false positive: product query classified as equity_financials",
-      "1 ambiguous: multi-ticker query classified as single-ticker",
-      "2 company facts queries missing 'facts' keyword — classified as equity_financials",
-      "2 historical queries with relative date expressions not resolved"
+      {
+        "category": "company_facts",
+        "count": 9,
+        "correct": 9,
+        "accuracy": 1.0
+      },
+      {
+        "category": "company_info",
+        "count": 8,
+        "correct": 8,
+        "accuracy": 1.0
+      },
+      {
+        "category": "filing_markdown",
+        "count": 10,
+        "correct": 10,
+        "accuracy": 1.0
+      },
+      {
+        "category": "filings",
+        "count": 8,
+        "correct": 8,
+        "accuracy": 1.0
+      },
+      {
+        "category": "financials",
+        "count": 12,
+        "correct": 12,
+        "accuracy": 1.0
+      },
+      {
+        "category": "history",
+        "count": 7,
+        "correct": 7,
+        "accuracy": 1.0
+      },
+      {
+        "category": "macro",
+        "count": 15,
+        "correct": 15,
+        "accuracy": 1.0
+      },
+      {
+        "category": "multi",
+        "count": 6,
+        "correct": 6,
+        "accuracy": 1.0
+      },
+      {
+        "category": "quote",
+        "count": 29,
+        "correct": 29,
+        "accuracy": 1.0
+      },
+      {
+        "category": "synthesis",
+        "count": 5,
+        "correct": 5,
+        "accuracy": 1.0
+      }
     ]
   },
-  "regression_vs_previous": {
-    "previous_commit": "abc1234",
-    "previous_run_date": "2026-04-08",
-    "previous_version": "v0.4.2",
-    "metrics": {
-      "test_count": {"previous": 302, "current": 302, "delta": 0, "status": "stable"},
-      "parser_accuracy": {"previous": 0.918, "current": 0.945, "delta": 0.027, "status": "improved"},
-      "fixtures_passing": {"previous": 6, "current": 6, "delta": 0, "status": "stable"},
-      "avg_section_recovery": {"previous": 10.1, "current": 10.9, "delta": 0.8, "status": "improved"}
-    },
-    "regressions_detected": false
-  },
-  "xbrl_reconciliation_results": null,
   "notes": [
-    "Arelle not installed — XBRL reconciliation metrics unavailable",
-    "Parser corpus expanded from 66 to 110+ queries in this run",
-    "Verification modules (fact_mapping, reconciler, markdown_extractor) not yet wired into benchmark runner"
+    "All benchmarks run against local fixtures \u2014 no live API calls",
+    "Arelle not installed \u2014 XBRL reconciliation unavailable",
+    "Results are real measurements from the current codebase"
   ]
 }
