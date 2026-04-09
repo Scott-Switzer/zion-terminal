@@ -1,3 +1,3 @@
 """Zion Terminal – unified financial data retrieval and synthetic data generation."""
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"

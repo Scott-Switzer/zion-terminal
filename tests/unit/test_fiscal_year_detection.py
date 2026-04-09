@@ -136,17 +136,98 @@ class TestImprovedFYDerivation:
 
 
 class TestLiveDocumentPersistence:
-    """Test that get_filing_markdown persists documents via DocumentStore."""
+    """Prove that get_filing_markdown persists documents at runtime.
 
-    def test_orchestrator_has_doc_store(self):
-        """Orchestrator must have a doc_store property."""
+    These tests exercise the actual live path, not just method existence.
+    """
+
+    def test_persist_creates_document_in_store(self, tmp_path):
+        """_persist_filing_document must actually store a CleanedDocument."""
         from zion_terminal.orchestrator.orchestrator import Orchestrator
-        orc = Orchestrator()
-        assert hasattr(orc, "doc_store")
-        assert orc.doc_store is not None
+        from zion_terminal.models.responses import OrchestratorResponse, RetrievalResult
+
+        orc = Orchestrator(cache_dir=str(tmp_path))
+        mock_result = RetrievalResult(
+            success=True,
+            data=[{
+                "content_markdown": "# Apple 10-K\n\nFinancial data here.",
+                "filing_date": "2023-11-03",
+                "pipeline_metadata": {"verification": {"status": "structural_only"}},
+            }],
+            sources_used=["sec_edgar"],
+        )
+        response = OrchestratorResponse(
+            success=True, query="test", intent="filing_markdown",
+            results=[mock_result],
+        )
+
+        orc._persist_filing_document(response, "AAPL", "10-K")
+
+        # Prove document was stored
+        doc = orc.doc_store.get("AAPL_10-K_2023-11-03")
+        assert doc is not None, "Document was NOT persisted"
+        assert doc["ticker"] == "AAPL"
+        assert doc["form"] == "10-K"
+        assert "Apple 10-K" in doc["markdown"]
         orc.close()
 
-    def test_persist_filing_document_method_exists(self):
-        """The persistence method must exist on the orchestrator."""
+    def test_get_filing_markdown_calls_persist(self, tmp_path):
+        """get_filing_markdown must call _persist on success."""
+        from unittest.mock import patch, MagicMock
         from zion_terminal.orchestrator.orchestrator import Orchestrator
-        assert hasattr(Orchestrator, "_persist_filing_document")
+        from zion_terminal.models.responses import OrchestratorResponse, RetrievalResult
+
+        orc = Orchestrator(cache_dir=str(tmp_path))
+        mock_result = RetrievalResult(
+            success=True,
+            data=[{"content_markdown": "# Test", "filing_date": "2023-01-01"}],
+            sources_used=["sec_edgar"],
+        )
+        mock_resp = OrchestratorResponse(
+            success=True, query="t", intent="filing_markdown",
+            results=[mock_result],
+        )
+        with patch.object(orc, "_fetch_and_validate", return_value=mock_resp):
+            with patch.object(orc, "_persist_filing_document") as mock_persist:
+                orc.get_filing_markdown("AAPL", form="10-K")
+                assert mock_persist.called, "_persist was NOT called by get_filing_markdown"
+        orc.close()
+
+    def test_persist_does_not_run_on_failure(self, tmp_path):
+        """Persistence must NOT run when the response failed."""
+        from unittest.mock import patch
+        from zion_terminal.orchestrator.orchestrator import Orchestrator
+        from zion_terminal.models.responses import OrchestratorResponse
+
+        orc = Orchestrator(cache_dir=str(tmp_path))
+        mock_resp = OrchestratorResponse(
+            success=False, query="t", intent="filing_markdown",
+            errors=["SEC error"],
+        )
+        with patch.object(orc, "_fetch_and_validate", return_value=mock_resp):
+            with patch.object(orc, "_persist_filing_document") as mock_persist:
+                orc.get_filing_markdown("AAPL", form="10-K")
+                assert not mock_persist.called, "_persist should NOT run on failure"
+        orc.close()
+
+    def test_doc_store_list_after_persist(self, tmp_path):
+        """After persistence, the document should be listable."""
+        from zion_terminal.orchestrator.orchestrator import Orchestrator
+        from zion_terminal.models.responses import OrchestratorResponse, RetrievalResult
+
+        orc = Orchestrator(cache_dir=str(tmp_path))
+        mock_result = RetrievalResult(
+            success=True,
+            data=[{"content_markdown": "# Filing", "filing_date": "2023-06-15"}],
+            sources_used=["sec_edgar"],
+        )
+        response = OrchestratorResponse(
+            success=True, query="t", intent="filing_markdown",
+            results=[mock_result],
+        )
+        orc._persist_filing_document(response, "MSFT", "10-Q")
+
+        docs = orc.doc_store.list_docs(ticker="MSFT")
+        assert len(docs) >= 1, f"Expected at least 1 doc, got {len(docs)}"
+        assert docs[0]["ticker"] == "MSFT"
+        orc.close()
