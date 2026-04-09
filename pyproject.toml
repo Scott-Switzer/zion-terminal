@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zion-terminal"
-version = "0.8.2"
+version = "0.8.3"
 description = "Unified financial data retrieval and synthetic data generation."
 readme = "README.md"
 license = {text = "MIT"}
