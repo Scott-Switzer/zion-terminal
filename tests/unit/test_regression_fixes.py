@@ -91,6 +91,13 @@ class TestSECFinancialsParams:
         source = inspect.getsource(SECEdgarAdapter._fetch_financials.__wrapped__)
         assert "statement_type" in source, "SEC financials doesn't read statement_type param"
 
+    def test_sec_adapter_supports_year_param(self):
+        """Verify the SEC adapter accepts year parameter."""
+        import inspect
+        from zion_terminal.agents.retrieval.adapters.sec_edgar import SECEdgarAdapter
+        source = inspect.getsource(SECEdgarAdapter._fetch_financials.__wrapped__)
+        assert "year" in source, "SEC financials doesn't read year param"
+
 
 # ── FIX C: Synthesis determinism uses stable hash ────────────────────
 
@@ -158,7 +165,8 @@ class TestFilingPipelineVerification:
         assert result.verification.get("status") != "pending", (
             "Verification status is still 'pending' — verification is not wired in"
         )
-        assert result.verification.get("status") in ("passed", "partial", "failed"), (
+        # Without XBRL or cross-source, status should be 'structural_only' (honest)
+        assert result.verification.get("status") in ("structural_only", "passed", "partial", "failed"), (
             f"Unexpected verification status: {result.verification.get('status')}"
         )
 

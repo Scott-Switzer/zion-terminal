@@ -126,21 +126,28 @@ class Orchestrator:
     def get_financials(
         self, ticker: str, *, statement_type: str = "income",
         quarterly: bool = False, validate: bool = True,
-        source: str = "sec",
+        source: str = "sec", year: int | None = None, quarter: int | None = None,
     ) -> OrchestratorResponse:
         """Get financial statements. SEC is the primary source.
 
         Args:
             source: "sec" (default, primary) or "yahoo" (verification/fallback)
+            year: Filter to specific fiscal year (e.g. 2022)
+            quarter: Filter to specific fiscal quarter (1-4)
         """
         if source == "sec" and "sec_edgar" in self._retrieval.available_sources:
-            tasks = [{
+            task: dict[str, Any] = {
                 "source": "sec_edgar", "ticker": ticker.upper(),
                 "action": "financials",
                 "statement_type": statement_type, "quarterly": quarterly,
-            }]
+            }
+            if year:
+                task["year"] = year
+            if quarter:
+                task["quarter"] = quarter
+            tasks = [task]
         else:
-            # Yahoo Finance fallback
+            # Yahoo Finance fallback — does not support year/quarter
             tasks = [{
                 "source": "yahoo_finance", "ticker": ticker.upper(),
                 "action": "financials",
@@ -155,14 +162,21 @@ class Orchestrator:
         )
 
     def get_filings(
-        self, ticker: str, *, form: str | None = None, limit: int = 10, validate: bool = True,
+        self, ticker: str, *, form: str | None = None, limit: int = 10,
+        year: int | None = None, quarter: int | None = None,
+        validate: bool = True,
     ) -> OrchestratorResponse:
+        """Get SEC filings list with optional date filters."""
         task: dict[str, Any] = {
             "source": "sec_edgar", "ticker": ticker.upper(),
             "action": "filings", "limit": limit,
         }
         if form:
             task["form"] = form
+        if year:
+            task["year"] = year
+        if quarter:
+            task["quarter"] = quarter
         return self._fetch_and_validate(
             tasks=[task],
             query=f"{ticker} filings form={form} limit={limit}",
@@ -195,12 +209,22 @@ class Orchestrator:
         )
 
     def get_filing_markdown(
-        self, ticker: str, *, form: str = "10-K", validate: bool = True,
+        self, ticker: str, *, form: str = "10-K", year: int | None = None,
+        validate: bool = True,
     ) -> OrchestratorResponse:
-        """Fetch an SEC filing and convert to markdown (experimental)."""
+        """Fetch an SEC filing and convert to markdown (experimental).
+
+        Args:
+            year: If specified, fetch filing from that year instead of latest.
+        """
+        task: dict[str, Any] = {
+            "source": "sec_edgar", "ticker": ticker.upper(),
+            "action": "filing_markdown", "form": form,
+        }
+        if year:
+            task["year"] = year
         return self._fetch_and_validate(
-            tasks=[{"source": "sec_edgar", "ticker": ticker.upper(),
-                    "action": "filing_markdown", "form": form}],
+            tasks=[task],
             query=f"{ticker} {form} filing markdown",
             intent="filing_markdown",
             validate=validate,

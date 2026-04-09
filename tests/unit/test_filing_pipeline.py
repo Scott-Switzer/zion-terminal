@@ -62,7 +62,8 @@ class TestFilingPipeline:
         assert result.verification["status"] != "pending", (
             "Verification status is still placeholder 'pending'"
         )
-        assert result.verification["status"] in ("passed", "partial", "failed", "error")
+        # 'structural_only' is the honest status when only structural checks ran
+        assert result.verification["status"] in ("structural_only", "passed", "partial", "failed", "error")
 
     def test_pipeline_is_the_only_converter_path(self):
         """Regression: sec_edgar adapter must NOT have its own _html_to_markdown."""

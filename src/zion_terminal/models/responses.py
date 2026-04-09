@@ -29,6 +29,8 @@ class RetrievalResult(AgentResponse):
     data: list[dict[str, Any]] = Field(default_factory=list)
     sources_used: list[str] = Field(default_factory=list)
     cached: bool = False
+    fallback_used: bool = False
+    actual_source: str = ""
 
     @property
     def is_empty(self) -> bool:

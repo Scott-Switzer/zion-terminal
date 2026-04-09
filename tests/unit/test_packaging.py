@@ -10,7 +10,10 @@ class TestPackageImports:
     def test_import_root(self):
         mod = importlib.import_module("zion_terminal")
         assert hasattr(mod, "__version__")
-        assert mod.__version__ == "0.4.3"
+        # Dynamic version check — do not hardcode
+        assert mod.__version__  # non-empty
+        parts = mod.__version__.split(".")
+        assert len(parts) == 3, f"Version should be semver: {mod.__version__}"
 
     def test_import_config(self):
         mod = importlib.import_module("zion_terminal.config")

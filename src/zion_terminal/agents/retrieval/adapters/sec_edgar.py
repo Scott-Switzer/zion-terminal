@@ -1,12 +1,15 @@
-"""SEC EDGAR adapter using edgartools.
+"""SEC EDGAR adapter — edgartools + direct SEC client.
 
 Status: working. Requires EDGAR_IDENTITY (name + email) per SEC policy.
-Rate limit: SEC enforces ~10 req/sec; edgartools handles this internally.
+Rate limit: SEC enforces ~10 req/sec.
 
-SEC is the primary source for:
-  - Financial statements (via edgartools filing parser)
-  - Filing content (via unified FilingPipeline)
-  - Company facts (via XBRL/edgartools)
+Architecture:
+  - Direct SEC client (sec/client.py) handles: ticker→CIK resolution,
+    filing discovery with year/quarter/date filtering, company facts JSON.
+  - edgartools handles: financial statement parsing (filing.obj().financials),
+    filing HTML extraction for the markdown pipeline.
+  - When edgartools Company(ticker) fails, falls back to direct SEC client
+    for CIK resolution.
 
 Filing-to-markdown conversion uses the shared FilingPipeline
 (pipeline/filing_pipeline.py), not a private converter.
@@ -26,6 +29,7 @@ from zion_terminal.agents.retrieval.retry import adapter_retry
 from zion_terminal.models.financial import FilingType, SECFiling
 from zion_terminal.models.responses import RetrievalResult
 from zion_terminal.pipeline.filing_pipeline import FilingPipeline
+from zion_terminal.sec.client import SECClient
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +60,7 @@ class SECEdgarAdapter(BaseAdapter):
         super().__init__(**kwargs)
         self._identity = identity
         self._pipeline = FilingPipeline()
+        self._sec_client = SECClient(identity=identity)
 
     def _init_edgar(self) -> None:
         from edgar import set_identity
@@ -94,12 +99,34 @@ class SECEdgarAdapter(BaseAdapter):
 
     @adapter_retry
     def _fetch_filings(self, ticker: str, params: dict) -> RetrievalResult:
+        """Fetch filing list from SEC.
+
+        Uses the direct SEC client when year/quarter/date filters are specified
+        (edgartools doesn't support date-range filtering). Falls back to
+        edgartools for unfiltered latest-N queries.
+
+        Supports: form, limit, year, quarter, date_from, date_to.
+        """
+        form_filter = params.get("form")
+        limit = params.get("limit", 10)
+        year = params.get("year")
+        quarter = params.get("quarter")
+        date_from = params.get("date_from")
+        date_to = params.get("date_to")
+
+        # Use direct SEC client when date filters are needed
+        if year or quarter or date_from or date_to:
+            return self._fetch_filings_direct(ticker, form_filter, limit, year, quarter, date_from, date_to)
+
+        # Default: use edgartools for simple latest-N queries
         from edgar import Company
         _rate_limit()
 
-        company = Company(ticker)
-        form_filter = params.get("form")
-        limit = params.get("limit", 10)
+        try:
+            company = Company(ticker)
+        except Exception as exc:
+            logger.warning("edgartools Company(%s) failed: %s — trying direct SEC client", ticker, exc)
+            return self._fetch_filings_direct(ticker, form_filter, limit, year, quarter, date_from, date_to)
 
         filings = company.get_filings()
         if form_filter:
@@ -133,6 +160,51 @@ class SECEdgarAdapter(BaseAdapter):
 
         return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
 
+    def _fetch_filings_direct(
+        self, ticker: str, form: str | None, limit: int,
+        year: int | None, quarter: int | None,
+        date_from: str | None, date_to: str | None,
+    ) -> RetrievalResult:
+        """Fetch filings via direct SEC client with date filtering."""
+        filings = self._sec_client.get_filings(
+            ticker, form=form, year=year, quarter=quarter,
+            date_from=date_from, date_to=date_to, limit=limit,
+        )
+        if not filings:
+            return RetrievalResult(
+                success=False,
+                errors=[f"No filings found for {ticker} with the specified filters"],
+            )
+
+        results: list[dict[str, Any]] = []
+        for f in filings:
+            filing_type = _FORM_MAP.get(f.get("form", ""), FilingType.OTHER)
+            filing_date_val = None
+            try:
+                filing_date_val = date.fromisoformat(f["filingDate"])
+            except (ValueError, KeyError):
+                pass
+
+            cik = f.get("cik", "")
+            accession = f.get("accessionNumber", "")
+            primary_doc = f.get("primaryDocument", "")
+            doc_url = self._sec_client.build_filing_url(cik, accession, primary_doc) if primary_doc else ""
+
+            sec_filing = SECFiling(
+                ticker=ticker.upper(),
+                company_name=f.get("companyName", ticker),
+                cik=cik,
+                filing_type=filing_type,
+                filing_date=filing_date_val,
+                accession_number=accession,
+                document_url=doc_url,
+                description=f"{f.get('form', '')} filing",
+                source=self.SOURCE_NAME,
+            )
+            results.append(sec_filing.model_dump())
+
+        return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
+
     # Map user-facing statement type names to edgartools attribute names
     _STMT_ATTR_MAP: dict[str, str] = {
         "income": "income_statement",
@@ -150,15 +222,45 @@ class SECEdgarAdapter(BaseAdapter):
         Honors:
           - statement_type: "income" | "balance" | "cash_flow" (default: all)
           - quarterly: True → 10-Q filings, False → 10-K filings
+          - year: filter to specific fiscal year
+          - quarter: filter to specific fiscal quarter (1-4)
           - limit: max number of filings to process (default 3)
+
+        Uses edgartools for financial statement parsing. If year/quarter filters
+        are specified, uses the direct SEC client for filing discovery first.
         """
         from edgar import Company
         _rate_limit()
 
-        company = Company(ticker)
+        try:
+            company = Company(ticker)
+        except Exception as exc:
+            logger.warning("edgartools Company(%s) failed: %s", ticker, exc)
+            return RetrievalResult(success=False, errors=[f"Could not resolve {ticker} via edgartools: {exc}"])
+
         quarterly = params.get("quarterly", False)
         form = "10-Q" if quarterly else "10-K"
-        filings = company.get_filings(form=form)
+        year = params.get("year")
+        quarter_filter = params.get("quarter")
+
+        # If year/quarter specified, use direct SEC client to find matching filings
+        # then use edgartools to parse financials from those filings
+        if year or quarter_filter:
+            direct_filings = self._sec_client.get_filings(
+                ticker, form=form, year=year, quarter=quarter_filter, limit=10,
+            )
+            if not direct_filings:
+                return RetrievalResult(
+                    success=False,
+                    errors=[f"No {form} filings found for {ticker} in year={year} quarter={quarter_filter}"],
+                )
+            # Use edgartools to process just these filings by matching accession numbers
+            filings = company.get_filings(form=form)
+            target_accessions = {f["accessionNumber"] for f in direct_filings}
+        else:
+            filings = company.get_filings(form=form)
+            target_accessions = None
+
         limit = params.get("limit", 3)
         requested_type = params.get("statement_type", "")
 
@@ -174,6 +276,12 @@ class SECEdgarAdapter(BaseAdapter):
         for i, filing in enumerate(filings):
             if i >= limit:
                 break
+            # If filtering by accession, skip non-matching filings
+            if target_accessions is not None:
+                accession = str(getattr(filing, "accession_no", ""))
+                if accession not in target_accessions:
+                    limit += 1  # Don't count skipped filings against limit
+                    continue
             _rate_limit()
             try:
                 filing_obj = filing.obj()

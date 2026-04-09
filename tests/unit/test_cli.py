@@ -49,7 +49,8 @@ class TestCLI:
     def test_version(self, runner):
         result = runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "0.4.3" in result.output
+        from zion_terminal import __version__
+        assert __version__ in result.output
 
     def test_no_subcommand_shows_help(self, runner):
         result = runner.invoke(main, [])
@@ -99,6 +100,7 @@ class TestCLI:
         assert result.exit_code == 0
         mock_orchestrator.get_financials.assert_called_once_with(
             "AAPL", statement_type="balance", quarterly=True, source="sec",
+            year=None, quarter=None,
         )
 
     @patch("zion_terminal.cli._build_orchestrator")
@@ -109,7 +111,7 @@ class TestCLI:
         result = runner.invoke(main, ["filings", "AAPL", "--form", "10-K", "--limit", "5"])
         assert result.exit_code == 0
         mock_orchestrator.get_filings.assert_called_once_with(
-            "AAPL", form="10-K", limit=5,
+            "AAPL", form="10-K", limit=5, year=None, quarter=None,
         )
 
     @patch("zion_terminal.cli.get_settings")
@@ -152,7 +154,7 @@ class TestCLI:
         result = runner.invoke(main, ["filing-markdown", "AAPL", "--form", "10-Q"])
         assert result.exit_code == 0
         mock_orchestrator.get_filing_markdown.assert_called_once_with(
-            "AAPL", form="10-Q",
+            "AAPL", form="10-Q", year=None,
         )
 
     @patch("zion_terminal.cli._build_orchestrator")

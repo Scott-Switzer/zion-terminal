@@ -21,7 +21,9 @@ class TestFilingVerifier:
             sections=sections,
             form="10-K",
         )
-        assert result.status == "passed"
+        # Without XBRL or cross-source, status is 'structural_only' (honest)
+        assert result.status == "structural_only"
+        assert result.verification_depth == "structural_only"
         assert any(c["check"] == "markdown_content" and c["status"] == "passed"
                     for c in result.structural_checks)
 

@@ -14,8 +14,17 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class VerificationResult:
-    """Structured verification output."""
-    status: str = "not_run"  # not_run | passed | failed | partial | unavailable
+    """Structured verification output.
+
+    Status semantics (honest):
+      - not_run: verification did not execute
+      - structural_only: only structural checks ran (no XBRL, no cross-source)
+      - passed: structural checks passed AND at least one deeper check ran
+      - partial: some checks passed, some failed or were unavailable
+      - failed: structural checks failed
+    """
+    status: str = "not_run"
+    verification_depth: str = "none"  # none | structural_only | xbrl | cross_source | full
     xbrl_status: str = "not_run"
     xbrl_facts_extracted: int = 0
     xbrl_errors: list[str] = field(default_factory=list)
@@ -27,6 +36,7 @@ class VerificationResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
+            "verification_depth": self.verification_depth,
             "xbrl_status": self.xbrl_status,
             "xbrl_facts_extracted": self.xbrl_facts_extracted,
             "xbrl_errors": self.xbrl_errors,
@@ -72,14 +82,27 @@ class FilingVerifier:
         else:
             result.cross_source_status = "no_comparison_data"
         
-        # Determine overall status
-        failed = any(c.get("status") == "failed" for c in result.structural_checks)
-        if failed:
+        # Determine overall status — honest about verification depth
+        structural_failed = any(c.get("status") == "failed" for c in result.structural_checks)
+        xbrl_ran = result.xbrl_status in ("passed", "failed")
+        cross_ran = result.cross_source_status == "checked"
+
+        if structural_failed:
             result.status = "failed"
-        elif result.xbrl_status == "failed":
-            result.status = "partial"
-        else:
+            result.verification_depth = "structural_only"
+        elif xbrl_ran and cross_ran:
+            result.verification_depth = "full"
+            result.status = "passed" if result.xbrl_status == "passed" else "partial"
+        elif xbrl_ran:
+            result.verification_depth = "xbrl"
+            result.status = "passed" if result.xbrl_status == "passed" else "partial"
+        elif cross_ran:
+            result.verification_depth = "cross_source"
             result.status = "passed"
+        else:
+            # Only structural checks ran — do NOT claim "passed"
+            result.verification_depth = "structural_only"
+            result.status = "structural_only"
         
         return result
 

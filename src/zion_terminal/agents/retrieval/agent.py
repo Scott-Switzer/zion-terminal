@@ -49,6 +49,9 @@ class RetrievalAgent:
         all_warnings: list[str] = []
         any_cached = False
 
+        fallback_used = False
+        actual_source = ""
+
         for task in tasks:
             source = task.get("source", "")
             adapter = self._adapters.get(source) or self._find_adapter_for_task(task)
@@ -57,6 +60,14 @@ class RetrievalAgent:
                 all_errors.append(f"No adapter found for source={source!r}. Available: {self.available_sources}")
                 continue
 
+            # Track explicit fallback
+            if task.get("_fallback_from"):
+                fallback_used = True
+                all_warnings.append(
+                    f"SEC EDGAR unavailable — data served from {adapter.SOURCE_NAME} (fallback). "
+                    f"Source role: fallback, not primary."
+                )
+
             result = adapter.fetch(task)
             all_data.extend(result.data)
             all_sources.extend(result.sources_used)
@@ -64,6 +75,7 @@ class RetrievalAgent:
             all_warnings.extend(result.warnings)
             if result.cached:
                 any_cached = True
+            actual_source = adapter.SOURCE_NAME
 
         return RetrievalResult(
             success=len(all_errors) == 0 or len(all_data) > 0,
@@ -72,6 +84,8 @@ class RetrievalAgent:
             cached=any_cached,
             errors=all_errors,
             warnings=all_warnings,
+            fallback_used=fallback_used,
+            actual_source=actual_source,
         )
 
     def _find_adapter_for_task(self, task: dict[str, Any]) -> BaseAdapter | None:
@@ -79,7 +93,18 @@ class RetrievalAgent:
             action = task.get("action", "quote")
             # SEC-first: financials and filing-related actions go to SEC EDGAR
             if action in ("filings", "company_facts", "filing_markdown", "financials"):
-                return self._adapters.get("sec_edgar") or self._adapters.get("yahoo_finance")
+                sec = self._adapters.get("sec_edgar")
+                if sec:
+                    return sec
+                # Explicit fallback — record warning
+                yahoo = self._adapters.get("yahoo_finance")
+                if yahoo:
+                    logger.warning(
+                        "SEC EDGAR unavailable for action=%s — falling back to Yahoo Finance. "
+                        "Set EDGAR_IDENTITY to enable SEC.", action,
+                    )
+                    task["_fallback_from"] = "sec_edgar"
+                return yahoo
             return self._adapters.get("yahoo_finance")
         if "series_id" in task:
             return self._adapters.get("fred")

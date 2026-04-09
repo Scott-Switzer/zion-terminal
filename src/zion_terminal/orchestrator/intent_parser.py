@@ -135,6 +135,18 @@ _LIMIT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Year extraction: matches "2022", "FY2022", "fiscal year 2022", "'s 2022 10-K"
+_YEAR_PATTERN = re.compile(
+    r"\b(?:FY|fiscal\s+year\s*)?(?:20[0-2]\d|19[9]\d)\b",
+    re.IGNORECASE,
+)
+
+# Quarter extraction: matches "Q1", "Q2 2022", "quarter 3", "q4"
+_QUARTER_PATTERN = re.compile(
+    r"\bQ([1-4])\b|\bquarter\s+([1-4])\b",
+    re.IGNORECASE,
+)
+
 
 def extract_period(text: str) -> str | None:
     m = _PERIOD_PATTERN.search(text)
@@ -157,6 +169,24 @@ def extract_interval(text: str) -> str | None:
 def extract_limit(text: str) -> int | None:
     m = _LIMIT_PATTERN.search(text)
     return int(m.group(1)) if m else None
+
+
+def extract_year(text: str) -> int | None:
+    """Extract a 4-digit fiscal year from the query."""
+    m = _YEAR_PATTERN.search(text)
+    if m:
+        # Extract just the digits
+        digits = re.search(r"(20[0-2]\d|19[9]\d)", m.group())
+        return int(digits.group()) if digits else None
+    return None
+
+
+def extract_quarter(text: str) -> int | None:
+    """Extract a fiscal quarter (1-4) from the query."""
+    m = _QUARTER_PATTERN.search(text)
+    if m:
+        return int(m.group(1) or m.group(2))
+    return None
 
 
 # ── Intent classification ────────────────────────────────────────────────
@@ -219,6 +249,8 @@ class IntentParser:
         period = extract_period(query)
         interval = extract_interval(query)
         limit = extract_limit(query)
+        year = extract_year(query)
+        quarter_num = extract_quarter(query)
 
         tasks: list[dict[str, Any]] = []
 
@@ -241,6 +273,10 @@ class IntentParser:
                 task["interval"] = interval
             if limit:
                 task["limit"] = limit
+            if year and task.get("source") == "sec_edgar":
+                task["year"] = year
+            if quarter_num and task.get("source") == "sec_edgar":
+                task["quarter"] = quarter_num
             tasks.append(task)
 
         # Build macro tasks
@@ -272,6 +308,10 @@ class IntentParser:
             parsed.params["interval"] = interval
         if limit:
             parsed.params["limit"] = limit
+        if year:
+            parsed.params["year"] = year
+        if quarter_num:
+            parsed.params["quarter"] = quarter_num
 
         return parsed
 

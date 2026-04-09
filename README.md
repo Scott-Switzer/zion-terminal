@@ -197,6 +197,8 @@ See `docs/benchmarks/latest.md` for full results.
 - **Company facts** pagination works but namespace filtering depends on edgartools DataFrame column names.
 - **Cross-source reconciliation** is structural only — no live SEC-vs-Yahoo comparison yet.
 - **Filing-markdown** is experimental. Wrapper filings may produce incomplete results.
+- **Historical retrieval** depends on SEC submissions endpoint, which returns ~1000 most recent filings. Very old filings may not be available.
+- **Verification status** is `structural_only` in most environments (XBRL and cross-source require additional setup).
 
 ---
 

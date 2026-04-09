@@ -188,18 +188,30 @@ def history(ctx: click.Context, ticker: str, period: str, interval: str, fmt: st
 @click.option("--source", default="sec", show_default=True,
               type=click.Choice(["sec", "yahoo"]),
               help="Data source: sec (primary) or yahoo (fallback).")
+@click.option("--year", "-y", default=None, type=int,
+              help="Filter to specific fiscal year (e.g. 2022).")
+@click.option("--quarter", default=None, type=click.IntRange(1, 4),
+              help="Filter to specific fiscal quarter (1-4).")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
 @click.pass_context
-def financials(ctx: click.Context, ticker: str, statement: str, quarterly: bool, source: str, fmt: str) -> None:
+def financials(ctx: click.Context, ticker: str, statement: str, quarterly: bool,
+              source: str, year: int | None, quarter: int | None, fmt: str) -> None:
     """Get financial statements.
 
     SEC EDGAR is the primary source. Yahoo Finance is a fallback.
-    Example: zion financials AAPL --statement balance --quarterly
+
+    Examples:
+      zion financials AAPL --statement balance --quarterly
+      zion financials AAPL --year 2022
+      zion financials MSFT --quarterly --year 2021 --quarter 2
     """
     orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        resp = orc.get_financials(ticker, statement_type=statement, quarterly=quarterly, source=source)
+        resp = orc.get_financials(
+            ticker, statement_type=statement, quarterly=quarterly,
+            source=source, year=year, quarter=quarter,
+        )
         _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
@@ -214,13 +226,21 @@ def financials(ctx: click.Context, ticker: str, statement: str, quarterly: bool,
               help="Filing type filter: 10-K, 10-Q, 8-K, etc.")
 @click.option("--limit", "-l", default=10, show_default=True, type=int,
               help="Maximum number of filings to return.")
+@click.option("--year", "-y", default=None, type=int,
+              help="Filter to specific year (e.g. 2022).")
+@click.option("--quarter", default=None, type=click.IntRange(1, 4),
+              help="Filter to specific quarter (1-4).")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
 @click.pass_context
-def filings(ctx: click.Context, ticker: str, form: str | None, limit: int, fmt: str) -> None:
+def filings(ctx: click.Context, ticker: str, form: str | None, limit: int,
+            year: int | None, quarter: int | None, fmt: str) -> None:
     """Get SEC filings.
 
-    Example: zion filings AAPL --form 10-K --limit 5
+    Examples:
+      zion filings AAPL --form 10-K --limit 5
+      zion filings AAPL --form 10-K --year 2022
+      zion filings MSFT --form 10-Q --year 2021 --quarter 2
     """
     s = get_settings()
     if not s.edgar_identity:
@@ -231,7 +251,7 @@ def filings(ctx: click.Context, ticker: str, form: str | None, limit: int, fmt: 
 
     orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        resp = orc.get_filings(ticker, form=form, limit=limit)
+        resp = orc.get_filings(ticker, form=form, limit=limit, year=year, quarter=quarter)
         _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
@@ -295,16 +315,20 @@ def info(ctx: click.Context, ticker: str, fmt: str) -> None:
 @click.argument("ticker")
 @click.option("--form", "-f", default="10-K", show_default=True,
               help="Filing type: 10-K, 10-Q, 8-K, etc.")
+@click.option("--year", "-y", default=None, type=int,
+              help="Fetch filing from specific year (e.g. 2022).")
 @click.option("--format", "fmt", default="markdown", callback=_validate_format,
               help=f"Output format: {', '.join(_VALID_FORMATS)}")
 @click.pass_context
-def filing_markdown(ctx: click.Context, ticker: str, form: str, fmt: str) -> None:
+def filing_markdown(ctx: click.Context, ticker: str, form: str, year: int | None, fmt: str) -> None:
     """Fetch an SEC filing and convert to markdown (experimental).
 
-    Fetches the most recent filing of the given type and converts
-    the primary document from HTML to markdown.
+    Fetches the most recent filing of the given type (or a specific year)
+    and converts the primary document from HTML to markdown.
 
-    Example: zion filing-markdown AAPL --form 10-K
+    Examples:
+      zion filing-markdown AAPL --form 10-K
+      zion filing-markdown AAPL --form 10-K --year 2022
     """
     s = get_settings()
     if not s.edgar_identity:
@@ -315,7 +339,7 @@ def filing_markdown(ctx: click.Context, ticker: str, form: str, fmt: str) -> Non
 
     orc = _build_orchestrator(strict=ctx.obj.get("strict", False))
     try:
-        resp = orc.get_filing_markdown(ticker, form=form)
+        resp = orc.get_filing_markdown(ticker, form=form, year=year)
         _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
