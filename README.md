@@ -2,7 +2,7 @@
 
 **Unified financial data retrieval, validation, and synthetic data generation.**
 
-> **Status:** Proof of concept (v0.8.0). Under active development. Not production-ready.
+> **Status:** Proof of concept (v0.8.1). Under active development. Not production-ready.
 
 ---
 
@@ -167,7 +167,7 @@ python -m pytest tests/ -p no:benchmark
 python -m pytest tests/unit/test_regression_fixes.py -v
 ```
 
-Current: **400 tests passing, 1 skipped** (v0.8.0).
+Current: **411 tests passing, 1 skipped** (v0.8.1).
 
 ---
 

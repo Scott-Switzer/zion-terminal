@@ -161,6 +161,40 @@ def _company_facts_to_canonical(
     return results
 
 
+def _detect_fiscal_year_end_month(company_facts: dict | None) -> int | None:
+    """Detect the company's fiscal year end month from XBRL period-end dates.
+
+    Examines the ``end`` field of annual (FY) entries in company facts.
+    For example, Apple's FY2023 has ``end: "2023-09-30"`` → FYE month = 9.
+
+    Returns the FYE month (1-12) or None if it cannot be determined.
+    """
+    if not company_facts or "facts" not in company_facts:
+        return None
+
+    end_months: dict[int, int] = {}  # month → count
+    for ns_data in company_facts.get("facts", {}).values():
+        if not isinstance(ns_data, dict):
+            continue
+        for concept_data in ns_data.values():
+            if not isinstance(concept_data, dict):
+                continue
+            for entries in concept_data.get("units", {}).values():
+                if not isinstance(entries, list):
+                    continue
+                for e in entries:
+                    if e.get("fp") == "FY" and e.get("end"):
+                        try:
+                            end_month = int(e["end"][5:7])
+                            end_months[end_month] = end_months.get(end_month, 0) + 1
+                        except (ValueError, IndexError):
+                            continue
+    if not end_months:
+        return None
+    # Return the most common FYE month
+    return max(end_months, key=end_months.get)
+
+
 def _derive_fiscal_period(
     filing_date: str, form: str, company_facts: dict | None,
 ) -> tuple[int | None, str | None, str]:
@@ -191,10 +225,24 @@ def _derive_fiscal_period(
     # of fiscal year end.  If filed in Q4 or Q1, FY is likely that year
     # or the prior year.
     if form == "10-K":
-        # Check company facts for the most likely FY
-        candidate_fy = year if month > 6 else year - 1
+        # Use XBRL period-end dates to determine fiscal year end month,
+        # then derive the correct FY from the filing date.
+        fye_month = _detect_fiscal_year_end_month(company_facts)
+        if fye_month:
+            # A 10-K covers FY ending in fye_month. If the filing date is
+            # after the FYE, the FY is the current year; otherwise prior year.
+            if month > fye_month:
+                candidate_fy = year
+            elif month <= fye_month:
+                candidate_fy = year if month == fye_month else year - 1
+            else:
+                candidate_fy = year
+        else:
+            # Heuristic: most companies file 10-K within 60-90 days of FYE
+            candidate_fy = year if month > 6 else year - 1
+
         if company_facts and "facts" in company_facts:
-            # Look for any entry with this FY to validate
+            # Validate candidate_fy against actual XBRL entries
             for ns_data in company_facts.get("facts", {}).values():
                 if not isinstance(ns_data, dict):
                     continue
@@ -207,12 +255,17 @@ def _derive_fiscal_period(
                         for e in entries:
                             if e.get("fy") == candidate_fy and e.get("fp") == "FY":
                                 return candidate_fy, "FY", "exact_period"
-        # Heuristic fallback
-        return candidate_fy, "FY", "heuristic"
+        # If we detected FYE month from XBRL but couldn't validate exact FY
+        return candidate_fy, "FY", "heuristic" if not fye_month else "heuristic"
 
     elif form == "10-Q":
         # For 10-Q: determine exact quarter from company facts metadata
-        candidate_fy = year if month > 6 else year - 1
+        # Use detected FYE month for better candidate_fy
+        fye_month = _detect_fiscal_year_end_month(company_facts)
+        if fye_month:
+            candidate_fy = year if month > fye_month else year - 1
+        else:
+            candidate_fy = year if month > 6 else year - 1
         if company_facts and "facts" in company_facts:
             # Strategy 1: Match by exact filed date
             for ns_data in company_facts.get("facts", {}).values():

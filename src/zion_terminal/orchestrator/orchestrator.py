@@ -212,12 +212,17 @@ class Orchestrator:
 
     def get_filing_markdown(
         self, ticker: str, *, form: str = "10-K", year: int | None = None,
-        validate: bool = True,
+        validate: bool = True, persist: bool = True,
     ) -> OrchestratorResponse:
-        """Fetch an SEC filing and convert to markdown (experimental).
+        """Fetch an SEC filing and convert to markdown.
 
         Args:
             year: If specified, fetch filing from that year instead of latest.
+            persist: If True, store the processed document in DocumentStore.
+
+        When ``persist`` is True and the filing is successfully processed,
+        the result is stored as a ``CleanedDocument`` in the DocumentStore
+        for later retrieval by teammates or downstream workflows.
         """
         task: dict[str, Any] = {
             "source": "sec_edgar", "ticker": ticker.upper(),
@@ -225,12 +230,50 @@ class Orchestrator:
         }
         if year:
             task["year"] = year
-        return self._fetch_and_validate(
+        response = self._fetch_and_validate(
             tasks=[task],
             query=f"{ticker} {form} filing markdown",
             intent="filing_markdown",
             validate=validate,
         )
+
+        # Persist the processed document for team workflows
+        if persist and response.success:
+            self._persist_filing_document(response, ticker.upper(), form)
+
+        return response
+
+    def _persist_filing_document(
+        self, response: OrchestratorResponse, ticker: str, form: str,
+    ) -> None:
+        """Store a processed filing as a CleanedDocument in the document store."""
+        try:
+            from zion_terminal.models.documents import CleanedDocument
+            for r in response.results:
+                if isinstance(r, RetrievalResult):
+                    for item in r.data:
+                        if not isinstance(item, dict):
+                            continue
+                        md = item.get("content_markdown", "")
+                        if not md:
+                            continue
+                        pipeline_meta = item.get("pipeline_metadata", {})
+                        filing_date = item.get("filing_date", "")
+                        doc = CleanedDocument(
+                            doc_id=f"{ticker}_{form}_{filing_date}".replace(" ", "_"),
+                            ticker=ticker,
+                            form=form,
+                            filing_date=str(filing_date) if filing_date else "",
+                            markdown=md,
+                            markdown_char_count=len(md),
+                            verification=pipeline_meta.get("verification", {})
+                                         if isinstance(pipeline_meta, dict) else {},
+                            metadata=pipeline_meta if isinstance(pipeline_meta, dict) else {},
+                        )
+                        self._doc_store.store(doc)
+                        logger.info("Persisted CleanedDocument: %s", doc.doc_id)
+        except Exception as exc:
+            logger.debug("Could not persist document: %s", exc)
 
     def get_company_facts(
         self, ticker: str, *, validate: bool = True,
