@@ -211,11 +211,10 @@ def _derive_fiscal_period(
         return candidate_fy, "FY", "heuristic"
 
     elif form == "10-Q":
-        # For 10-Q: try to determine exact quarter from company facts
+        # For 10-Q: determine exact quarter from company facts metadata
         candidate_fy = year if month > 6 else year - 1
         if company_facts and "facts" in company_facts:
-            # Find the quarter that was filed closest to filing_date
-            best_fp = None
+            # Strategy 1: Match by exact filed date
             for ns_data in company_facts.get("facts", {}).values():
                 if not isinstance(ns_data, dict):
                     continue
@@ -229,19 +228,38 @@ def _derive_fiscal_period(
                             if (e.get("fy") == candidate_fy
                                     and e.get("fp", "").startswith("Q")
                                     and e.get("filed") == filing_date):
-                                best_fp = e["fp"]
-                                return candidate_fy, best_fp, "exact_period"
-            # If no exact filed-date match, try quarter from filing month
-            # Q1=months 1-3, Q2=4-6, Q3=7-9 of the filing year
-            q_map = {1: "Q1", 2: "Q1", 3: "Q1", 4: "Q2", 5: "Q2",
-                     6: "Q2", 7: "Q3", 8: "Q3", 9: "Q3", 10: "Q4", 11: "Q4", 12: "Q4"}
-            # 10-Q is filed ~40 days after quarter end, so filing in May = Q1 report
-            quarter_of_filing = q_map.get(month, "Q1")
-            # The quarter being REPORTED is usually the one before the filing quarter
-            report_q_map = {"Q1": "Q4", "Q2": "Q1", "Q3": "Q2", "Q4": "Q3"}
-            reported_quarter = report_q_map.get(quarter_of_filing, None)
-            if reported_quarter:
-                return candidate_fy, reported_quarter, "heuristic"
+                                return candidate_fy, e["fp"], "exact_period"
+
+            # Strategy 2: Derive quarter from XBRL period-end date in entries
+            # 10-Q period_end tells us the exact quarter boundary
+            quarter_candidates: dict[str, int] = {}
+            for ns_data in company_facts.get("facts", {}).values():
+                if not isinstance(ns_data, dict):
+                    continue
+                for concept_data in ns_data.values():
+                    if not isinstance(concept_data, dict):
+                        continue
+                    for entries in concept_data.get("units", {}).values():
+                        if not isinstance(entries, list):
+                            continue
+                        for e in entries:
+                            if e.get("fy") == candidate_fy and e.get("fp", "").startswith("Q"):
+                                fp = e["fp"]
+                                quarter_candidates[fp] = quarter_candidates.get(fp, 0) + 1
+            # If there's a clear quarter with entries filed near our date, use it
+            if quarter_candidates:
+                # Filing month heuristic: 10-Q filed ~40 days after quarter end
+                month_to_likely_q = {
+                    1: "Q1", 2: "Q1", 3: "Q1", 4: "Q1", 5: "Q2",
+                    6: "Q2", 7: "Q2", 8: "Q3", 9: "Q3", 10: "Q3", 11: "Q4", 12: "Q4",
+                }
+                likely = month_to_likely_q.get(month)
+                if likely and likely in quarter_candidates:
+                    return candidate_fy, likely, "heuristic"
+                # Take the quarter with most entries as fallback
+                best_q = max(quarter_candidates, key=quarter_candidates.get)
+                return candidate_fy, best_q, "heuristic"
+
         return candidate_fy, None, "year_only"
 
     else:

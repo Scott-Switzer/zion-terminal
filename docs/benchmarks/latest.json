@@ -1,7 +1,7 @@
 {
-  "run_date": "2026-04-09T05:06:28.373796+00:00",
-  "commit": "7e37f76",
-  "version": "0.7.1",
+  "run_date": "2026-04-09T05:29:21.130612+00:00",
+  "commit": "66e9e58",
+  "version": "0.8.0",
   "runner": "scripts/run_benchmarks.py",
   "python_version": "3.12.8",
   "arelle_installed": false,
@@ -17,7 +17,7 @@
       "success": true,
       "sections_extracted": 1,
       "converter": "dom",
-      "duration_ms": 79.9,
+      "duration_ms": 78.4,
       "raw_char_count": 710,
       "markdown_char_count": 463,
       "compression_ratio": 0.652,
@@ -34,7 +34,7 @@
       "success": true,
       "sections_extracted": 1,
       "converter": "dom",
-      "duration_ms": 1.2,
+      "duration_ms": 1.4,
       "raw_char_count": 746,
       "markdown_char_count": 499,
       "compression_ratio": 0.669,
@@ -51,7 +51,7 @@
       "success": true,
       "sections_extracted": 5,
       "converter": "dom",
-      "duration_ms": 1.8,
+      "duration_ms": 1.7,
       "raw_char_count": 2177,
       "markdown_char_count": 1685,
       "compression_ratio": 0.774,
@@ -68,7 +68,7 @@
       "success": true,
       "sections_extracted": 5,
       "converter": "dom",
-      "duration_ms": 1.4,
+      "duration_ms": 1.3,
       "raw_char_count": 1369,
       "markdown_char_count": 892,
       "compression_ratio": 0.652,
@@ -85,7 +85,7 @@
       "success": true,
       "sections_extracted": 9,
       "converter": "dom",
-      "duration_ms": 3.1,
+      "duration_ms": 3.0,
       "raw_char_count": 3107,
       "markdown_char_count": 2247,
       "compression_ratio": 0.723,
@@ -102,7 +102,7 @@
       "success": true,
       "sections_extracted": 1,
       "converter": "dom",
-      "duration_ms": 1.0,
+      "duration_ms": 1.1,
       "raw_char_count": 1398,
       "markdown_char_count": 1146,
       "compression_ratio": 0.82,
@@ -134,7 +134,9 @@
   "fixtures_summary": {
     "total": 7,
     "passing": 7,
-    "with_warnings": 0
+    "with_warnings": 0,
+    "reconciliation_tested": 2,
+    "reconciliation_passed": 2
   },
   "parser_accuracy": {
     "total_queries": 109,
@@ -205,7 +207,8 @@
   },
   "notes": [
     "All benchmarks run against local fixtures \u2014 no live API calls",
-    "Arelle not installed \u2014 XBRL reconciliation unavailable",
+    "Company-facts reconciliation ran on 2 fixtures (2 passed) \u2014 does NOT require Arelle",
+    "Arelle not installed \u2014 XBRL instance validation unavailable (company-facts reconciliation still works)",
     "Results are real measurements from the current codebase"
   ]
 }

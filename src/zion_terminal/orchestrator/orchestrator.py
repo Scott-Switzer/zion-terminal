@@ -29,6 +29,7 @@ from zion_terminal.agents.retrieval.agent import RetrievalAgent
 from zion_terminal.agents.validation.agent import ValidationAgent
 from zion_terminal.agents.synthesis.agent import SynthesisAgent
 from zion_terminal.cache.cache_manager import CacheManager
+from zion_terminal.cache.doc_store import DocumentStore
 from zion_terminal.models.responses import (
     AgentResponse, OrchestratorResponse, RetrievalResult, ValidationResult,
 )
@@ -49,6 +50,7 @@ class Orchestrator:
         strict: bool = False,
     ) -> None:
         self._cache = CacheManager(cache_dir=cache_dir, default_ttl=cache_ttl)
+        self._doc_store = DocumentStore(db_path=f"{cache_dir}/docs.db")
         self._llm = llm or NoLLMProvider()
         self._strict = strict
 
@@ -301,5 +303,11 @@ class Orchestrator:
             results=[result], errors=result.errors,
         )
 
+    @property
+    def doc_store(self) -> DocumentStore:
+        """Access the processed-document store (team-compatible)."""
+        return self._doc_store
+
     def close(self) -> None:
         self._cache.close()
+        self._doc_store.close()

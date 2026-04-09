@@ -200,6 +200,10 @@ def run_benchmarks() -> dict:
     parser = benchmark_parser_accuracy()
     arelle = check_arelle()
 
+    # Count reconciliation-aware fixtures
+    recon_count = sum(1 for f in fixtures if f.get("reconciliation_status", "") not in ("", "not_run", "no_company_facts"))
+    recon_pass = sum(1 for f in fixtures if f.get("reconciliation_status") == "reconciled_pass")
+
     report = {
         "run_date": datetime.now(timezone.utc).isoformat(),
         "commit": get_git_hash(),
@@ -213,11 +217,14 @@ def run_benchmarks() -> dict:
             "total": len(fixtures),
             "passing": sum(1 for f in fixtures if f["success"]),
             "with_warnings": sum(1 for f in fixtures if f["warnings"]),
+            "reconciliation_tested": recon_count,
+            "reconciliation_passed": recon_pass,
         },
         "parser_accuracy": parser,
         "notes": [
             "All benchmarks run against local fixtures — no live API calls",
-            f"Arelle {'installed' if arelle else 'not installed'} — XBRL reconciliation {'available' if arelle else 'unavailable'}",
+            f"Company-facts reconciliation ran on {recon_count} fixtures ({recon_pass} passed) — does NOT require Arelle",
+            f"Arelle {'installed — XBRL instance validation available' if arelle else 'not installed — XBRL instance validation unavailable (company-facts reconciliation still works)'}",
             "Results are real measurements from the current codebase",
         ],
     }
