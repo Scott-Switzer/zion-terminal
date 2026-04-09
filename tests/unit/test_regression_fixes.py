@@ -165,8 +165,12 @@ class TestFilingPipelineVerification:
         assert result.verification.get("status") != "pending", (
             "Verification status is still 'pending' — verification is not wired in"
         )
-        # Without XBRL or cross-source, status should be 'structural_only' (honest)
-        assert result.verification.get("status") in ("structural_only", "passed", "partial", "failed"), (
+        # Status depends on what data is available
+        allowed = (
+            "structural_only", "passed", "partial", "failed",
+            "reconciled_pass", "reconciled_partial", "reconciled_fail",
+        )
+        assert result.verification.get("status") in allowed, (
             f"Unexpected verification status: {result.verification.get('status')}"
         )
 

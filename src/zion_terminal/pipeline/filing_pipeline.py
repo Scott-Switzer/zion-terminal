@@ -122,10 +122,11 @@ class FilingPipeline:
         except Exception as exc:
             result.warnings.append(f"Segmentation failed: {exc}")
         
-        # Stage 3: Live verification
+        # Stage 3: Live verification (structural + XBRL + reconciliation)
         try:
             xbrl_url = (metadata or {}).get("xbrl_url")
             yahoo_data = (metadata or {}).get("yahoo_data")
+            company_facts = (metadata or {}).get("company_facts")
             verification_result = self._verifier.verify(
                 markdown=result.markdown,
                 sections=result.sections if result.sections else None,
@@ -133,6 +134,7 @@ class FilingPipeline:
                 form=form,
                 xbrl_url=xbrl_url,
                 yahoo_data=yahoo_data,
+                company_facts=company_facts,
             )
             result.verification = verification_result.to_dict()
             result.pipeline_metadata["verification"] = {

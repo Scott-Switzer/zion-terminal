@@ -399,20 +399,70 @@ class SECEdgarAdapter(BaseAdapter):
     def _fetch_filing_markdown(self, ticker: str, params: dict) -> RetrievalResult:
         """Fetch a filing and process through the unified pipeline.
 
-        Uses the shared FilingPipeline (converter + segmenter) instead of
-        a private conversion path. This is the single live filing path.
+        Uses the shared FilingPipeline (converter + segmenter + verification).
+        Now supports historical year selection and XBRL reconciliation.
+
+        When company facts are available, the pipeline reconciles XBRL-derived
+        facts against markdown-extracted facts to prove the markdown preserves
+        the same financial information as the source filing.
         """
         from edgar import Company
         _rate_limit()
 
-        company = Company(ticker)
         form = params.get("form", "10-K")
-        filings = company.get_filings(form=form)
+        year = params.get("year")
+        quarter = params.get("quarter")
 
-        if not filings:
+        # --- Step 1: Resolve the filing ---
+        # Use direct SEC client for year/quarter-filtered lookup
+        if year or quarter:
+            direct_filings = self._sec_client.get_filings(
+                ticker, form=form, year=year, quarter=quarter, limit=1,
+            )
+            if not direct_filings:
+                return RetrievalResult(
+                    success=False,
+                    errors=[f"No {form} filings found for {ticker} year={year} quarter={quarter}"],
+                )
+            target = direct_filings[0]
+            accession_number = target.get("accessionNumber", "")
+            filing_date_str = target.get("filingDate", "")
+            primary_doc = target.get("primaryDocument", "")
+            company_name = target.get("companyName", ticker)
+            cik = target.get("cik", "")
+            doc_url = self._sec_client.build_filing_url(cik, accession_number, primary_doc) if primary_doc else ""
+        else:
+            accession_number = ""
+            filing_date_str = ""
+            primary_doc = ""
+            company_name = ticker
+            cik = ""
+            doc_url = ""
+
+        try:
+            company = Company(ticker)
+        except Exception as exc:
+            logger.warning("edgartools Company(%s) failed: %s", ticker, exc)
+            return RetrievalResult(success=False, errors=[f"Could not resolve {ticker}: {exc}"])
+
+        if year or quarter:
+            # Find the matching filing in edgartools by accession number
+            filings = company.get_filings(form=form)
+            filing = None
+            for f in filings:
+                if str(getattr(f, "accession_no", "")) == accession_number:
+                    filing = f
+                    break
+            if filing is None:
+                # Fallback: just use the first filing
+                filing = filings[0] if filings else None
+        else:
+            filings = company.get_filings(form=form)
+            filing = filings[0] if filings else None
+
+        if not filing:
             return RetrievalResult(success=False, errors=[f"No {form} filings found for {ticker}"])
 
-        filing = filings[0]
         _rate_limit()
 
         try:
@@ -432,14 +482,42 @@ class SECEdgarAdapter(BaseAdapter):
                     errors=[f"Could not extract content from {form} filing for {ticker}"],
                 )
 
-            # Run through the unified filing pipeline
-            filing_date_str = str(getattr(filing, "filing_date", ""))
+            # --- Step 2: Discover XBRL URL ---
+            # Modern SEC filings (2019+) use inline XBRL: the primary HTML IS the iXBRL
+            xbrl_url = str(getattr(filing, "homepage_url", "")) or doc_url
+
+            # --- Step 3: Fetch company facts for XBRL reconciliation ---
+            company_facts = None
+            try:
+                company_facts = self._sec_client.get_company_facts(ticker)
+            except Exception as exc:
+                logger.debug("Could not fetch company facts for %s: %s", ticker, exc)
+
+            # Populate metadata for the pipeline
+            if not accession_number:
+                accession_number = str(getattr(filing, "accession_no", ""))
+            if not filing_date_str:
+                filing_date_str = str(getattr(filing, "filing_date", ""))
+            if not company_name or company_name == ticker:
+                company_name = str(getattr(company, "name", ticker))
+            if not cik:
+                cik = str(getattr(company, "cik", ""))
+
+            # Run through the unified filing pipeline with XBRL data
             pipeline_result = self._pipeline.process(
                 html=html_content,
                 ticker=ticker,
                 form=form,
                 filing_date=filing_date_str,
-                metadata={"ticker": ticker, "form": form, "source": self.SOURCE_NAME},
+                metadata={
+                    "ticker": ticker,
+                    "form": form,
+                    "source": self.SOURCE_NAME,
+                    "xbrl_url": xbrl_url,
+                    "company_facts": company_facts,
+                    "accession_number": accession_number,
+                    "filing_date": filing_date_str,
+                },
             )
 
             if not pipeline_result.success:
@@ -450,12 +528,12 @@ class SECEdgarAdapter(BaseAdapter):
 
             filing_data = SECFiling(
                 ticker=ticker,
-                company_name=str(getattr(company, "name", ticker)),
-                cik=str(getattr(company, "cik", "")),
+                company_name=company_name,
+                cik=cik,
                 filing_type=_FORM_MAP.get(form, FilingType.OTHER),
                 filing_date=filing.filing_date if isinstance(getattr(filing, "filing_date", None), date) else None,
-                accession_number=str(getattr(filing, "accession_no", "")),
-                document_url=str(getattr(filing, "homepage_url", "")),
+                accession_number=accession_number,
+                document_url=doc_url or str(getattr(filing, "homepage_url", "")),
                 description=f"{form} filing (pipeline conversion)",
                 content_markdown=pipeline_result.markdown[:100_000],
                 source=self.SOURCE_NAME,

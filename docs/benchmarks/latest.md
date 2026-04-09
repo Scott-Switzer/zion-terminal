@@ -1,8 +1,8 @@
 # Benchmark Report: Latest
 
 **Run date:** 2026-04-09
-**Commit:** 6662ff0
-**Version:** 0.5.1
+**Commit:** 3bf61b6
+**Version:** 0.6.0
 **Python:** 3.12.8
 **Arelle:** Not installed
 
@@ -12,8 +12,8 @@
 
 | Metric | Value |
 |---|---|
-| Total tests | 356 |
-| Passed | 356 |
+| Total tests | 371 |
+| Passed | 371 |
 | Failed | 0 |
 
 ---
@@ -22,11 +22,13 @@
 
 | Fixture | Size (KB) | Success | Sections | Converter | Duration (ms) | Compression |
 |---|---|---|---|---|---|---|
-| `sample_html_filing.html` | 2.1 | Yes | 5 | dom | 112.0 | 0.774 |
-| `sample_html_filing_div_headers.html` | 1.3 | Yes | 5 | dom | 2.4 | 0.652 |
-| `sample_html_filing_table_toc.html` | 3.0 | Yes | 9 | dom | 5.0 | 0.723 |
-| `sample_html_filing_wrapper.html` | 1.4 | Yes | 1 | dom | 1.5 | 0.82 |
-| `toc_heavy_filing.html` | 1.8 | Yes | 5 | dom | 2.9 | 0.754 |
+| `sample_filing_scale_mismatch.html` | 0.7 | Yes | 1 | dom | 79.5 | 0.652 |
+| `sample_filing_with_tables.html` | 0.7 | Yes | 1 | dom | 1.0 | 0.669 |
+| `sample_html_filing.html` | 2.1 | Yes | 5 | dom | 1.7 | 0.774 |
+| `sample_html_filing_div_headers.html` | 1.3 | Yes | 5 | dom | 1.2 | 0.652 |
+| `sample_html_filing_table_toc.html` | 3.0 | Yes | 9 | dom | 3.0 | 0.723 |
+| `sample_html_filing_wrapper.html` | 1.4 | Yes | 1 | dom | 1.0 | 0.82 |
+| `toc_heavy_filing.html` | 1.8 | Yes | 5 | dom | 1.6 | 0.754 |
 
 ---
 

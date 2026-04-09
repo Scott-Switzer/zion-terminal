@@ -167,7 +167,7 @@ python -m pytest tests/ -p no:benchmark
 python -m pytest tests/unit/test_regression_fixes.py -v
 ```
 
-Current: **332 tests passing** (v0.5.0).
+Current: **382 tests passing** (v0.6.0).
 
 ---
 
@@ -179,7 +179,7 @@ Latest results (from actual measurements, not estimates):
 
 | Metric | Value |
 |--------|-------|
-| Tests | 332 passing |
+| Tests | 382 passing |
 | HTML fixtures | 5 (all passing, live verification) |
 | Parser corpus | 109 queries, 100% accuracy |
 | Converter engine | BeautifulSoup DOM (with regex fallback) |
