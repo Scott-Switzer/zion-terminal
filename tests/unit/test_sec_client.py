@@ -13,6 +13,11 @@ from zion_terminal.sec.client import SECClient, _filing_in_quarter
 class TestTickerResolution:
     """Test ticker→CIK resolution."""
 
+    def setup_method(self):
+        # Reset the module-level ticker map to avoid cross-test pollution
+        import zion_terminal.sec.client as mod
+        mod._ticker_map = None
+
     def test_resolve_cik_basic(self):
         client = SECClient(identity="Test test@test.com")
         mock_data = {

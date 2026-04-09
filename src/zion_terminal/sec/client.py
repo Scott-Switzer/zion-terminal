@@ -116,6 +116,44 @@ class SECClient:
             logger.warning("SEC submissions error for CIK %s: %s", cik, exc)
             return None
 
+    def _fetch_older_filings(
+        self, cik: str, older_files: list[str],
+    ) -> list[dict[str, Any]]:
+        """Walk older filing archive files referenced in submissions JSON.
+
+        The SEC submissions endpoint returns only the most recent ~1000
+        filings in ``filings.recent``.  Older filings are paginated into
+        separate JSON files listed in ``filings.files``.
+
+        Each file has the same columnar structure as ``filings.recent``.
+        """
+        all_filings: list[dict[str, Any]] = []
+        for file_ref in older_files:
+            filename = file_ref if isinstance(file_ref, str) else file_ref.get("name", "")
+            if not filename:
+                continue
+            _rate_limit()
+            try:
+                resp = self._session.get(
+                    f"{_BASE}/submissions/{filename}", timeout=30,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                count = len(data.get("accessionNumber", []))
+                for i in range(count):
+                    filing = {
+                        "accessionNumber": data["accessionNumber"][i],
+                        "filingDate": data["filingDate"][i],
+                        "form": data["form"][i],
+                        "primaryDocument": data.get("primaryDocument", [""])[i] if i < len(data.get("primaryDocument", [])) else "",
+                        "primaryDocDescription": data.get("primaryDocDescription", [""])[i] if i < len(data.get("primaryDocDescription", [])) else "",
+                    }
+                    all_filings.append(filing)
+            except Exception as exc:
+                logger.warning("Failed to fetch older filing file %s: %s", filename, exc)
+                continue
+        return all_filings
+
     def get_filings(
         self,
         ticker: str,
@@ -126,6 +164,7 @@ class SECClient:
         date_from: str | None = None,
         date_to: str | None = None,
         limit: int = 20,
+        include_archival: bool = True,
     ) -> list[dict[str, Any]]:
         """Get filing metadata with optional filters.
 
@@ -137,6 +176,8 @@ class SECClient:
             date_from: Filter filings on or after this date (YYYY-MM-DD)
             date_to: Filter filings on or before this date (YYYY-MM-DD)
             limit: Maximum number of filings to return
+            include_archival: Walk older filing files when recent filings
+                don't satisfy the query.  Defaults to True.
 
         Returns:
             List of filing metadata dicts with keys:
@@ -151,27 +192,74 @@ class SECClient:
         if not submissions:
             return []
 
+        company_name = submissions.get("name", "")
         recent = submissions.get("filings", {}).get("recent", {})
         if not recent:
             return []
 
-        # Build list of filings from columnar data
-        count = len(recent.get("accessionNumber", []))
+        # Build list of filings from columnar (recent) data
+        filings = self._columnar_to_filings(recent, cik, ticker, company_name)
+
+        # Apply filters on recent filings first
+        filtered = self._apply_filing_filters(
+            filings, form=form, year=year, quarter=quarter,
+            date_from=date_from, date_to=date_to,
+        )
+
+        # If recent filings don't satisfy the query, walk archival files
+        if len(filtered) < limit and include_archival:
+            older_files = submissions.get("filings", {}).get("files", [])
+            if older_files:
+                logger.info(
+                    "Recent filings insufficient (%d/%d) — walking %d archival files for %s",
+                    len(filtered), limit, len(older_files), ticker,
+                )
+                older_raw = self._fetch_older_filings(cik, older_files)
+                # Enrich with CIK / ticker / company name
+                for f in older_raw:
+                    f["cik"] = cik
+                    f["ticker"] = ticker.upper()
+                    f["companyName"] = company_name
+                older_filtered = self._apply_filing_filters(
+                    older_raw, form=form, year=year, quarter=quarter,
+                    date_from=date_from, date_to=date_to,
+                )
+                filtered.extend(older_filtered)
+
+        return filtered[:limit]
+
+    @staticmethod
+    def _columnar_to_filings(
+        columnar: dict[str, Any], cik: str, ticker: str, company_name: str,
+    ) -> list[dict[str, Any]]:
+        """Convert SEC's columnar filing data to a list of dicts."""
+        count = len(columnar.get("accessionNumber", []))
         filings: list[dict[str, Any]] = []
         for i in range(count):
             filing = {
-                "accessionNumber": recent["accessionNumber"][i],
-                "filingDate": recent["filingDate"][i],
-                "form": recent["form"][i],
-                "primaryDocument": recent.get("primaryDocument", [""])[i] if i < len(recent.get("primaryDocument", [])) else "",
-                "primaryDocDescription": recent.get("primaryDocDescription", [""])[i] if i < len(recent.get("primaryDocDescription", [])) else "",
+                "accessionNumber": columnar["accessionNumber"][i],
+                "filingDate": columnar["filingDate"][i],
+                "form": columnar["form"][i],
+                "primaryDocument": columnar.get("primaryDocument", [""])[i] if i < len(columnar.get("primaryDocument", [])) else "",
+                "primaryDocDescription": columnar.get("primaryDocDescription", [""])[i] if i < len(columnar.get("primaryDocDescription", [])) else "",
                 "cik": cik,
                 "ticker": ticker.upper(),
-                "companyName": submissions.get("name", ""),
+                "companyName": company_name,
             }
             filings.append(filing)
+        return filings
 
-        # Apply filters
+    @staticmethod
+    def _apply_filing_filters(
+        filings: list[dict[str, Any]],
+        *,
+        form: str | None = None,
+        year: int | None = None,
+        quarter: int | None = None,
+        date_from: str | None = None,
+        date_to: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Apply form/year/quarter/date filters to a filing list."""
         filtered = filings
         if form:
             filtered = [f for f in filtered if f["form"] == form]
@@ -183,8 +271,7 @@ class SECClient:
             filtered = [f for f in filtered if f["filingDate"] >= date_from]
         if date_to:
             filtered = [f for f in filtered if f["filingDate"] <= date_to]
-
-        return filtered[:limit]
+        return filtered
 
     def get_company_facts(self, ticker: str) -> dict[str, Any] | None:
         """Fetch all XBRL company facts from SEC.

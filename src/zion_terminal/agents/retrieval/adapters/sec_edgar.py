@@ -226,22 +226,53 @@ class SECEdgarAdapter(BaseAdapter):
           - quarter: filter to specific fiscal quarter (1-4)
           - limit: max number of filings to process (default 3)
 
-        Uses edgartools for financial statement parsing. If year/quarter filters
-        are specified, uses the direct SEC client for filing discovery first.
+        Uses edgartools for financial statement parsing. If Company(ticker)
+        fails, falls back to direct SEC filing metadata (without parsed
+        financial statements).
         """
         from edgar import Company
         _rate_limit()
 
+        company = None
         try:
             company = Company(ticker)
         except Exception as exc:
-            logger.warning("edgartools Company(%s) failed: %s", ticker, exc)
-            return RetrievalResult(success=False, errors=[f"Could not resolve {ticker} via edgartools: {exc}"])
+            logger.warning("edgartools Company(%s) failed: %s — will attempt direct SEC metadata", ticker, exc)
 
         quarterly = params.get("quarterly", False)
         form = "10-Q" if quarterly else "10-K"
         year = params.get("year")
         quarter_filter = params.get("quarter")
+
+        # If company is None (edgartools failed), we can still provide
+        # filing metadata from the direct SEC client, just not parsed financials.
+        if company is None:
+            direct_filings = self._sec_client.get_filings(
+                ticker, form=form, year=year, quarter=quarter_filter, limit=params.get("limit", 3),
+            )
+            if not direct_filings:
+                return RetrievalResult(
+                    success=False,
+                    errors=[f"No {form} filings found for {ticker} (edgartools unavailable, direct SEC returned nothing)"],
+                )
+            # Return filing metadata without parsed financial statements
+            results: list[dict[str, Any]] = []
+            for f in direct_filings:
+                results.append({
+                    "ticker": ticker,
+                    "statement_type": params.get("statement_type", "unknown"),
+                    "period": f.get("filingDate", ""),
+                    "line_items": {},
+                    "filing_date": f.get("filingDate", ""),
+                    "form": form,
+                    "accession_number": f.get("accessionNumber", ""),
+                    "source": self.SOURCE_NAME,
+                    "note": "Filing metadata only — edgartools parsing unavailable",
+                })
+            return RetrievalResult(
+                data=results, sources_used=[self.SOURCE_NAME],
+                warnings=[f"edgartools unavailable for {ticker} — returning filing metadata without parsed financials"],
+            )
 
         # If year/quarter specified, use direct SEC client to find matching filings
         # then use edgartools to parse financials from those filings
@@ -271,7 +302,7 @@ class SECEdgarAdapter(BaseAdapter):
             # No specific type requested — return all three
             stmt_attrs = ["income_statement", "balance_sheet", "cash_flow_statement"]
 
-        results: list[dict[str, Any]] = []
+        results_list: list[dict[str, Any]] = []
 
         for i, filing in enumerate(filings):
             if i >= limit:
@@ -298,7 +329,7 @@ class SECEdgarAdapter(BaseAdapter):
                                     for idx in df.index:
                                         val = df.iloc[:, 0].loc[idx] if len(df.columns) > 0 else None
                                         line_items[str(idx)] = float(val) if pd.notna(val) else None
-                                    results.append({
+                                    results_list.append({
                                         "ticker": ticker,
                                         "statement_type": stmt_name,
                                         "period": str(df.columns[0]) if len(df.columns) > 0 else "",
@@ -308,7 +339,7 @@ class SECEdgarAdapter(BaseAdapter):
                                         "source": self.SOURCE_NAME,
                                     })
                             except Exception:
-                                results.append({
+                                results_list.append({
                                     "ticker": ticker,
                                     "statement_type": stmt_name,
                                     "period": str(getattr(filing, "filing_date", "")),
@@ -322,13 +353,16 @@ class SECEdgarAdapter(BaseAdapter):
                 logger.warning("Could not parse filing %d for %s: %s", i, ticker, exc)
                 continue
 
-        if not results:
+        if not results_list:
             return RetrievalResult(success=False, errors=[f"No parseable financial data found for {ticker} ({form})"])
-        return RetrievalResult(data=results, sources_used=[self.SOURCE_NAME])
+        return RetrievalResult(data=results_list, sources_used=[self.SOURCE_NAME])
 
     @adapter_retry
     def _fetch_company_facts(self, ticker: str, params: dict) -> RetrievalResult:
         """Fetch XBRL company facts from SEC EDGAR.
+
+        Primary path: direct SEC client (data.sec.gov/api/xbrl/companyfacts).
+        Fallback: edgartools Company(ticker).get_facts() when direct fails.
 
         Supports:
           - namespace: filter by taxonomy namespace (e.g. "us-gaap", "dei")
@@ -336,62 +370,102 @@ class SECEdgarAdapter(BaseAdapter):
           - limit: max facts to return (default 100, 0 = all)
           - offset: pagination offset (default 0)
         """
-        from edgar import Company
-        _rate_limit()
+        # --- Primary: direct SEC client ---
+        raw_facts = self._sec_client.get_company_facts(ticker)
+        facts_source = "direct_sec"
 
-        company = Company(ticker)
-        facts = company.get_facts()
         facts_data: dict[str, Any] = {
             "ticker": ticker, "type": "company_facts",
-            "company_name": str(getattr(company, "name", ticker)),
-            "cik": str(getattr(company, "cik", "")),
             "source": self.SOURCE_NAME,
         }
 
+        if raw_facts is not None:
+            # Direct SEC succeeded — use the raw JSON
+            facts_data["company_name"] = raw_facts.get("entityName", ticker)
+            cik = self._sec_client.resolve_cik(ticker)
+            facts_data["cik"] = cik or ""
+            facts_data["raw_facts"] = raw_facts
+            facts_data["facts_source"] = "direct_sec"
+        else:
+            # --- Fallback: edgartools ---
+            facts_source = "edgartools"
+            logger.info("Direct SEC company facts failed for %s — trying edgartools", ticker)
+            try:
+                from edgar import Company
+                _rate_limit()
+                company = Company(ticker)
+                facts_obj = company.get_facts()
+                facts_data["company_name"] = str(getattr(company, "name", ticker))
+                facts_data["cik"] = str(getattr(company, "cik", ""))
+                facts_data["facts_source"] = "edgartools"
+
+                if facts_obj is not None:
+                    try:
+                        df = facts_obj.to_pandas() if hasattr(facts_obj, "to_pandas") else None
+                        if df is not None and not df.empty:
+                            facts_data["total_facts"] = len(df)
+                            facts_data["facts_summary"] = f"{len(df)} facts via edgartools"
+                        else:
+                            facts_data["facts_summary"] = str(facts_obj)[:3000]
+                    except Exception:
+                        facts_data["facts_summary"] = str(facts_obj)[:3000]
+                return RetrievalResult(data=[facts_data], sources_used=[self.SOURCE_NAME])
+            except Exception as exc:
+                return RetrievalResult(
+                    success=False,
+                    errors=[f"Company facts unavailable for {ticker}: {exc}"],
+                )
+
+        # --- Process direct SEC facts JSON ---
         namespace_filter = params.get("namespace", "").lower()
         concept_filter = params.get("concept", "").lower()
         limit = params.get("limit", 100)
         offset = params.get("offset", 0)
 
-        if facts is not None:
-            try:
-                df = facts.to_pandas() if hasattr(facts, "to_pandas") else None
-                if df is not None and not df.empty:
-                    facts_data["total_facts"] = len(df)
+        all_facts = raw_facts.get("facts", {})
+        flat_facts: list[dict[str, Any]] = []
+        for ns, concepts in all_facts.items():
+            if not isinstance(concepts, dict):
+                continue
+            if namespace_filter and namespace_filter not in ns.lower():
+                continue
+            for concept_name, concept_data in concepts.items():
+                if not isinstance(concept_data, dict):
+                    continue
+                if concept_filter and concept_filter not in concept_name.lower():
+                    continue
+                for unit_name, entries in concept_data.get("units", {}).items():
+                    if not isinstance(entries, list):
+                        continue
+                    for e in entries:
+                        flat_facts.append({
+                            "namespace": ns,
+                            "concept": concept_name,
+                            "unit": unit_name,
+                            "value": e.get("val"),
+                            "fy": e.get("fy"),
+                            "fp": e.get("fp"),
+                            "start": e.get("start"),
+                            "end": e.get("end"),
+                            "filed": e.get("filed"),
+                        })
 
-                    # Apply namespace filter
-                    filtered = df
-                    if namespace_filter:
-                        ns_cols = [c for c in df.columns if "namespace" in c.lower() or "taxonomy" in c.lower()]
-                        if ns_cols:
-                            filtered = filtered[filtered[ns_cols[0]].str.lower().str.contains(namespace_filter, na=False)]
+        facts_data["total_facts"] = len(flat_facts)
 
-                    # Apply concept filter
-                    if concept_filter:
-                        concept_cols = [c for c in filtered.columns if "concept" in c.lower() or "label" in c.lower() or "name" in c.lower()]
-                        if concept_cols:
-                            mask = filtered[concept_cols[0]].str.lower().str.contains(concept_filter, na=False)
-                            filtered = filtered[mask]
+        # Pagination
+        page = flat_facts[offset:offset + limit] if limit > 0 else flat_facts[offset:]
+        facts_data["facts_count"] = len(page)
+        facts_data["offset"] = offset
+        facts_data["limit"] = limit
+        facts_data["has_more"] = (offset + len(page)) < len(flat_facts)
+        facts_data["sample_facts"] = page
 
-                    facts_data["filtered_facts"] = len(filtered)
-
-                    # Pagination
-                    page = filtered.iloc[offset:offset + limit] if limit > 0 else filtered.iloc[offset:]
-                    facts_data["facts_count"] = len(page)
-                    facts_data["offset"] = offset
-                    facts_data["limit"] = limit
-                    facts_data["has_more"] = (offset + len(page)) < len(filtered)
-                    facts_data["sample_facts"] = page.to_dict(orient="records")
-
-                    # Group by namespace/category for overview
-                    ns_cols = [c for c in df.columns if "namespace" in c.lower() or "taxonomy" in c.lower()]
-                    if ns_cols:
-                        groups = df[ns_cols[0]].value_counts().to_dict()
-                        facts_data["namespace_summary"] = {str(k): int(v) for k, v in groups.items()}
-                else:
-                    facts_data["facts_summary"] = str(facts)[:3000]
-            except Exception:
-                facts_data["facts_summary"] = str(facts)[:3000]
+        # Namespace summary
+        ns_counts: dict[str, int] = {}
+        for f in flat_facts:
+            ns = f.get("namespace", "unknown")
+            ns_counts[ns] = ns_counts.get(ns, 0) + 1
+        facts_data["namespace_summary"] = ns_counts
 
         return RetrievalResult(data=[facts_data], sources_used=[self.SOURCE_NAME])
 
@@ -413,17 +487,12 @@ class SECEdgarAdapter(BaseAdapter):
         year = params.get("year")
         quarter = params.get("quarter")
 
-        # --- Step 1: Resolve the filing ---
-        # Use direct SEC client for year/quarter-filtered lookup
-        if year or quarter:
-            direct_filings = self._sec_client.get_filings(
-                ticker, form=form, year=year, quarter=quarter, limit=1,
-            )
-            if not direct_filings:
-                return RetrievalResult(
-                    success=False,
-                    errors=[f"No {form} filings found for {ticker} year={year} quarter={quarter}"],
-                )
+        # --- Step 1: Resolve the filing via direct SEC client ---
+        # Always use direct SEC for filing discovery (more reliable than edgartools)
+        direct_filings = self._sec_client.get_filings(
+            ticker, form=form, year=year, quarter=quarter, limit=1,
+        )
+        if direct_filings:
             target = direct_filings[0]
             accession_number = target.get("accessionNumber", "")
             filing_date_str = target.get("filingDate", "")
@@ -431,7 +500,13 @@ class SECEdgarAdapter(BaseAdapter):
             company_name = target.get("companyName", ticker)
             cik = target.get("cik", "")
             doc_url = self._sec_client.build_filing_url(cik, accession_number, primary_doc) if primary_doc else ""
+        elif year or quarter:
+            return RetrievalResult(
+                success=False,
+                errors=[f"No {form} filings found for {ticker} year={year} quarter={quarter}"],
+            )
         else:
+            # No direct SEC results for latest — edgartools will try below
             accession_number = ""
             filing_date_str = ""
             primary_doc = ""
@@ -439,48 +514,61 @@ class SECEdgarAdapter(BaseAdapter):
             cik = ""
             doc_url = ""
 
+        company = None
         try:
             company = Company(ticker)
         except Exception as exc:
-            logger.warning("edgartools Company(%s) failed: %s", ticker, exc)
-            return RetrievalResult(success=False, errors=[f"Could not resolve {ticker}: {exc}"])
+            logger.warning("edgartools Company(%s) failed: %s — will try direct SEC HTML", ticker, exc)
 
-        if year or quarter:
-            # Find the matching filing in edgartools by accession number
-            filings = company.get_filings(form=form)
-            filing = None
-            for f in filings:
-                if str(getattr(f, "accession_no", "")) == accession_number:
-                    filing = f
-                    break
-            if filing is None:
-                # Fallback: just use the first filing
-                filing = filings[0] if filings else None
-        else:
-            filings = company.get_filings(form=form)
-            filing = filings[0] if filings else None
+        html_content = None
+        filing = None
 
-        if not filing:
-            return RetrievalResult(success=False, errors=[f"No {form} filings found for {ticker}"])
+        if company is not None:
+            try:
+                if year or quarter:
+                    # Find the matching filing in edgartools by accession number
+                    filings = company.get_filings(form=form)
+                    for f in filings:
+                        if str(getattr(f, "accession_no", "")) == accession_number:
+                            filing = f
+                            break
+                    if filing is None:
+                        filing = filings[0] if filings else None
+                else:
+                    filings = company.get_filings(form=form)
+                    filing = filings[0] if filings else None
 
-        _rate_limit()
+                if filing:
+                    _rate_limit()
+                    filing_obj = filing.obj()
+                    if hasattr(filing_obj, "text"):
+                        html_content = filing_obj.text
+                    elif hasattr(filing_obj, "html"):
+                        html_content = filing_obj.html
+                    elif hasattr(filing, "html"):
+                        html_content = filing.html()
+            except Exception as exc:
+                logger.warning("edgartools filing fetch failed for %s: %s", ticker, exc)
+
+        # --- Direct SEC HTML fallback ---
+        if not html_content and doc_url:
+            logger.info("Attempting direct SEC HTML fetch for %s from %s", ticker, doc_url)
+            import requests as _req
+            try:
+                _rate_limit()
+                resp = _req.get(doc_url, headers={"User-Agent": self._sec_client._identity}, timeout=30)
+                resp.raise_for_status()
+                html_content = resp.text
+            except Exception as exc:
+                logger.warning("Direct SEC HTML fetch failed for %s: %s", ticker, exc)
+
+        if not html_content:
+            return RetrievalResult(
+                success=False,
+                errors=[f"Could not extract content from {form} filing for {ticker} (both edgartools and direct SEC failed)"],
+            )
 
         try:
-            filing_obj = filing.obj()
-            html_content = None
-
-            if hasattr(filing_obj, "text"):
-                html_content = filing_obj.text
-            elif hasattr(filing_obj, "html"):
-                html_content = filing_obj.html
-            elif hasattr(filing, "html"):
-                html_content = filing.html()
-
-            if not html_content:
-                return RetrievalResult(
-                    success=False,
-                    errors=[f"Could not extract content from {form} filing for {ticker}"],
-                )
 
             # --- Step 2: Discover XBRL URL ---
             # Modern SEC filings (2019+) use inline XBRL: the primary HTML IS the iXBRL
