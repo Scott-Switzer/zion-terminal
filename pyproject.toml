@@ -28,6 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+api = ["fastapi>=0.115,<1", "uvicorn>=0.34,<1", "httpx>=0.27,<1"]
 openai = ["openai>=1.30.0", "tiktoken>=0.6.0"]
 ollama = ["openai>=1.30.0"]
 llm = ["openai>=1.30.0", "tiktoken>=0.6.0"]
@@ -38,6 +39,8 @@ dev = [
     "pytest-benchmark>=4.0.0",
     "ruff>=0.3.0",
     "mypy>=1.8.0",
+    "fastapi>=0.115,<1",
+    "httpx>=0.27,<1",
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
 ]
