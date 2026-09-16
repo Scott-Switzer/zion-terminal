@@ -278,17 +278,15 @@ async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
     if name == "compare":
         entities = body.get("entities", []); metric = body.get("metric", "operating_margin")
         if not isinstance(entities, list) or len(entities) > 10: raise ValueError("RESULT_LIMIT_EXCEEDED: compare supports at most 10 entities")
-        series = {}
-        release = {}
+        series = {}; releases = {}
         for item in entities:
             result = await (precomputed_real_query(env, str(item).upper(), [metric], as_of, request_id) if world.get("world_type") == "real" else synthetic_query(env, str(item).upper(), [metric], as_of, request_id))
             rows = result["evidence"]
             if body.get("period") in {"annual", "quarterly"}: rows = [row for row in rows if row.get("period") == body["period"]]
             rows.sort(key=lambda row: (row.get("fiscal_year", 0), row.get("fiscal_quarter") or "", row.get("period_end", "")))
             if body.get("lookback"): rows = rows[-min(int(body["lookback"]), 40):]
-            series[str(item).upper()] = rows
-            if not release: release = result.get("release", {})
-        return {"tool": name, "world": world, "data": {"entities": entities, "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": release}
+            series[str(item).upper()] = rows; releases[str(item).upper()] = result.get("release", {})
+        return {"tool": name, "world": world, "data": {"entities": entities, "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": releases}
     raise LookupError("TOOL_NOT_FOUND")
 
 
@@ -321,7 +319,6 @@ def tool_as_query(result: dict, request_id: str) -> dict:
     data = result.get("data", {})
     observations = data.get("observations", []) if isinstance(data, dict) else []
     if "prices" in data: observations = [{"metric": "price_history", "value": data["prices"], "unit": "USD/share", "period": "daily"}]
-    if "filings" in data: observations = [{"metric": "filing", "value": row, "unit": "metadata", "period": row.get("filing_date", "")} for row in data["filings"]]
     if "evidence" in data and not observations: observations = data["evidence"]
     if not observations and result.get("evidence"): observations = result["evidence"]
     if not observations and isinstance(data, dict) and "series" in data:
@@ -339,8 +336,14 @@ async def query(request: Request):
         body = await request.json()
         if not isinstance(body, dict) or set(body) - {"query", "world", "as_of"} or not isinstance(body.get("world"), dict): raise ValueError("INVALID_REQUEST: request must contain query and world")
         text = body["query"]; upper = text.upper(); as_of = parse_as_of(body.get("as_of"))
-        symbols = [token for token in re.findall(r"\b[A-Z][A-Z0-9_-]{1,9}\b", upper) if token in {"AAPL", "MSFT", "NVDA", "NOVA"}]
+        symbols = [token for token in ("AAPL", "MSFT", "NVDA", "NOVA") if re.search(rf"\b{token}\b", upper)]
         world = body["world"]
+        if world.get("world_type") == "real" and world.get("world_id") != "us-public-markets":
+            raise LookupError("WORLD_NOT_FOUND")
+        if world.get("world_type") == "synthetic" and world.get("world_id") != "test-world-001":
+            raise LookupError("WORLD_NOT_FOUND")
+        if world.get("world_type") not in {"real", "synthetic"}:
+            raise LookupError("WORLD_NOT_FOUND")
         if "PRICE HISTORY" in upper:
             if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
             result = await tool_result(request.scope["env"], "get_price_history", {"entity": symbols[0], "world": world, "limit": 500, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
@@ -348,32 +351,23 @@ async def query(request: Request):
             metric = "operating_margin" if "MARGIN" in upper else "revenue"; result = await tool_result(request.scope["env"], "compare", {"entities": symbols[:10], "metric": metric, "period": "quarterly" if "QUARTER" in upper else None, "lookback": 4 if "QUARTER" in upper else None, "world": world, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
         if "FILING" in upper or "10-Q" in upper or "10-K" in upper:
             if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
-            limit_match = re.search(r"(?:LATEST|LAST)\s+(\d+)", upper); filing_limit = min(int(limit_match.group(1)), 20) if limit_match else 20
-            result = await tool_result(request.scope["env"], "get_filing", {"entity": symbols[0], "world": world, "limit": filing_limit, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
-        if "GROSS MARGIN" in upper or "REVENUE GROW" in upper or "QUARTER" in upper:
+            result = await tool_result(request.scope["env"], "get_filing", {"entity": symbols[0], "world": world, "limit": 20, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
+        if "GROSS MARGIN" in upper or "OPERATING MARGIN" in upper or "QUARTER" in upper or "REVENUE GROW" in upper:
             if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
-            metric = "gross_margin" if "GROSS MARGIN" in upper else "operating_margin" if "OPERATING MARGIN" in upper else "revenue"
-            result = await tool_result(request.scope["env"], "get_fundamentals", {"entity": symbols[0], "metrics": [metric], "period": "quarterly" if "QUARTER" in upper or "GROW" in upper else None, "lookback": 40 if "GROW" in upper else 8, "world": world, "as_of": body.get("as_of")}, request_id)
+            metric = "gross_margin" if "GROSS MARGIN" in upper else "operating_margin" if "OPERATING MARGIN" in upper else "revenue"; result = await tool_result(request.scope["env"], "get_fundamentals", {"entity": symbols[0], "metrics": [metric], "period": "quarterly" if "QUARTER" in upper or "GROW" in upper else None, "lookback": 40 if "GROW" in upper else 8, "world": world, "as_of": body.get("as_of")}, request_id)
             if "REVENUE GROW" in upper:
                 rows = [r for r in result.get("evidence", []) if r.get("metric") == "revenue" and r.get("fiscal_quarter")]
                 rows.sort(key=lambda r: (r.get("fiscal_year", 0), r.get("period_end", "")))
-                if not rows: raise LookupError("PERIOD_NOT_AVAILABLE")
-                latest = rows[-1]; prior = next((r for r in reversed(rows[:-1]) if r.get("fiscal_year") == latest.get("fiscal_year") - 1 and r.get("fiscal_quarter") == latest.get("fiscal_quarter")), None)
-                if prior is None or not prior.get("value"): raise LookupError("PERIOD_NOT_AVAILABLE")
-                calc = {**latest, "metric": "revenue_yoy_growth", "value": (latest["value"] - prior["value"]) / prior["value"], "unit": "ratio", "source_type": "CALCULATED", "formula": "current fiscal quarter revenue / prior-year same fiscal quarter revenue - 1", "input_evidence_ids": [latest.get("evidence_id", ""), prior.get("evidence_id", "")], "input_accessions": [latest.get("accession", ""), prior.get("accession", "")]}
-                calc["available_at"] = max(latest.get("available_at", ""), prior.get("available_at", ""))
-                result["data"]["observations"] = [calc]; result["evidence"] = [calc, latest, prior]
+                latest = rows[-1] if rows else None
+                prior = next((r for r in reversed(rows[:-1]) if r.get("fiscal_year") == latest.get("fiscal_year") - 1 and r.get("fiscal_quarter") == latest.get("fiscal_quarter")), None) if latest else None
+                if not latest or not prior or not prior.get("value"):
+                    raise LookupError("PERIOD_NOT_AVAILABLE")
+                calc = {**latest, "metric": "revenue_yoy_growth", "value": (latest["value"] - prior["value"]) / prior["value"], "unit": "ratio", "source_type": "CALCULATED", "formula": "current fiscal quarter revenue / prior-year same fiscal quarter revenue - 1", "input_evidence_ids": [latest.get("evidence_id", ""), prior.get("evidence_id", "")], "input_accessions": [latest.get("accession", ""), prior.get("accession", "")], "available_at": max(latest.get("available_at", ""), prior.get("available_at", ""))}
+                result["data"]["observations"] = [calc]
+                result["evidence"] = [calc, latest, prior]
             return tool_as_query(result, request_id)
         symbol, metrics = plan(text)
-        if world.get("world_type") == "real":
-            result = await precomputed_real_query(request.scope["env"], symbol, metrics, as_of, request_id)
-            latest_rows = []
-            for metric in metrics:
-                candidates = [row for row in result["evidence"] if row.get("metric") == metric]
-                annual = [row for row in candidates if row.get("period") == "annual"]
-                latest_rows.append(max(annual or candidates, key=lambda row: (row.get("period_end", ""), row.get("available_at", ""))))
-            result["evidence"] = latest_rows
-            result["metrics"] = [{k: row[k] for k in ("metric", "value", "unit", "period") if k in row} for row in latest_rows]
+        if world.get("world_type") == "real": result = await precomputed_real_query(request.scope["env"], symbol, metrics, as_of, request_id)
         elif body["world"].get("world_type") == "synthetic": result = await synthetic_query(request.scope["env"], symbol, metrics, as_of, request_id)
         else: return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)
         if result["world"].get("world_id") != body["world"].get("world_id"): return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)
