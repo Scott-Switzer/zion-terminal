@@ -56,7 +56,8 @@ jobs:
                   headers = dict(response.headers)
                   status = response.status
               elapsed = (time.perf_counter() - started) * 1000
-              telemetry = json.loads(headers.get("x-serving-telemetry", "{}"))
+              document = json.loads(payload)
+              telemetry = document.get("release", {}).get("serving_telemetry", {})
               rows.append({"ms": elapsed, "status": status, "bytes": len(payload), "ray": headers.get("cf-ray"), "telemetry": telemetry})
           values = sorted(row["ms"] for row in rows)
           def pct(p): return values[min(len(values)-1, max(0, int(len(values)*p)-1))]
