@@ -352,7 +352,7 @@ async def query(request: Request):
         if "FILING" in upper or "10-Q" in upper or "10-K" in upper:
             if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
             result = await tool_result(request.scope["env"], "get_filing", {"entity": symbols[0], "world": world, "limit": 20, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
-        if "GROSS MARGIN" in upper or "OPERATING MARGIN" in upper or "QUARTER" in upper or "REVENUE GROW" in upper:
+        if "GROSS MARGIN" in upper or "QUARTER" in upper or "REVENUE GROW" in upper:
             if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
             metric = "gross_margin" if "GROSS MARGIN" in upper else "operating_margin" if "OPERATING MARGIN" in upper else "revenue"; result = await tool_result(request.scope["env"], "get_fundamentals", {"entity": symbols[0], "metrics": [metric], "period": "quarterly" if "QUARTER" in upper or "GROW" in upper else None, "lookback": 40 if "GROW" in upper else 8, "world": world, "as_of": body.get("as_of")}, request_id)
             if "REVENUE GROW" in upper:
