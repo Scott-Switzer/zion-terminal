@@ -30,14 +30,14 @@ The parser is deliberately bounded. Unsupported requests return `QUERY_NOT_SUPPO
 
 ```text
 https://zion-financial-query-staging.scswitzer.workers.dev
-Worker version: da70d13b-9e8d-4cfb-8a96-33f101596df8
+Worker version: 6458faf9-a3a9-47c3-8b1e-86f7547da7e6
 ```
 
 This is a Cloudflare Python Worker using FastAPI through the Workers ASGI adapter and is isolated from production custom domains.
 
 ## Release boundaries
 
-Real requests resolve PPE `control/market-terminal/CURRENT.json` and the derived fundamentals pointer once per request. Fundamentals are served from immutable per-symbol JSON read models under `gold/market-terminal/fundamentals/releases/<digest>/`, derived offline from published PPE SEC artifacts. Evidence retains period, filing date, accession, availability, source context, and release provenance.
+Real requests resolve PPE `control/market-terminal/CURRENT.json` and the PPE fundamentals pointer once per request. Fundamentals are served from immutable per-symbol JSON read models under `gold/market-terminal/fundamentals/releases/<digest>`, published by PPE from issuer CompanyFacts/Submissions. Evidence retains fiscal period, direct/calculated source type, filing date, accession, availability, input evidence IDs, and release provenance.
 
 Synthetic requests resolve the certified Market Fuzzer pointer, require QC `PASS`, and read only `manifest.json` and `public/*`. Hidden world state is never exposed.
 
