@@ -278,11 +278,15 @@ async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
     if name == "compare":
         entities = body.get("entities", []); metric = body.get("metric", "operating_margin")
         if not isinstance(entities, list) or len(entities) > 10: raise ValueError("RESULT_LIMIT_EXCEEDED: compare supports at most 10 entities")
-        series = {}
+        series = {}; releases = {}
         for item in entities:
             result = await (precomputed_real_query(env, str(item).upper(), [metric], as_of, request_id) if world.get("world_type") == "real" else synthetic_query(env, str(item).upper(), [metric], as_of, request_id))
-            series[str(item).upper()] = result["metrics"]
-        return {"tool": name, "world": world, "data": {"entities": entities, "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}}
+            rows = result["evidence"]
+            if body.get("period") in {"annual", "quarterly"}: rows = [row for row in rows if row.get("period") == body["period"]]
+            rows.sort(key=lambda row: (row.get("fiscal_year", 0), row.get("fiscal_quarter") or "", row.get("period_end", "")))
+            if body.get("lookback"): rows = rows[-min(int(body["lookback"]), 40):]
+            series[str(item).upper()] = rows; releases[str(item).upper()] = result.get("release", {})
+        return {"tool": name, "world": world, "data": {"entities": entities, "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": releases}
     raise LookupError("TOOL_NOT_FOUND")
 
 
