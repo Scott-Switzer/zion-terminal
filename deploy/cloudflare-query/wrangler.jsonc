@@ -12,6 +12,7 @@
   "vars": {
     "SYNTHETIC_WORLD_ID": "test-world-001",
     "SYNTHETIC_CURRENT_KEY": "control/synthetic-worlds/test-world-001/CURRENT.json",
+    "FUNDAMENTALS_CURRENT_KEY": "control/market-terminal/fundamentals/CURRENT.json",
     "SEC_CORPUS_PREFIX": "sec-filing-intelligence/corpus/v1/b7fc2b52683b61ef53f527e1f766ab1a91eb86346a0f90136d57b0121173fc2b",
     "SERVICE_VERSION": "1.0.0-staging"
   },
