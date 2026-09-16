@@ -13,7 +13,9 @@ from serving_v2 import (  # type: ignore
     _serve_row,
     cache_key,
     entity_key,
+    begin_telemetry,
     load_release,
+    telemetry_snapshot,
 )
 
 
@@ -40,6 +42,12 @@ def test_served_row_preserves_evidence_and_exact_decimal_text():
     assert served["evidence_id"] == "evidence"
     assert served["provenance"]["serving_release_id"] == "serving"
     assert SCHEMA_VERSION == "financial-serving-v2"
+
+
+def test_request_telemetry_starts_with_uncached_current_contract():
+    begin_telemetry()
+    stats = telemetry_snapshot()
+    assert stats == {"r2_gets": 0, "cache_hits": 0, "cache_misses": 0, "cache_errors": 0, "current_uncached": True}
 
 
 def test_invalid_manifest_hash_is_rejected():

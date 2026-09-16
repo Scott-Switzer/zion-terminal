@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from workers import WorkerEntrypoint, asgi
 
-from serving_v2 import ServingV2Error, enabled as serving_v2_enabled, fundamentals as serving_v2_fundamentals, latest_price as serving_v2_latest_price, price_history as serving_v2_price_history, query as serving_v2_query
+from serving_v2 import ServingV2Error, begin_telemetry as serving_v2_begin_telemetry, enabled as serving_v2_enabled, fundamentals as serving_v2_fundamentals, latest_price as serving_v2_latest_price, price_history as serving_v2_price_history, query as serving_v2_query, telemetry_snapshot as serving_v2_telemetry
 
 app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None, redoc_url=None)
 METRICS = ("revenue", "cost_of_revenue", "gross_profit", "operating_income", "net_income", "gross_margin", "operating_margin", "net_margin", "cash", "assets", "liabilities", "equity", "debt", "shares_outstanding", "eps_diluted", "last_price")
@@ -229,6 +229,13 @@ async def synthetic_query(env: Any, symbol: str, metrics: list[str], as_of: date
     return evidence_response(manifest["world"], {key: entity[key] for key in ("entity_id", "display_name", "symbol")}, rows, {"world_version": manifest["world"].get("version"), "producer_sha": manifest["producer"].get("git_sha"), "qc_status": manifest.get("qc_status"), "release_id": prefix}, request_id)
 
 
+def add_serving_telemetry(result: dict) -> dict:
+    telemetry = serving_v2_telemetry()
+    if telemetry:
+        result.setdefault("release", {})["serving_telemetry"] = telemetry
+    return result
+
+
 async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
     world = body.get("world") or {"world_type": "real", "world_id": "us-public-markets"}
     if serving_v2_enabled(env) and world.get("world_type") == "real":
@@ -236,22 +243,22 @@ async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
         as_of = body.get("as_of")
         if name == "get_fundamentals":
             result = await serving_v2_fundamentals(env, entity, body.get("metrics", []), period=body.get("period"), lookback=int(body.get("lookback", 40)), as_of=as_of, request_id=request_id)
-            return {"tool": name, "world": result["world"], "data": {"observations": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]}
+            return add_serving_telemetry({"tool": name, "world": result["world"], "data": {"observations": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]})
         if name == "get_price":
             result = await serving_v2_latest_price(env, entity, as_of=as_of, request_id=request_id)
-            return {"tool": name, "world": result["world"], "data": result["metric"], "evidence": [result["metric"]], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]}
+            return add_serving_telemetry({"tool": name, "world": result["world"], "data": result["metric"], "evidence": [result["metric"]], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]})
         if name == "get_price_history":
             result = await serving_v2_price_history(env, entity, limit=min(int(body.get("limit", 500)), 500), start_date=body.get("start_date"), end_date=body.get("end_date"), as_of=as_of, request_id=request_id)
-            return {"tool": name, "world": result["world"], "data": {"prices": result["prices"]}, "evidence": [], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]}
+            return add_serving_telemetry({"tool": name, "world": result["world"], "data": {"prices": result["prices"]}, "evidence": [], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]})
         if name == "get_evidence":
             result = await serving_v2_fundamentals(env, entity, [body.get("metric", "revenue")], period=body.get("period"), lookback=40, as_of=as_of, request_id=request_id)
-            return {"tool": name, "world": result["world"], "data": {"evidence": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED"}, "release": result["release"]}
+            return add_serving_telemetry({"tool": name, "world": result["world"], "data": {"evidence": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED"}, "release": result["release"]})
         if name == "compare":
             series = {}
             for item in body.get("entities", []):
                 item_result = await serving_v2_fundamentals(env, str(item).upper(), [body.get("metric", "operating_margin")], period=body.get("period"), lookback=1, as_of=as_of, request_id=request_id)
                 series[str(item).upper()] = item_result["observations"]
-            return {"tool": name, "world": {"world_type": "real", "world_id": "us-public-markets"}, "data": {"entities": body.get("entities", []), "metric": body.get("metric", "operating_margin"), "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": item_result["release"] if series else {}}
+            return add_serving_telemetry({"tool": name, "world": {"world_type": "real", "world_id": "us-public-markets"}, "data": {"entities": body.get("entities", []), "metric": body.get("metric", "operating_margin"), "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": item_result["release"] if series else {}})
     symbol = str(body.get("entity", body.get("symbol", ""))).upper()
     as_of = parse_as_of(body.get("as_of"))
     metrics = body.get("metrics") or [body.get("metric", "revenue")]
@@ -330,6 +337,7 @@ async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
 @app.post("/v1/tools/{tool_name}")
 async def tools(tool_name: str, request: Request):
     request_id = rid(request)
+    serving_v2_begin_telemetry()
     try:
         body = await request.json()
         if not isinstance(body, dict) or len(json.dumps(body)) > 32000: raise ValueError("INVALID_REQUEST: bounded JSON object required")
@@ -406,7 +414,7 @@ async def query(request: Request):
             return tool_as_query(result, request_id)
         symbol, metrics = plan(text)
         if serving_v2_enabled(request.scope["env"]) and world.get("world_type") == "real":
-            result = await serving_v2_query(request.scope["env"], symbol, metrics, as_of=body.get("as_of"), request_id=request_id)
+            result = add_serving_telemetry(await serving_v2_query(request.scope["env"], symbol, metrics, as_of=body.get("as_of"), request_id=request_id))
         elif world.get("world_type") == "real": result = await precomputed_real_query(request.scope["env"], symbol, metrics, as_of, request_id)
         elif body["world"].get("world_type") == "synthetic": result = await synthetic_query(request.scope["env"], symbol, metrics, as_of, request_id)
         else: return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)

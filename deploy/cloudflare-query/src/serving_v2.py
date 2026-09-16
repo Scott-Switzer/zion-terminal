@@ -7,12 +7,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+from contextvars import ContextVar
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 CURRENT_KEY = "gold/serving/CURRENT.json"
 SCHEMA_VERSION = "financial-serving-v2"
+_TELEMETRY: ContextVar[dict[str, Any] | None] = ContextVar("serving_v2_telemetry", default=None)
+
+
+def begin_telemetry() -> None:
+    _TELEMETRY.set({"r2_gets": 0, "cache_hits": 0, "cache_misses": 0, "cache_errors": 0, "current_uncached": True})
+
+
+def telemetry_snapshot() -> dict[str, Any]:
+    return dict(_TELEMETRY.get() or {})
 
 
 class ServingV2Error(Exception):
@@ -105,6 +115,9 @@ def _select_revisions(rows: list[dict[str, Any]], as_of: datetime | None) -> lis
 
 
 async def _r2_text(env: Any, key: str) -> bytes:
+    stats = _TELEMETRY.get()
+    if stats is not None:
+        stats["r2_gets"] += 1
     obj = await env.MARKET_DATA.get(key)
     if obj is None:
         raise ServingV2Error("SERVING_ARTIFACT_NOT_FOUND", f"serving artifact is unavailable: {key}", retryable=True)
@@ -121,19 +134,29 @@ async def _cached_text(env: Any, key: str, *, release_id: str | None, ttl: int) 
             request = Request.new(cache_key(release_id, key))
             hit = await caches.default.match(request)
             if hit is not None:
+                stats = _TELEMETRY.get()
+                if stats is not None: stats["cache_hits"] += 1
                 return (await hit.text()).encode()
+            stats = _TELEMETRY.get()
+            if stats is not None: stats["cache_misses"] += 1
         except Exception:
-            pass
+            stats = _TELEMETRY.get()
+            if stats is not None:
+                stats["cache_errors"] += 1
+                stats["cache_misses"] += 1
     raw = await _r2_text(env, key)
     if release_id:
         try:
             from js import Request, Response, caches  # type: ignore
             request = Request.new(cache_key(release_id, key))
-            # The release-addressed URL is the cache identity. Response
-            # construction stays string-based for Pyodide compatibility.
-            await caches.default.put(request, Response.new(raw.decode()))
+            # The release-addressed URL is the cache identity. Mutating the
+            # Headers object avoids Pyodide's JS constructor dictionary issue.
+            response = Response.new(raw.decode())
+            response.headers.set("Cache-Control", f"public, max-age={ttl}, immutable")
+            await caches.default.put(request, response)
         except Exception:
-            pass
+            stats = _TELEMETRY.get()
+            if stats is not None: stats["cache_errors"] += 1
     return raw
 
 
