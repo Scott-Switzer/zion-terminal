@@ -17,13 +17,13 @@ Each tool result contains `tool`, `world`, `data`, `evidence`, `quality`, and `r
 
 ## Published data
 
-Real fundamentals are served from the immutable derived release under `gold/market-terminal/fundamentals/releases/<digest>/`, selected through `control/market-terminal/fundamentals/CURRENT.json`. The builder is `deploy/cloudflare-query/build_read_models.py`; it derives normalized facts from PPE-published SEC artifacts and never changes acquisition.
+Real fundamentals are served from the immutable PPE-owned release under `gold/market-terminal/fundamentals/releases/<digest>/`, selected through `control/market-terminal/fundamentals/CURRENT.json`. The current release contains bounded AAPL, MSFT, and NVDA fiscal-quarter history, including direct `REPORTED` and safe `CALCULATED` Q4 observations. Zion is a consumer; SEC normalization is no longer authoritative here.
 
 Synthetic tools read only the certified Market Fuzzer `public/` release. Hidden world state is not a serving input.
 
 ## Limits and semantics
 
-Requests are limited to 32 KiB and query text to 2,000 characters. `as_of` filters every observation by its `available_at` timestamp. Missing or unavailable data is reported rather than inferred. Annual and quarterly periods are never silently mixed. The current PPE corpus contains annual AAPL/MSFT/NVDA fundamentals; quarterly results remain unavailable until a published quarterly source is present.
+Requests are limited to 32 KiB and query text to 2,000 characters. `as_of` filters every observation by its `available_at` timestamp. Missing or unavailable data is reported rather than inferred. Annual and quarterly periods are never silently mixed. The current bounded release contains annual and quarterly AAPL/MSFT/NVDA fundamentals. Quarter labels follow issuer fiscal metadata; Q4 observations explicitly carry calculated provenance when derived from FY minus 9M.
 
 ## Examples
 
