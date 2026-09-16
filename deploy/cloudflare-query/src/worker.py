@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from workers import WorkerEntrypoint, asgi
 
 app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None, redoc_url=None)
-METRICS = ("revenue", "operating_margin", "last_price")
+METRICS = ("revenue", "cost_of_revenue", "gross_profit", "operating_income", "net_income", "gross_margin", "operating_margin", "net_margin", "cash", "assets", "liabilities", "equity", "debt", "shares_outstanding", "eps_diluted", "last_price")
 ALIASES = {
     "revenue": "revenue", "sales": "revenue", "operating margin": "operating_margin",
     "operating_margin": "operating_margin", "margin": "operating_margin",
@@ -102,6 +102,33 @@ def evidence_response(world: dict, entity: dict, rows: list[dict], release: dict
             "source_count": len(rows), "qc_status": release.get("qc_status")}, "release": release}
 
 
+async def precomputed_real_query(env: Any, symbol: str, metrics: list[str], as_of: datetime | None, request_id: str) -> dict:
+    if symbol not in {"AAPL", "MSFT", "NVDA"}:
+        raise LookupError("ENTITY_NOT_FOUND")
+    current = json.loads(await text_object(env.MARKET_DATA, "control/market-terminal/CURRENT.json"))
+    pointer_key = getattr(env, "FUNDAMENTALS_CURRENT_KEY", "control/market-terminal/fundamentals/CURRENT.json")
+    pointer = json.loads(await text_object(env.MARKET_DATA, pointer_key))
+    if pointer.get("base_release") != current.get("prefix"):
+        raise LookupError("RELEASE_NOT_AVAILABLE")
+    prefix = pointer["prefix"]
+    artifact = json.loads(await text_object(env.MARKET_DATA, safe_key(prefix, f"{symbol}.json")))
+    summary = json.loads(await text_object(env.MARKET_DATA, safe_key(current["prefix"], f"securities/{symbol}/market_summary.json")))
+    rows = []
+    for row in artifact.get("observations", []):
+        if row.get("metric") in metrics and before(row.get("available_at"), as_of):
+            rows.append({**row, "entity_id": artifact["entity_id"], "world": {"world_type": "real", "world_id": "us-public-markets", "version": current["prefix"]}, "provenance": {"producer": "Project-Portfolio-Engine", "artifact": f"{prefix}/{symbol}.json", "release_id": prefix, "base_release": current["prefix"]}})
+    if "last_price" in metrics:
+        prices = artifact.get("price_history", [])
+        available = [row for row in prices if before(row.get("available_at"), as_of)]
+        if available:
+            price = available[-1]
+            rows.append({"entity_id": artifact["entity_id"], "metric": "last_price", "value": price["close"], "unit": "USD/share", "period": price["session"], "observation_at": price["session"] + "T21:00:00Z", "available_at": price["available_at"], "retrieved_at": price["available_at"], "source": "PPE-published-release", "source_record": f"{current['prefix']}/securities/{symbol}/price_history.parquet", "calculation": None, "world": {"world_type": "real", "world_id": "us-public-markets", "version": current["prefix"]}, "provenance": {"producer": "Project-Portfolio-Engine", "artifact": f"{current['prefix']}/securities/{symbol}/price_history.parquet", "release_id": current["prefix"]}, "quality": {"status": "observed"}})
+    if len({row["metric"] for row in rows}) < len(metrics): raise LookupError("METRIC_NOT_AVAILABLE")
+    entity = {"entity_id": artifact["entity_id"], "display_name": summary.get("company_name", symbol), "symbol": symbol}
+    release = {"release_id": prefix, "base_release": current["prefix"], "qc_status": "VERIFIED"}
+    return evidence_response({"world_type": "real", "world_id": "us-public-markets", "version": current["prefix"]}, entity, rows, release, request_id)
+
+
 async def real_query(env: Any, symbol: str, metrics: list[str], as_of: datetime | None, request_id: str) -> dict:
     current = json.loads(await text_object(env.MARKET_DATA, "control/market-terminal/CURRENT.json"))
     prefix = current["prefix"]
@@ -186,6 +213,93 @@ async def synthetic_query(env: Any, symbol: str, metrics: list[str], as_of: date
     return evidence_response(manifest["world"], {key: entity[key] for key in ("entity_id", "display_name", "symbol")}, rows, {"world_version": manifest["world"].get("version"), "producer_sha": manifest["producer"].get("git_sha"), "qc_status": manifest.get("qc_status"), "release_id": prefix}, request_id)
 
 
+async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
+    world = body.get("world") or {"world_type": "real", "world_id": "us-public-markets"}
+    symbol = str(body.get("entity", body.get("symbol", ""))).upper()
+    as_of = parse_as_of(body.get("as_of"))
+    metrics = body.get("metrics") or [body.get("metric", "revenue")]
+    if not isinstance(metrics, list) or len(metrics) > 20: raise ValueError("INVALID_TOOL_ARGUMENT: metrics must contain at most 20 items")
+    if any(metric not in METRICS for metric in metrics): raise ValueError("METRIC_NOT_SUPPORTED: requested metric is not registered")
+    if name == "resolve_entity":
+        if world.get("world_type") == "real" and symbol in {"AAPL", "MSFT", "NVDA"}:
+            return {"tool": name, "world": world, "data": {"entity_id": f"real:equity:{symbol}", "symbol": symbol, "name": symbol, "match_type": "symbol", "confidence": 1.0}, "evidence": [], "quality": {"status": "VERIFIED"}}
+        if world.get("world_type") == "synthetic":
+            snap = await synthetic_query(env, symbol, ["revenue"], as_of, request_id)
+            return {"tool": name, "world": world, "data": snap["entity"], "evidence": [], "quality": snap["quality"], "release": snap["release"]}
+        raise LookupError("ENTITY_NOT_FOUND")
+    if name in {"get_price", "get_price_history", "get_fundamentals", "get_filing"}:
+        if name == "get_fundamentals":
+            result = await (precomputed_real_query(env, symbol, metrics, as_of, request_id) if world.get("world_type") == "real" else synthetic_query(env, symbol, metrics, as_of, request_id))
+            if body.get("period") in {"annual", "quarterly"}: result["evidence"] = [row for row in result["evidence"] if row.get("period") == body["period"]]
+            if body.get("lookback"): result["evidence"] = result["evidence"][-min(int(body["lookback"]), 40):]
+            if not result["evidence"]: raise LookupError("PERIOD_NOT_AVAILABLE")
+            return {"tool": name, "world": result["world"], "data": {"observations": result["evidence"]}, "evidence": result["evidence"], "quality": result["quality"], "release": result["release"]}
+        if name == "get_filing":
+            if world.get("world_type") != "real": raise LookupError("TOOL_NOT_SUPPORTED_FOR_WORLD")
+            result = await precomputed_real_query(env, symbol, ["revenue"], as_of, request_id)
+            filings = {}
+            for row in result["evidence"]: filings[(row.get("form"), row.get("accession"))] = {"form": row.get("form"), "filing_date": row.get("filing_date"), "period_end": row.get("period_end"), "accession": row.get("accession"), "available_at": row.get("available_at"), "artifact": row.get("provenance", {}).get("artifact")}
+            return {"tool": name, "world": result["world"], "data": {"filings": list(filings.values())[:min(int(body.get("limit", 20)), 20)]}, "evidence": result["evidence"], "quality": result["quality"], "release": result["release"]}
+        if name == "get_price_history":
+            limit = min(int(body.get("limit", 500)), 500)
+            if world.get("world_type") == "real":
+                current = json.loads(await text_object(env.MARKET_DATA, "control/market-terminal/CURRENT.json")); pointer = json.loads(await text_object(env.MARKET_DATA, getattr(env, "FUNDAMENTALS_CURRENT_KEY", "control/market-terminal/fundamentals/CURRENT.json"))); artifact = json.loads(await text_object(env.MARKET_DATA, safe_key(pointer["prefix"], f"{symbol}.json")))
+                prices = [row for row in artifact.get("price_history", []) if before(row.get("available_at"), as_of)]
+                return {"tool": name, "world": world, "data": {"prices": prices[-limit:]}, "evidence": [], "quality": {"status": "VERIFIED"}, "release": {"release_id": current["prefix"], "derived_release": pointer["prefix"]}}
+            if world.get("world_type") == "synthetic":
+                world_id = getattr(env, "SYNTHETIC_WORLD_ID", "test-world-001"); pointer = json.loads(await text_object(env.MARKET_DATA, getattr(env, "SYNTHETIC_CURRENT_KEY", f"control/synthetic-worlds/{world_id}/CURRENT.json"))); prefix = pointer["prefix"]; manifest = json.loads(await text_object(env.MARKET_DATA, safe_key(prefix, "manifest.json")))
+                if manifest.get("qc_status") != "PASS": raise LookupError("WORLD_NOT_CERTIFIED")
+                prices = json.loads(await text_object(env.MARKET_DATA, safe_key(prefix, "public/prices.json")))["prices"]
+                prices = [row for row in prices if row.get("security") == symbol and before(row.get("available_at"), as_of)]
+                return {"tool": name, "world": world, "data": {"prices": prices[-limit:]}, "evidence": [], "quality": {"status": "VERIFIED", "qc_status": "PASS"}, "release": {"release_id": prefix}}
+            raise LookupError("WORLD_NOT_FOUND")
+        result = await (precomputed_real_query(env, symbol, ["last_price"], as_of, request_id) if world.get("world_type") == "real" else synthetic_query(env, symbol, ["last_price"], as_of, request_id))
+        return {"tool": name, "world": result["world"], "data": result["metrics"][0], "evidence": result["evidence"], "quality": result["quality"], "release": result["release"]}
+    if name == "get_evidence":
+        metric = body.get("metric")
+        if world.get("world_type") != "real":
+            result = await synthetic_query(env, symbol, [metric] if metric else ["revenue"], as_of, request_id)
+        else:
+            result = await precomputed_real_query(env, symbol, [metric] if metric else ["revenue"], as_of, request_id)
+        rows = [row for row in result["evidence"] if not metric or row.get("metric") == metric]
+        if not rows: raise LookupError("EVIDENCE_NOT_FOUND")
+        return {"tool": name, "world": result["world"], "data": {"evidence": rows}, "evidence": rows, "quality": result["quality"], "release": result["release"]}
+    if name == "calculate":
+        operation = body.get("operation"); values = body.get("values", [])
+        if not isinstance(values, list) or len(values) > 40: raise ValueError("INVALID_TOOL_ARGUMENT: values are bounded")
+        if operation == "percent_change" and len(values) == 2: value = (values[1] - values[0]) / values[0] if values[0] else None
+        elif operation == "change" and len(values) == 2: value = values[1] - values[0]
+        elif operation == "average" and values: value = sum(values) / len(values)
+        elif operation == "min" and values: value = min(values)
+        elif operation == "max" and values: value = max(values)
+        elif operation == "basis_point_change" and len(values) == 2: value = (values[1] - values[0]) * 10000
+        else: raise ValueError("CALCULATION_NOT_SUPPORTED: allowlisted operation or inputs are invalid")
+        return {"tool": name, "world": world, "data": {"operation": operation, "value": value, "inputs": values, "formula": operation}, "evidence": body.get("evidence", []), "quality": {"status": "CALCULATED"}}
+    if name == "compare":
+        entities = body.get("entities", []); metric = body.get("metric", "operating_margin")
+        if not isinstance(entities, list) or len(entities) > 10: raise ValueError("RESULT_LIMIT_EXCEEDED: compare supports at most 10 entities")
+        series = {}
+        for item in entities:
+            result = await (precomputed_real_query(env, str(item).upper(), [metric], as_of, request_id) if world.get("world_type") == "real" else synthetic_query(env, str(item).upper(), [metric], as_of, request_id))
+            series[str(item).upper()] = result["metrics"]
+        return {"tool": name, "world": world, "data": {"entities": entities, "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}}
+    raise LookupError("TOOL_NOT_FOUND")
+
+
+@app.post("/v1/tools/{tool_name}")
+async def tools(tool_name: str, request: Request):
+    request_id = rid(request)
+    try:
+        body = await request.json()
+        if not isinstance(body, dict) or len(json.dumps(body)) > 32000: raise ValueError("INVALID_REQUEST: bounded JSON object required")
+        return await tool_result(request.scope["env"], tool_name, body, request_id)
+    except FileNotFoundError: return fail(request, "RELEASE_NOT_AVAILABLE", "published release is unavailable", 503, True)
+    except LookupError as error: return fail(request, str(error), str(error).replace("_", " ").lower(), 404 if str(error) != "TOOL_NOT_SUPPORTED_FOR_WORLD" else 422)
+    except ValueError as error:
+        message = str(error); code, _, detail = message.partition(": "); return fail(request, code if code.isupper() else "INVALID_TOOL_ARGUMENT", detail or message, 422 if code in {"CALCULATION_NOT_SUPPORTED", "INVALID_TOOL_ARGUMENT"} else 400)
+    except Exception: return fail(request, "UPSTREAM_UNAVAILABLE", "published data is temporarily unavailable", 503, True)
+
+
 @app.get("/healthz")
 async def healthz(): return {"status": "ok", "service": "zion-terminal", "runtime": "cloudflare-python-worker"}
 
@@ -195,7 +309,20 @@ async def readyz(): return {"status": "ready", "service": "zion-terminal"}
 @app.get("/v1/capabilities")
 async def capabilities(request: Request):
     env = request.scope["env"]
-    return {"schema_version": "1", "service_version": getattr(env, "SERVICE_VERSION", "staging"), "git_sha": "cloudflare-staging", "worlds": ["real", "synthetic"], "metrics": list(METRICS)}
+    return {"schema_version": "1", "service_version": getattr(env, "SERVICE_VERSION", "staging"), "git_sha": "cloudflare-staging", "worlds": ["real", "synthetic"], "metrics": list(METRICS), "tools": {name: {"supported_worlds": ["real", "synthetic"]} for name in ("resolve_entity", "get_price", "get_price_history", "get_fundamentals", "get_filing", "get_evidence", "calculate", "compare")}, "calculation_operations": ["change", "percent_change", "average", "min", "max", "basis_point_change"]}
+
+def tool_as_query(result: dict, request_id: str) -> dict:
+    data = result.get("data", {})
+    observations = data.get("observations", []) if isinstance(data, dict) else []
+    if "prices" in data: observations = [{"metric": "price_history", "value": data["prices"], "unit": "USD/share", "period": "daily"}]
+    if "evidence" in data and not observations: observations = data["evidence"]
+    if not observations and result.get("evidence"): observations = result["evidence"]
+    if not observations and isinstance(data, dict) and "series" in data:
+        observations = [row for rows in data["series"].values() for row in rows]
+    entity = {"symbol": "", "entity_id": ""}
+    if observations and isinstance(observations[0], dict): entity = {"symbol": observations[0].get("symbol", ""), "entity_id": observations[0].get("entity_id", "")}
+    return {"schema_version": "1", "request_id": request_id, "world": result.get("world", {}), "entity": entity, "answer": f"Tool {result.get('tool')} returned verified data.", "metrics": [{k: row[k] for k in ("metric", "value", "unit", "period", "session") if k in row} for row in observations], "calculations": [], "evidence": result.get("evidence", observations), "quality": result.get("quality", {}), "release": result.get("release", {})}
+
 
 @app.post("/v1/query")
 async def query(request: Request):
@@ -204,8 +331,22 @@ async def query(request: Request):
     try:
         body = await request.json()
         if not isinstance(body, dict) or set(body) - {"query", "world", "as_of"} or not isinstance(body.get("world"), dict): raise ValueError("INVALID_REQUEST: request must contain query and world")
-        symbol, metrics = plan(body["query"]); as_of = parse_as_of(body.get("as_of"))
-        if body["world"].get("world_type") == "real": result = await real_query(request.scope["env"], symbol, metrics, as_of, request_id)
+        text = body["query"]; upper = text.upper(); as_of = parse_as_of(body.get("as_of"))
+        symbols = [token for token in re.findall(r"\b[A-Z][A-Z0-9_-]{1,9}\b", upper) if token in {"AAPL", "MSFT", "NVDA", "NOVA"}]
+        world = body["world"]
+        if "PRICE HISTORY" in upper:
+            if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
+            result = await tool_result(request.scope["env"], "get_price_history", {"entity": symbols[0], "world": world, "limit": 500, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
+        if "COMPARE" in upper and len(symbols) >= 2:
+            metric = "operating_margin" if "MARGIN" in upper else "revenue"; result = await tool_result(request.scope["env"], "compare", {"entities": symbols[:10], "metric": metric, "world": world, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
+        if "FILING" in upper or "10-Q" in upper or "10-K" in upper:
+            if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
+            result = await tool_result(request.scope["env"], "get_filing", {"entity": symbols[0], "world": world, "limit": 20, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
+        if "GROSS MARGIN" in upper or "QUARTERLY" in upper or "REVENUE GROW" in upper:
+            if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
+            metric = "gross_margin" if "GROSS MARGIN" in upper else "revenue"; result = await tool_result(request.scope["env"], "get_fundamentals", {"entity": symbols[0], "metrics": [metric], "period": "quarterly" if "QUARTERLY" in upper or "GROW" in upper else None, "lookback": 8, "world": world, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
+        symbol, metrics = plan(text)
+        if world.get("world_type") == "real": result = await precomputed_real_query(request.scope["env"], symbol, metrics, as_of, request_id)
         elif body["world"].get("world_type") == "synthetic": result = await synthetic_query(request.scope["env"], symbol, metrics, as_of, request_id)
         else: return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)
         if result["world"].get("world_id") != body["world"].get("world_id"): return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)

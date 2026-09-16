@@ -2,91 +2,74 @@
 
 ## Runtime
 
-`zion-financial-query-staging` is a Cloudflare Python Worker using FastAPI through `workers.asgi`. The deployment is isolated on a `workers.dev` URL and does not alter the PPE production routes or existing SEC container.
+`zion-financial-query-staging` is a Cloudflare Python Worker using FastAPI through `workers.asgi`. The deployment is isolated on a `workers.dev` URL and does not alter PPE production routes or the existing SEC container.
 
-The deployment subproject is `deploy/cloudflare-query/`. It intentionally has a minimal dependency graph: FastAPI, Pydantic, and the Cloudflare Workers runtime. It does not package Zion's provider, pandas, filing, or LLM dependencies.
+The deployment subproject is `deploy/cloudflare-query/`. Its serving dependency graph is limited to FastAPI, Pydantic, and the Workers runtime; it does not package Zion provider, pandas, filing-parser, or LLM dependencies.
 
-## Live URL and version
+## Live URL and current version
 
 ```text
 https://zion-financial-query-staging.scswitzer.workers.dev
-version: d049bd40-6ac1-4b77-bf0d-fcc2a9ed126
+Worker version: da70d13b-9e8d-4cfb-8a96-33f101596df8
 ```
 
 The URL is staging-only. Production domains were not changed.
 
-## Bindings
+## Bindings and release paths
 
 Read-only bindings:
 
 - `MARKET_DATA` → `financial-system-datasets`
 - `SEC_CORPUS` → `ppe-sec-intelligence-prod`
 
-The real path resolves PPE `control/market-terminal/CURRENT.json`, reads the pinned AAPL market release, and reads the AAPL SEC filing and filing manifest from the published SEC corpus. The synthetic path resolves `control/synthetic-worlds/test-world-001/CURRENT.json` and then only reads the certified public release artifacts.
+The real path resolves PPE `control/market-terminal/CURRENT.json`, then the derived fundamentals pointer `control/market-terminal/fundamentals/CURRENT.json`. The derived release contains bounded per-symbol JSON read models and the last 500 daily price rows. The source model is built by `build_read_models.py` from published PPE SEC artifacts; it does not change acquisition.
 
-No provider credentials, API keys, or Cloudflare tokens are present in the Worker configuration.
+The synthetic path resolves `control/synthetic-worlds/test-world-001/CURRENT.json`, requires QC `PASS`, and reads only the certified public release artifacts. Hidden world state is not a serving input.
 
-## Synthetic publication
+No provider credentials, API keys, or Cloudflare tokens are present in Worker configuration.
 
-Generate and QC a small native world, then publish only its public artifacts:
+## Fundamentals publication
 
-```bash
-rm -rf /tmp/staging-native-world
-PYTHONPATH=. .venv/bin/python -m app.export_world \
-  --world-id test-world-001 --seed 42 --output /tmp/staging-native-world
-PYTHONPATH=../financial-world-qc/src \
-  ../financial-world-qc/.venv/bin/python -m financial_world_qc.cli \
-  /tmp/staging-native-world > /tmp/staging-qc.json
-PYTHONPATH=. python3 publish_synthetic.py \
-  --world-export /tmp/staging-native-world \
-  --qc-report /tmp/staging-qc.json \
-  --target-world test-world-001 --staging
-```
-
-The publisher refuses non-PASS QC, uploads an immutable `gold/synthetic-worlds/releases/<digest>/` prefix, and writes the control `CURRENT.json` pointer last. The verified release is:
-
-```text
-gold/synthetic-worlds/releases/7b7c3a4272c947b82e901835df3fec418b9e53e39b2e39342993eed07026b2b2
-control/synthetic-worlds/test-world-001/CURRENT.json
-```
-
-The hidden export directory was not uploaded; a direct R2 lookup of the corresponding `hidden/world_state.json` returned object-not-found.
-
-## Deploy
-
-After changing the Worker:
+Build a bounded read model for the initial universe (the default is AAPL, MSFT, and NVDA):
 
 ```bash
 cd deploy/cloudflare-query
-# pywrangler sync requires uv >= 0.12.3; use the current pywrangler/uv toolchain
+python3 build_read_models.py --symbols AAPL,MSFT,NVDA --output /tmp/zion-read-models
+python3 build_read_models.py --symbols AAPL,MSFT,NVDA --publish
+```
+
+The builder reads the current PPE market release and its published SEC corpus, excludes dimensional contexts, computes only deterministic margins, and writes immutable artifacts under `gold/market-terminal/fundamentals/releases/<digest>/`. It promotes `control/market-terminal/fundamentals/CURRENT.json` only after all artifacts are uploaded.
+
+## Synthetic publication
+
+Generate, QC, and publish a small native world. The publisher refuses non-PASS QC, uploads an immutable `gold/synthetic-worlds/releases/<digest>/` prefix, excludes hidden state, and writes the control pointer last. Restore the previous control pointer to roll back a synthetic release; immutable objects are retained.
+
+## Deploy and verify
+
+```bash
+cd deploy/cloudflare-query
+npx --yes wrangler deploy --dry-run
 npx --yes wrangler deploy
 ```
 
-Verify the package first:
-
-```bash
-npx --yes wrangler deploy --dry-run
-```
-
-The checked-in `pyproject.toml` and `pylock.toml` are authoritative. Generated `src/vendor`, `python_modules`, and `.venv-workers` are ignored and regenerated by the sync step.
-
-## External smoke
+The checked-in `pyproject.toml` and lock file are authoritative. Generated vendor/runtime directories are ignored and regenerated by the sync step.
 
 ```bash
 curl -sS https://zion-financial-query-staging.scswitzer.workers.dev/healthz
 curl -sS https://zion-financial-query-staging.scswitzer.workers.dev/readyz
 curl -sS https://zion-financial-query-staging.scswitzer.workers.dev/v1/capabilities
+curl -sS -X POST https://zion-financial-query-staging.scswitzer.workers.dev/v1/tools/get_fundamentals \
+  -H 'content-type: application/json' \
+  -d '{"entity":"AAPL","metrics":["revenue","gross_margin"],"period":"annual","lookback":4,"world":{"world_type":"real","world_id":"us-public-markets"}}'
 ```
 
-Then POST the real AAPL request and synthetic NOVA request using the shared V1 contract. Negative checks should cover unknown world, unknown entity, unsupported metric, oversized body, and traversal-like world identifiers.
+Use `/v1/query` for the bounded natural-language facade and `/v1/tools/{tool_name}` for machine clients. See `FINANCIAL_TOOLS.md` and `FUNDAMENTAL_METRICS.md`.
 
 ## Rollback
-
-List versions and roll back only the staging Worker:
 
 ```bash
 wrangler deployments list --name zion-financial-query-staging
 wrangler rollback --name zion-financial-query-staging --version-id <previous-version-id>
 ```
 
-Rollback does not modify R2 data or PPE production routes. Synthetic release rollback is by restoring the prior `control/synthetic-worlds/<world_id>/CURRENT.json` pointer; immutable release objects are retained.
+Worker rollback affects only staging. R2 rollback is by restoring the prior `CURRENT.json` pointer; no immutable release is overwritten.
