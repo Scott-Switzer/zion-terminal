@@ -1,0 +1,4 @@
+.venv-workers/
+python_modules/
+src/vendor/
+.wrangler/

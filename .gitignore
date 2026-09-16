@@ -66,3 +66,9 @@ htmlcov/
 # ── Logs ─────────────────────────────────────────────────────────
 *.log
 logs/
+
+# Cloudflare Python Worker generated environments
+.wrangler/
+deploy/cloudflare-query/.venv-workers/
+deploy/cloudflare-query/python_modules/
+deploy/cloudflare-query/src/vendor/
