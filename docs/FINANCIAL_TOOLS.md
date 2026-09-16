@@ -42,3 +42,13 @@ Content-Type: application/json
 ```
 
 The tool endpoint is intended as a stable machine interface for future clients; no MCP or Slack adapter is included in this milestone.
+
+## Serving V2 opt-in
+
+The separate staging Worker `zion-financial-serving-v2-staging` can be enabled
+through the `serving-v2` Wrangler environment. It resolves a tiny uncached
+`gold/serving/CURRENT.json` pointer, then reads immutable, hash-validated,
+release-addressed artifacts generated from exact PPE Iceberg snapshots. The
+existing `zion-financial-query-staging` Worker remains on the prior path until
+shadow parity, custom-route cache verification, and promotion review are
+complete.
