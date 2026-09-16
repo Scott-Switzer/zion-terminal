@@ -56,10 +56,12 @@ jobs:
                   headers = dict(response.headers)
                   status = response.status
               elapsed = (time.perf_counter() - started) * 1000
-              telemetry = json.loads(headers.get("x-serving-telemetry", "{}"))
+              document = json.loads(payload)
+              telemetry = document.get("release", {}).get("serving_telemetry", {})
+              telemetry["serving_release_id"] = document.get("release", {}).get("serving_release_id")
               rows.append({"ms": elapsed, "status": status, "bytes": len(payload), "ray": headers.get("cf-ray"), "telemetry": telemetry})
           values = sorted(row["ms"] for row in rows)
           def pct(p): return values[min(len(values)-1, max(0, int(len(values)*p)-1))]
-          print(json.dumps({"samples": n, "p50_ms": round(statistics.median(values), 2), "p90_ms": round(pct(.90), 2), "p95_ms": round(pct(.95), 2), "p99_ms": round(pct(.99), 2), "max_ms": round(max(values), 2), "statuses": sorted(set(row["status"] for row in rows)), "cache_hits": sum(row["telemetry"].get("cache_hits", 0) for row in rows), "cache_misses": sum(row["telemetry"].get("cache_misses", 0) for row in rows), "r2_gets": sum(row["telemetry"].get("r2_gets", 0) for row in rows), "timing_samples": [row["telemetry"].get("timing_ms", {}) for row in rows[:3]]}, sort_keys=True))
+          print(json.dumps({"samples": n, "p50_ms": round(statistics.median(values), 2), "p90_ms": round(pct(.90), 2), "p95_ms": round(pct(.95), 2), "p99_ms": round(pct(.99), 2), "max_ms": round(max(values), 2), "statuses": sorted(set(row["status"] for row in rows)), "serving_release_ids": sorted({row["telemetry"].get("serving_release_id") for row in rows if row["telemetry"].get("serving_release_id")}), "cache_hits": sum(row["telemetry"].get("cache_hits", 0) for row in rows), "cache_misses": sum(row["telemetry"].get("cache_misses", 0) for row in rows), "r2_gets": sum(row["telemetry"].get("r2_gets", 0) for row in rows), "timing_samples": [row["telemetry"].get("timing_ms", {}) for row in rows[:3]]}, sort_keys=True))
           if any(row["status"] != 200 for row in rows): raise SystemExit("non-200 response")
           PY
