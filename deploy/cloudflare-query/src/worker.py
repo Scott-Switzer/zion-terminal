@@ -338,6 +338,12 @@ async def query(request: Request):
         text = body["query"]; upper = text.upper(); as_of = parse_as_of(body.get("as_of"))
         symbols = [token for token in ("AAPL", "MSFT", "NVDA", "NOVA") if re.search(rf"\b{token}\b", upper)]
         world = body["world"]
+        if world.get("world_type") == "real" and world.get("world_id") != "us-public-markets":
+            raise LookupError("WORLD_NOT_FOUND")
+        if world.get("world_type") == "synthetic" and world.get("world_id") != "test-world-001":
+            raise LookupError("WORLD_NOT_FOUND")
+        if world.get("world_type") not in {"real", "synthetic"}:
+            raise LookupError("WORLD_NOT_FOUND")
         if "PRICE HISTORY" in upper:
             if not symbols: raise ValueError("QUERY_NOT_SUPPORTED: an entity is required")
             result = await tool_result(request.scope["env"], "get_price_history", {"entity": symbols[0], "world": world, "limit": 500, "as_of": body.get("as_of")}, request_id); return tool_as_query(result, request_id)
