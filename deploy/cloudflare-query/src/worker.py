@@ -11,9 +11,21 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from workers import WorkerEntrypoint, asgi
 
-from serving_v2 import ServingV2Error, begin_telemetry as serving_v2_begin_telemetry, enabled as serving_v2_enabled, fundamentals as serving_v2_fundamentals, latest_price as serving_v2_latest_price, price_history as serving_v2_price_history, query as serving_v2_query, telemetry_snapshot as serving_v2_telemetry
+from serving_v2 import ServingV2Error, begin_telemetry as serving_v2_begin_telemetry, enabled as serving_v2_enabled, finish_telemetry as serving_v2_finish_telemetry, fundamentals as serving_v2_fundamentals, latest_price as serving_v2_latest_price, price_history as serving_v2_price_history, query as serving_v2_query, telemetry_snapshot as serving_v2_telemetry
 
 app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None, redoc_url=None)
+
+
+@app.middleware("http")
+async def serving_timing_headers(request: Request, call_next):
+    response = await call_next(request)
+    telemetry = serving_v2_finish_telemetry()
+    if telemetry:
+        response.headers["x-serving-telemetry"] = json.dumps(telemetry, separators=(",", ":"), sort_keys=True)
+        response.headers["x-serving-r2-gets"] = str(telemetry.get("r2_gets", 0))
+        response.headers["x-serving-cache-hits"] = str(telemetry.get("cache_hits", 0))
+        response.headers["x-serving-cache-misses"] = str(telemetry.get("cache_misses", 0))
+    return response
 METRICS = ("revenue", "cost_of_revenue", "gross_profit", "operating_income", "net_income", "gross_margin", "operating_margin", "net_margin", "cash", "assets", "liabilities", "equity", "debt", "shares_outstanding", "eps_diluted", "last_price")
 ALIASES = {
     "revenue": "revenue", "sales": "revenue", "operating margin": "operating_margin",
@@ -377,6 +389,7 @@ def tool_as_query(result: dict, request_id: str) -> dict:
 @app.post("/v1/query")
 async def query(request: Request):
     request_id = rid(request)
+    serving_v2_begin_telemetry()
     if int(request.headers.get("content-length", "0") or 0) > 32000: return fail(request, "INVALID_REQUEST", "request exceeds 32KB", 400)
     try:
         body = await request.json()

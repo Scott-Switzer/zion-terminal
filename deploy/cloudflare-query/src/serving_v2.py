@@ -9,6 +9,7 @@ import hashlib
 import json
 from contextvars import ContextVar
 from datetime import datetime
+from time import perf_counter
 from decimal import Decimal
 from typing import Any
 
@@ -18,11 +19,37 @@ _TELEMETRY: ContextVar[dict[str, Any] | None] = ContextVar("serving_v2_telemetry
 
 
 def begin_telemetry() -> None:
-    _TELEMETRY.set({"r2_gets": 0, "cache_hits": 0, "cache_misses": 0, "cache_errors": 0, "current_uncached": True})
+    _TELEMETRY.set({
+        "r2_gets": 0,
+        "cache_hits": 0,
+        "cache_misses": 0,
+        "cache_errors": 0,
+        "current_uncached": True,
+        "_started": perf_counter(),
+        "_timing_ms": {},
+    })
+
+
+def _mark(name: str, elapsed: float) -> None:
+    stats = _TELEMETRY.get()
+    if stats is not None:
+        stats["_timing_ms"][name] = round(stats["_timing_ms"].get(name, 0.0) + elapsed * 1000, 3)
 
 
 def telemetry_snapshot() -> dict[str, Any]:
-    return dict(_TELEMETRY.get() or {})
+    stats = _TELEMETRY.get()
+    if not stats:
+        return {}
+    result = {key: value for key, value in stats.items() if not key.startswith("_")}
+    result["timing_ms"] = dict(stats.get("_timing_ms", {}))
+    return result
+
+
+def finish_telemetry() -> dict[str, Any]:
+    stats = _TELEMETRY.get()
+    if stats:
+        _mark("total_worker_path", perf_counter() - stats["_started"])
+    return telemetry_snapshot()
 
 
 class ServingV2Error(Exception):
@@ -115,13 +142,17 @@ def _select_revisions(rows: list[dict[str, Any]], as_of: datetime | None) -> lis
 
 
 async def _r2_text(env: Any, key: str) -> bytes:
+    started = perf_counter()
     stats = _TELEMETRY.get()
     if stats is not None:
         stats["r2_gets"] += 1
     obj = await env.MARKET_DATA.get(key)
     if obj is None:
+        _mark("r2_get", perf_counter() - started)
         raise ServingV2Error("SERVING_ARTIFACT_NOT_FOUND", f"serving artifact is unavailable: {key}", retryable=True)
-    return (await obj.text()).encode()
+    raw = (await obj.text()).encode()
+    _mark("r2_get", perf_counter() - started)
+    return raw
 
 
 async def _cached_text(env: Any, key: str, *, release_id: str | None, ttl: int) -> bytes:
@@ -129,6 +160,7 @@ async def _cached_text(env: Any, key: str, *, release_id: str | None, ttl: int) 
     # failure falls through to the authoritative R2 object, never to another
     # data source. Cache keys remain release-addressed.
     if release_id:
+        cache_started = perf_counter()
         try:
             from js import Request, caches  # type: ignore
             request = Request.new(cache_key(release_id, key))
@@ -136,14 +168,17 @@ async def _cached_text(env: Any, key: str, *, release_id: str | None, ttl: int) 
             if hit is not None:
                 stats = _TELEMETRY.get()
                 if stats is not None: stats["cache_hits"] += 1
+                _mark("cache_lookup", perf_counter() - cache_started)
                 return (await hit.text()).encode()
             stats = _TELEMETRY.get()
             if stats is not None: stats["cache_misses"] += 1
+            _mark("cache_lookup", perf_counter() - cache_started)
         except Exception:
             stats = _TELEMETRY.get()
             if stats is not None:
                 stats["cache_errors"] += 1
                 stats["cache_misses"] += 1
+            _mark("cache_lookup", perf_counter() - cache_started)
     raw = await _r2_text(env, key)
     if release_id:
         try:
@@ -165,9 +200,11 @@ async def load_release(env: Any) -> tuple[dict[str, Any], dict[str, Any]]:
     # refresh immediately after promotion/rollback; immutable artifacts carry
     # the long-lived release-addressed cache identity.
     current_raw = await _r2_text(env, getattr(env, "SERVING_V2_CURRENT_KEY", CURRENT_KEY))
+    parse_started = perf_counter()
     try:
         current = json.loads(current_raw)
     except Exception as exc:
+        _mark("json_parse", perf_counter() - parse_started)
         raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT is invalid") from exc
     release_id = current.get("serving_release_id")
     if not isinstance(release_id, str) or not release_id:
@@ -177,12 +214,18 @@ async def load_release(env: Any) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT has an unsafe manifest key")
     manifest_raw = await _cached_text(env, manifest_key, release_id=release_id, ttl=31536000)
     expected = current.get("manifest_sha256")
+    hash_started = perf_counter()
     if expected and hashlib.sha256(manifest_raw).hexdigest() != expected:
+        _mark("hash_validation", perf_counter() - hash_started)
         raise ServingV2Error("SERVING_MANIFEST_CORRUPT", "serving manifest hash mismatch")
+    _mark("hash_validation", perf_counter() - hash_started)
+    parse_started = perf_counter()
     try:
         manifest = json.loads(manifest_raw)
     except Exception as exc:
+        _mark("json_parse", perf_counter() - parse_started)
         raise ServingV2Error("SERVING_MANIFEST_CORRUPT", "serving manifest is invalid") from exc
+    _mark("json_parse", perf_counter() - parse_started)
     if manifest.get("schema_version") != SCHEMA_VERSION or manifest.get("serving_release_id") != release_id:
         raise ServingV2Error("SERVING_SCHEMA_MISMATCH", "serving manifest identity or schema mismatch")
     return current, manifest
@@ -195,12 +238,19 @@ async def artifact(env: Any, manifest: dict[str, Any], relative: str) -> Any:
     if entry is None:
         raise ServingV2Error("SERVING_ARTIFACT_NOT_FOUND", f"artifact is not in the manifest: {relative}")
     raw = await _cached_text(env, prefix + relative, release_id=release_id, ttl=31536000)
+    hash_started = perf_counter()
     if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
+        _mark("hash_validation", perf_counter() - hash_started)
         raise ServingV2Error("SERVING_ARTIFACT_CORRUPT", f"artifact hash mismatch: {relative}")
+    _mark("hash_validation", perf_counter() - hash_started)
+    parse_started = perf_counter()
     try:
-        return json.loads(raw)
+        value = json.loads(raw)
     except Exception as exc:
+        _mark("json_parse", perf_counter() - parse_started)
         raise ServingV2Error("SERVING_ARTIFACT_CORRUPT", f"artifact JSON is invalid: {relative}") from exc
+    _mark("json_parse", perf_counter() - parse_started)
+    return value
 
 
 async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str | None = None, lookback: int = 40, as_of: Any = None, request_id: str = "") -> dict[str, Any]:
@@ -209,8 +259,10 @@ async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str
     snapshot = await artifact(env, manifest, f"entities/{key}/snapshot.json")
     source = {"annual": "annual", "quarterly": "quarterly"}.get(period or "quarterly", "quarterly")
     rows = await artifact(env, manifest, f"entities/{key}/fundamentals/{source}.json")
+    filter_started = perf_counter()
     selected = _select_revisions([row for row in rows if not metrics or row.get("metric_id") in metrics], _as_of(as_of))
     selected = [row for row in selected if not metrics or row.get("metric_id") in metrics]
+    _mark("financial_filter", perf_counter() - filter_started)
     if lookback > 0:
         by_metric: dict[str, list[dict[str, Any]]] = {}
         for row in selected:

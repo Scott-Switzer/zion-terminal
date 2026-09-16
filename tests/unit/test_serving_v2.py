@@ -44,10 +44,21 @@ def test_served_row_preserves_evidence_and_exact_decimal_text():
     assert SCHEMA_VERSION == "financial-serving-v2"
 
 
+def test_finished_telemetry_exposes_stage_timings_without_internal_clock():
+    from serving_v2 import _mark, finish_telemetry
+
+    begin_telemetry()
+    _mark("financial_filter", 0.001)
+    stats = finish_telemetry()
+    assert stats["timing_ms"]["financial_filter"] == 1.0
+    assert stats["timing_ms"]["total_worker_path"] >= 0
+    assert "_started" not in stats
+
+
 def test_request_telemetry_starts_with_uncached_current_contract():
     begin_telemetry()
     stats = telemetry_snapshot()
-    assert stats == {"r2_gets": 0, "cache_hits": 0, "cache_misses": 0, "cache_errors": 0, "current_uncached": True}
+    assert stats == {"r2_gets": 0, "cache_hits": 0, "cache_misses": 0, "cache_errors": 0, "current_uncached": True, "timing_ms": {}}
 
 
 def test_invalid_manifest_hash_is_rejected():
