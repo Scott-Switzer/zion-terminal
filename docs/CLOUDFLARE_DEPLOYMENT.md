@@ -65,6 +65,23 @@ curl -sS -X POST https://zion-financial-query-staging.scswitzer.workers.dev/v1/t
 
 Use `/v1/query` for the bounded natural-language facade and `/v1/tools/{tool_name}` for machine clients. See `FINANCIAL_TOOLS.md` and `FUNDAMENTAL_METRICS.md`.
 
+## Financial Serving V2 opt-in
+
+The separate `serving-v2` Wrangler environment deploys the snapshot-addressed
+serving adapter without changing `zion-financial-query-staging`:
+
+```text
+https://zion-financial-serving-v2-staging.scswitzer.workers.dev
+```
+
+It reads `gold/serving/CURRENT.json` and immutable
+`gold/serving/releases/<serving_release_id>/` artifacts from the PPE lakehouse
+bucket. The flag is explicit (`SERVING_V2_ENABLED=true`) only in this staging
+environment; the original Worker remains disabled. The adapter validates the
+CURRENT pointer, manifest hash, artifact hashes, exact source snapshot IDs,
+PIT availability, and release-addressed cache identity. It never falls back to
+provider or legacy-release reads when enabled.
+
 ## Rollback
 
 ```bash

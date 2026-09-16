@@ -11,6 +11,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from workers import WorkerEntrypoint, asgi
 
+from serving_v2 import ServingV2Error, enabled as serving_v2_enabled, fundamentals as serving_v2_fundamentals, latest_price as serving_v2_latest_price, price_history as serving_v2_price_history, query as serving_v2_query
+
 app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None, redoc_url=None)
 METRICS = ("revenue", "cost_of_revenue", "gross_profit", "operating_income", "net_income", "gross_margin", "operating_margin", "net_margin", "cash", "assets", "liabilities", "equity", "debt", "shares_outstanding", "eps_diluted", "last_price")
 ALIASES = {
@@ -229,6 +231,27 @@ async def synthetic_query(env: Any, symbol: str, metrics: list[str], as_of: date
 
 async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
     world = body.get("world") or {"world_type": "real", "world_id": "us-public-markets"}
+    if serving_v2_enabled(env) and world.get("world_type") == "real":
+        entity = str(body.get("entity", body.get("symbol", ""))).upper()
+        as_of = body.get("as_of")
+        if name == "get_fundamentals":
+            result = await serving_v2_fundamentals(env, entity, body.get("metrics", []), period=body.get("period"), lookback=int(body.get("lookback", 40)), as_of=as_of, request_id=request_id)
+            return {"tool": name, "world": result["world"], "data": {"observations": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]}
+        if name == "get_price":
+            result = await serving_v2_latest_price(env, entity, as_of=as_of, request_id=request_id)
+            return {"tool": name, "world": result["world"], "data": result["metric"], "evidence": [result["metric"]], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]}
+        if name == "get_price_history":
+            result = await serving_v2_price_history(env, entity, limit=min(int(body.get("limit", 500)), 500), start_date=body.get("start_date"), end_date=body.get("end_date"), as_of=as_of, request_id=request_id)
+            return {"tool": name, "world": result["world"], "data": {"prices": result["prices"]}, "evidence": [], "quality": {"status": "VERIFIED", "llm_required": False}, "release": result["release"]}
+        if name == "get_evidence":
+            result = await serving_v2_fundamentals(env, entity, [body.get("metric", "revenue")], period=body.get("period"), lookback=40, as_of=as_of, request_id=request_id)
+            return {"tool": name, "world": result["world"], "data": {"evidence": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED"}, "release": result["release"]}
+        if name == "compare":
+            series = {}
+            for item in body.get("entities", []):
+                item_result = await serving_v2_fundamentals(env, str(item).upper(), [body.get("metric", "operating_margin")], period=body.get("period"), lookback=1, as_of=as_of, request_id=request_id)
+                series[str(item).upper()] = item_result["observations"]
+            return {"tool": name, "world": {"world_type": "real", "world_id": "us-public-markets"}, "data": {"entities": body.get("entities", []), "metric": body.get("metric", "operating_margin"), "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": item_result["release"] if series else {}}
     symbol = str(body.get("entity", body.get("symbol", ""))).upper()
     as_of = parse_as_of(body.get("as_of"))
     metrics = body.get("metrics") or [body.get("metric", "revenue")]
@@ -312,6 +335,7 @@ async def tools(tool_name: str, request: Request):
         if not isinstance(body, dict) or len(json.dumps(body)) > 32000: raise ValueError("INVALID_REQUEST: bounded JSON object required")
         return await tool_result(request.scope["env"], tool_name, body, request_id)
     except FileNotFoundError: return fail(request, "RELEASE_NOT_AVAILABLE", "published release is unavailable", 503, True)
+    except ServingV2Error as error: return fail(request, error.code, error.message, 503 if error.retryable else 404, error.retryable)
     except LookupError as error: return fail(request, str(error), str(error).replace("_", " ").lower(), 404 if str(error) != "TOOL_NOT_SUPPORTED_FOR_WORLD" else 422)
     except ValueError as error:
         message = str(error); code, _, detail = message.partition(": "); return fail(request, code if code.isupper() else "INVALID_TOOL_ARGUMENT", detail or message, 422 if code in {"CALCULATION_NOT_SUPPORTED", "INVALID_TOOL_ARGUMENT"} else 400)
@@ -381,12 +405,15 @@ async def query(request: Request):
                 result["evidence"] = [calc, latest, prior]
             return tool_as_query(result, request_id)
         symbol, metrics = plan(text)
-        if world.get("world_type") == "real": result = await precomputed_real_query(request.scope["env"], symbol, metrics, as_of, request_id)
+        if serving_v2_enabled(request.scope["env"]) and world.get("world_type") == "real":
+            result = await serving_v2_query(request.scope["env"], symbol, metrics, as_of=body.get("as_of"), request_id=request_id)
+        elif world.get("world_type") == "real": result = await precomputed_real_query(request.scope["env"], symbol, metrics, as_of, request_id)
         elif body["world"].get("world_type") == "synthetic": result = await synthetic_query(request.scope["env"], symbol, metrics, as_of, request_id)
         else: return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)
         if result["world"].get("world_id") != body["world"].get("world_id"): return fail(request, "WORLD_NOT_FOUND", "world is not available", 404)
         return result
     except FileNotFoundError: return fail(request, "RELEASE_NOT_AVAILABLE", "published release is unavailable", 503, True)
+    except ServingV2Error as error: return fail(request, error.code, error.message, 503 if error.retryable else 404, error.retryable)
     except LookupError as error: return fail(request, str(error), str(error).replace("_", " ").lower(), 404 if str(error) != "WORLD_NOT_CERTIFIED" else 503)
     except ValueError as error:
         message = str(error); code, _, detail = message.partition(": ")
