@@ -85,6 +85,16 @@ def safe_key(prefix: str, suffix: str) -> str:
     return f"{prefix.rstrip('/')}/{suffix}"
 
 
+def select_pit(rows: list[dict], as_of: datetime | None) -> list[dict]:
+    """Select latest eligible revision per canonical period identity."""
+    eligible = [row for row in rows if before(row.get("available_at"), as_of)]
+    groups = {}
+    for row in eligible:
+        key = tuple(row.get(k, "") for k in ("entity_id", "metric", "period", "fiscal_year", "fiscal_quarter", "period_start", "period_end", "unit"))
+        groups.setdefault(key, []).append(row)
+    return [max(group, key=lambda row: (row.get("available_at", ""), row.get("form") == "10-Q/A", row.get("accession", ""))) for group in groups.values()]
+
+
 def evidence_response(world: dict, entity: dict, rows: list[dict], release: dict, request_id: str) -> dict:
     by_metric = {row["metric"]: row for row in rows}
     metrics = [{"metric": r["metric"], "value": r["value"], "unit": r["unit"], "period": r["period"]} for r in rows]
@@ -114,9 +124,13 @@ async def precomputed_real_query(env: Any, symbol: str, metrics: list[str], as_o
     artifact = json.loads(await text_object(env.MARKET_DATA, safe_key(prefix, f"{symbol}.json")))
     summary = json.loads(await text_object(env.MARKET_DATA, safe_key(current["prefix"], f"securities/{symbol}/market_summary.json")))
     rows = []
-    for row in artifact.get("observations", []):
-        if row.get("metric") in metrics and before(row.get("available_at"), as_of):
-            rows.append({**row, "entity_id": artifact["entity_id"], "world": {"world_type": "real", "world_id": "us-public-markets", "version": current["prefix"]}, "provenance": {"producer": "Project-Portfolio-Engine", "artifact": f"{prefix}/{symbol}.json", "release_id": prefix, "base_release": current["prefix"]}})
+    source_rows = artifact.get("observations", []) + artifact.get("revision_observations", [])
+    enriched = [{
+        **row, "entity_id": artifact["entity_id"],
+        "world": {"world_type": "real", "world_id": "us-public-markets", "version": current["prefix"]},
+        "provenance": {"producer": "Project-Portfolio-Engine", "artifact": f"{prefix}/{symbol}.json", "release_id": prefix, "base_release": current["prefix"]}
+    } for row in source_rows if row.get("metric") in metrics]
+    rows.extend(select_pit(enriched, as_of))
     if "last_price" in metrics:
         prices = artifact.get("price_history", [])
         available = [row for row in prices if before(row.get("available_at"), as_of)]
