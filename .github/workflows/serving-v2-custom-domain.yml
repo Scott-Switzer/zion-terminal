@@ -1,0 +1,65 @@
+name: Serving V2 Custom Domain Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: Number of warm Q1 samples
+        required: false
+        default: "50"
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  custom-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: https://api-staging.scotttunnel.xyz
+      SAMPLES: ${{ inputs.samples || '50' }}
+    steps:
+      - name: TLS and health checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          getent ahosts "$BASE_URL" || true
+          curl --fail-with-body --silent --show-error --verbose --tlsv1.2 "$BASE_URL/healthz" -o /tmp/health-tls12.json 2>/tmp/curl-tls12.log
+          curl --fail-with-body --silent --show-error --verbose --tlsv1.3 "$BASE_URL/healthz" -o /tmp/health-tls13.json 2>/tmp/curl-tls13.log
+          grep -E 'SSL connection using|subject:|issuer:|HTTP/|cf-ray|CF-Ray' /tmp/curl-tls12.log || true
+          grep -E 'SSL connection using|subject:|issuer:|HTTP/|cf-ray|CF-Ray' /tmp/curl-tls13.log || true
+          cat /tmp/health-tls12.json
+      - name: OpenSSL certificate check
+        shell: bash
+        run: |
+          set -euo pipefail
+          openssl s_client -connect api-staging.scotttunnel.xyz:443 -servername api-staging.scotttunnel.xyz -tls1_2 </dev/null 2>/tmp/openssl.log | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+          grep -E 'Protocol|Cipher|Verify return code' /tmp/openssl.log || true
+      - name: Warm Q1 benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, statistics, subprocess, time
+          from urllib.request import Request, urlopen
+          base = os.environ["BASE_URL"]
+          n = int(os.environ["SAMPLES"])
+          body = json.dumps({"entity":"AAPL","metrics":["revenue"],"period":"annual","lookback":1,"world":{"world_type":"real","world_id":"us-public-markets"}}).encode()
+          rows = []
+          for i in range(n):
+              request = Request(base + "/v1/tools/get_fundamentals", data=body, headers={"content-type":"application/json", "user-agent":"github-actions-serving-v2/1.0", "x-request-id":f"gha-q1-{i}"})
+              started = time.perf_counter()
+              with urlopen(request, timeout=30) as response:
+                  payload = response.read()
+                  headers = dict(response.headers)
+                  status = response.status
+              elapsed = (time.perf_counter() - started) * 1000
+              telemetry = json.loads(headers.get("x-serving-telemetry", "{}"))
+              rows.append({"ms": elapsed, "status": status, "bytes": len(payload), "ray": headers.get("cf-ray"), "telemetry": telemetry})
+          values = sorted(row["ms"] for row in rows)
+          def pct(p): return values[min(len(values)-1, max(0, int(len(values)*p)-1))]
+          print(json.dumps({"samples": n, "p50_ms": round(statistics.median(values), 2), "p90_ms": round(pct(.90), 2), "p95_ms": round(pct(.95), 2), "p99_ms": round(pct(.99), 2), "max_ms": round(max(values), 2), "statuses": sorted(set(row["status"] for row in rows)), "cache_hits": sum(row["telemetry"].get("cache_hits", 0) for row in rows), "cache_misses": sum(row["telemetry"].get("cache_misses", 0) for row in rows), "r2_gets": sum(row["telemetry"].get("r2_gets", 0) for row in rows), "timing_samples": [row["telemetry"].get("timing_ms", {}) for row in rows[:3]]}, sort_keys=True))
+          if any(row["status"] != 200 for row in rows): raise SystemExit("non-200 response")
+          PY
