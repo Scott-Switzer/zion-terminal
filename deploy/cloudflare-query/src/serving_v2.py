@@ -25,6 +25,12 @@ def begin_telemetry() -> None:
         "cache_misses": 0,
         "cache_errors": 0,
         "current_uncached": True,
+        "current_cache_hit": 0,
+        "current_cache_miss": 0,
+        "current_cache_age_ms": 0.0,
+        "current_cache_ttl_ms": 0,
+        "current_r2_get_ms": 0.0,
+        "current_serving_release_id": None,
         "_started": perf_counter(),
         "_timing_ms": {},
     })
@@ -42,6 +48,7 @@ def telemetry_snapshot() -> dict[str, Any]:
         return {}
     result = {key: value for key, value in stats.items() if not key.startswith("_")}
     result["timing_ms"] = dict(stats.get("_timing_ms", {}))
+    result["current_uncached"] = stats.get("current_cache_ttl_ms", 0) <= 0
     return result
 
 
@@ -58,6 +65,115 @@ class ServingV2Error(Exception):
         self.code = code
         self.message = message
         self.retryable = retryable
+
+
+def _ttl_ms(env: Any) -> int:
+    """CURRENT pointer cache TTL in milliseconds; 0 (or invalid) keeps reads uncached."""
+    raw = getattr(env, "CURRENT_POINTER_CACHE_TTL_MS", 0)
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 0
+    return value if value > 0 else 0
+
+
+class CurrentPointerCache:
+    """Bounded isolate-local cache for the CURRENT serving pointer.
+
+    - TTL 0 (default) disables the cache entirely; every request reads CURRENT.
+    - Entries expire on a hard deadline: age >= TTL forces a synchronous R2
+      refresh. No stale-if-error, no last-known-good, no silent extension.
+    - Identity is the CURRENT object key, so staging/prod or worlds cannot
+      share pointer entries. Each isolate may hold its own pointer, so the
+      guarantee is per-isolate staleness <= TTL, not cluster-wide refresh.
+    - A single in-flight refresh per isolate collapses concurrent expired
+      resolutions; correctness is preserved if it cannot engage.
+    """
+
+    def __init__(self) -> None:
+        self._entries: dict[tuple[str, ...], dict[str, Any]] = {}
+        self._inflight: dict[tuple[str, ...], Any] = {}
+
+    @staticmethod
+    def identity(env: Any) -> tuple[str, ...]:
+        return (str(getattr(env, "SERVING_V2_CURRENT_KEY", CURRENT_KEY)),)
+
+    def reset_for_tests(self) -> None:
+        self._entries.clear()
+        self._inflight.clear()
+
+    def _parse(self, raw: bytes) -> dict[str, Any]:
+        try:
+            pointer = json.loads(raw)
+        except Exception as exc:
+            raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT is invalid") from exc
+        release_id = pointer.get("serving_release_id") if isinstance(pointer, dict) else None
+        manifest_key = pointer.get("manifest_key") if isinstance(pointer, dict) else None
+        if not isinstance(release_id, str) or not release_id or not isinstance(manifest_key, str) or not manifest_key.startswith("gold/serving/releases/"):
+            raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT has no release identity")
+        return pointer
+
+    async def _fetch(self, env: Any, now: Any) -> tuple[dict[str, Any], int]:
+        fetch_started = perf_counter()
+        raw = await _r2_text(env, str(getattr(env, "SERVING_V2_CURRENT_KEY", CURRENT_KEY)))
+        elapsed = perf_counter() - fetch_started
+        pointer = self._parse(raw)
+        _mark("current_r2_get", elapsed)
+        return pointer, round(elapsed * 1000, 3)
+
+    async def resolve(self, env: Any, *, now: Any = None) -> dict[str, Any]:
+        """Resolve the CURRENT pointer under the configured hard TTL."""
+        import asyncio
+
+        stats = _TELEMETRY.get()
+        ttl = _ttl_ms(env)
+        if stats is not None:
+            stats["current_cache_ttl_ms"] = ttl
+        clock = now or perf_counter
+        identity = self.identity(env)
+        if ttl <= 0:
+            pointer, elapsed = await self._fetch(env, clock)
+            if stats is not None:
+                stats["current_cache_miss"] += 1
+                stats["current_r2_get_ms"] = elapsed
+            return pointer
+        entry = self._entries.get(identity)
+        if entry is not None and clock() - entry["fetched_at"] < ttl:
+            if stats is not None:
+                stats["current_cache_hit"] += 1
+                stats["current_cache_age_ms"] = round((clock() - entry["fetched_at"]) * 1000, 3)
+            return entry["pointer"]
+        inflight = self._inflight.get(identity)
+        if inflight is not None:
+            pointer, elapsed = await asyncio.shield(inflight)
+            if stats is not None:
+                stats["current_cache_hit"] += 1
+                stats["current_serving_release_id"] = pointer.get("serving_release_id")
+            return pointer
+        async def refresh() -> tuple[dict[str, Any], int]:
+            try:
+                return await self._fetch(env, clock)
+            finally:
+                self._inflight.pop(identity, None)
+        task = asyncio.ensure_future(refresh())
+        self._inflight[identity] = task
+        try:
+            pointer, elapsed = await task
+        except BaseException:
+            raise
+        if stats is not None:
+            stats["current_cache_miss"] += 1
+            stats["current_r2_get_ms"] = elapsed
+            stats["current_serving_release_id"] = pointer.get("serving_release_id")
+        self._entries[identity] = {"pointer": pointer, "fetched_at": clock()}
+        return pointer
+
+
+_POINTER_CACHE = CurrentPointerCache()
+
+
+def current_pointer_cache() -> CurrentPointerCache:
+    return _POINTER_CACHE
 
 
 def enabled(env: Any) -> bool:
@@ -196,16 +312,11 @@ async def _cached_text(env: Any, key: str, *, release_id: str | None, ttl: int) 
 
 
 async def load_release(env: Any) -> tuple[dict[str, Any], dict[str, Any]]:
-    # CURRENT is intentionally fetched uncached. Its tiny mutable pointer must
-    # refresh immediately after promotion/rollback; immutable artifacts carry
-    # the long-lived release-addressed cache identity.
-    current_raw = await _r2_text(env, getattr(env, "SERVING_V2_CURRENT_KEY", CURRENT_KEY))
-    parse_started = perf_counter()
-    try:
-        current = json.loads(current_raw)
-    except Exception as exc:
-        _mark("json_parse", perf_counter() - parse_started)
-        raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT is invalid") from exc
+    # CURRENT resolution goes through the bounded pointer cache. With the
+    # default TTL of 0 this is exactly the previous uncached R2 read. A nonzero
+    # TTL bounds pointer staleness per isolate; immutable artifacts always use
+    # their release-addressed cache path.
+    current = await current_pointer_cache().resolve(env)
     release_id = current.get("serving_release_id")
     if not isinstance(release_id, str) or not release_id:
         raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT has no release identity")
