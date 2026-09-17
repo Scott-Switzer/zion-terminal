@@ -159,10 +159,11 @@ class CurrentPointerCache:
                 stats["current_r2_get_ms"] = elapsed
             return pointer
         entry = self._entries.get(identity)
-        if entry is not None and clock() - entry["fetched_at"] < ttl:
+        age_ms = None if entry is None else (clock() - entry["fetched_at"]) * 1000
+        if entry is not None and age_ms < ttl:
             if stats is not None:
                 stats["current_cache_hit"] += 1
-                stats["current_cache_age_ms"] = round((clock() - entry["fetched_at"]) * 1000, 3)
+                stats["current_cache_age_ms"] = round(age_ms, 3)
             return entry["pointer"]
         inflight = self._inflight.get(identity)
         if inflight is not None:

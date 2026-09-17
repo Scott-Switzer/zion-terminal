@@ -166,9 +166,9 @@ def test_pointer_cache_hit_within_ttl_then_refresh_after_expiry():
     async def case():
         begin_telemetry()
         first = await store.resolve(env, now=lambda: now[0])
-        now[0] += 500
+        now[0] += 0.5
         second = await store.resolve(env, now=lambda: now[0])
-        now[0] += 600
+        now[0] += 0.6
         third = await store.resolve(env, now=lambda: now[0])
         return first, second, third, bucket.gets, telemetry_snapshot()
 
@@ -182,6 +182,41 @@ def test_pointer_cache_hit_within_ttl_then_refresh_after_expiry():
     assert stats["current_cache_ttl_ms"] == 1000
 
 
+def test_pointer_cache_uses_seconds_clock_for_one_and_250_ms_ttls():
+    for ttl_ms, hit_delta_s, expiry_delta_s in ((1, 0.0005, 0.0015), (250, 0.100, 0.251)):
+        store = pointer_store()
+        env, bucket = pointer_env({"gold/serving/CURRENT.json": make_current("release-a")}, ttl=ttl_ms)
+        now = [10.0]
+
+        async def case():
+            begin_telemetry()
+            await store.resolve(env, now=lambda: now[0])
+            now[0] += hit_delta_s
+            await store.resolve(env, now=lambda: now[0])
+            now[0] += expiry_delta_s - hit_delta_s
+            await store.resolve(env, now=lambda: now[0])
+            return bucket.gets
+
+        assert run_pointer_case(case) == 2
+
+
+def test_pointer_cache_reports_age_in_milliseconds():
+    store = pointer_store()
+    env, bucket = pointer_env({"gold/serving/CURRENT.json": make_current("release-a")}, ttl=1000)
+    now = [100.0]
+
+    async def case():
+        begin_telemetry()
+        await store.resolve(env, now=lambda: now[0])
+        now[0] += 0.5
+        await store.resolve(env, now=lambda: now[0])
+        return telemetry_snapshot()
+
+    stats = run_pointer_case(case)
+    assert stats["current_cache_hit"] == 1
+    assert stats["current_cache_age_ms"] == 500.0
+
+
 def test_pointer_cache_promotion_and_rollback_obey_hard_ttl():
     store = pointer_store()
     objects = {"gold/serving/CURRENT.json": make_current("release-a")}
@@ -192,14 +227,14 @@ def test_pointer_cache_promotion_and_rollback_obey_hard_ttl():
         begin_telemetry()
         await store.resolve(env, now=lambda: now[0])
         objects["gold/serving/CURRENT.json"] = make_current("release-b")
-        now[0] += 500
+        now[0] += 0.5
         before_expiry = await store.resolve(env, now=lambda: now[0])
-        now[0] += 600
+        now[0] += 0.6
         after_expiry = await store.resolve(env, now=lambda: now[0])
         objects["gold/serving/CURRENT.json"] = make_current("release-a")
-        now[0] += 500
+        now[0] += 0.5
         rollback_before = await store.resolve(env, now=lambda: now[0])
-        now[0] += 600
+        now[0] += 0.6
         rollback_after = await store.resolve(env, now=lambda: now[0])
         return before_expiry, after_expiry, rollback_before, rollback_after
 
@@ -219,7 +254,7 @@ def test_pointer_cache_preserves_existing_failure_semantics_on_expired_refresh()
         begin_telemetry()
         await store.resolve(env, now=lambda: now[0])
         bucket.objects.clear()
-        now[0] += 100
+        now[0] += 0.1
         await store.resolve(env, now=lambda: now[0])
 
     try:
@@ -292,7 +327,7 @@ def test_pointer_cache_single_flight_refreshes_once():
 
         begin_telemetry()
         await store.resolve(env, now=lambda: now[0])
-        now[0] += 100
+        now[0] += 0.1
         first, second = await asyncio.gather(store.resolve(env, now=lambda: now[0]), store.resolve(env, now=lambda: now[0]))
         return first, second, bucket.gets
 
