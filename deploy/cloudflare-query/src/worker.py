@@ -18,6 +18,7 @@ app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None
 
 @app.middleware("http")
 async def serving_timing_headers(request: Request, call_next):
+    serving_v2_begin_telemetry(request.scope.get("env"))
     response = await call_next(request)
     telemetry = serving_v2_finish_telemetry()
     if telemetry:
@@ -25,6 +26,10 @@ async def serving_timing_headers(request: Request, call_next):
         response.headers["x-serving-r2-gets"] = str(telemetry.get("r2_gets", 0))
         response.headers["x-serving-cache-hits"] = str(telemetry.get("cache_hits", 0))
         response.headers["x-serving-cache-misses"] = str(telemetry.get("cache_misses", 0))
+        if telemetry.get("isolate_instance_id"):
+            response.headers["x-serving-isolate-id"] = telemetry["isolate_instance_id"]
+            response.headers["x-serving-isolate-seq"] = str(telemetry["isolate_request_seq"])
+            response.headers["x-serving-first-request-at"] = telemetry["isolate_first_request_at"]
     return response
 METRICS = ("revenue", "cost_of_revenue", "gross_profit", "operating_income", "net_income", "gross_margin", "operating_margin", "net_margin", "cash", "assets", "liabilities", "equity", "debt", "shares_outstanding", "eps_diluted", "last_price")
 ALIASES = {
@@ -349,7 +354,7 @@ async def tool_result(env: Any, name: str, body: dict, request_id: str) -> dict:
 @app.post("/v1/tools/{tool_name}")
 async def tools(tool_name: str, request: Request):
     request_id = rid(request)
-    serving_v2_begin_telemetry()
+    serving_v2_begin_telemetry(request.scope.get("env"))
     try:
         body = await request.json()
         if not isinstance(body, dict) or len(json.dumps(body)) > 32000: raise ValueError("INVALID_REQUEST: bounded JSON object required")
@@ -389,7 +394,7 @@ def tool_as_query(result: dict, request_id: str) -> dict:
 @app.post("/v1/query")
 async def query(request: Request):
     request_id = rid(request)
-    serving_v2_begin_telemetry()
+    serving_v2_begin_telemetry(request.scope.get("env"))
     if int(request.headers.get("content-length", "0") or 0) > 32000: return fail(request, "INVALID_REQUEST", "request exceeds 32KB", 400)
     try:
         body = await request.json()

@@ -1,0 +1,122 @@
+name: Zion Worker Startup Availability Diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      samples:
+        description: Requests per diagnostic job
+        required: false
+        default: "100"
+      base_url:
+        description: Safe staging Worker URL
+        required: false
+        default: "https://api-staging.scotttunnel.xyz"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [persistent, fresh]
+        run: [1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: ${{ inputs.base_url || 'https://api-staging.scotttunnel.xyz' }}
+      SAMPLES: ${{ inputs.samples || '100' }}
+      MODE: ${{ matrix.mode }}
+      RUN_NUMBER: ${{ matrix.run }}
+    steps:
+      - name: TLS and health check
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error --tlsv1.2 "$BASE_URL/healthz" -D /tmp/health.headers -o /tmp/health.body
+          grep -iE 'HTTP/|cf-ray' /tmp/health.headers || true
+          cat /tmp/health.body
+      - name: Run controlled benchmark
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import collections, http.client, json, os, statistics, time
+          from urllib.parse import urlsplit
+
+          target = urlsplit(os.environ["BASE_URL"])
+          host = target.netloc
+          prefix = target.path.rstrip("/")
+          n = int(os.environ["SAMPLES"])
+          mode = os.environ["MODE"]
+          payload = json.dumps({
+              "query": "What is AAPL revenue?",
+              "world": {"world_type": "real", "world_id": "us-public-markets"},
+          }).encode()
+          rows = []
+          conn = None
+          for index in range(n):
+              try:
+                  if mode == "fresh" or conn is None:
+                      conn = http.client.HTTPSConnection(host, timeout=30)
+                  started = time.perf_counter()
+                  conn.request("POST", prefix + "/v1/query", payload, {
+                      "content-type": "application/json",
+                      "connection": "keep-alive",
+                      "x-request-id": f"gha-startup-{mode}-{os.environ['RUN_NUMBER']}-{index}",
+                  })
+                  response = conn.getresponse()
+                  raw = response.read()
+                  elapsed = (time.perf_counter() - started) * 1000
+                  headers = {key.lower(): value for key, value in response.getheaders()}
+                  if mode == "fresh":
+                      conn.close()
+                      conn = None
+                  document = json.loads(raw)
+                  telemetry = document.get("release", {}).get("serving_telemetry", {})
+                  rows.append({
+                      "ms": elapsed,
+                      "status": response.status,
+                      "bytes": len(raw),
+                      "ray": headers.get("cf-ray"),
+                      "release": document.get("release", {}).get("serving_release_id") or document.get("world", {}).get("version"),
+                      "telemetry": telemetry,
+                  })
+              except Exception as error:
+                  rows.append({"ms": None, "status": type(error).__name__, "error": str(error)[:160]})
+                  if conn is not None:
+                      try:
+                          conn.close()
+                      except Exception:
+                          pass
+                      conn = None
+          values = sorted(row["ms"] for row in rows if row["ms"] is not None)
+          if not values:
+              raise SystemExit(json.dumps({"mode": mode, "run": os.environ["RUN_NUMBER"], "rows": rows}))
+          def percentile(fraction):
+              return values[min(len(values) - 1, int((len(values) - 1) * fraction))]
+          result = {
+              "mode": mode,
+              "run": os.environ["RUN_NUMBER"],
+              "samples": len(rows),
+              "successful_samples": len(values),
+              "statuses": dict(collections.Counter(str(row["status"]) for row in rows)),
+              "p50_ms": round(statistics.median(values), 2),
+              "p90_ms": round(percentile(.90), 2),
+              "p95_ms": round(percentile(.95), 2),
+              "p99_ms": round(percentile(.99), 2),
+              "max_ms": round(max(values), 2),
+              "release_ids": sorted({row.get("release") for row in rows if row.get("release")}),
+              "isolates": sorted({row.get("telemetry", {}).get("isolate_instance_id") for row in rows if row.get("telemetry", {}).get("isolate_instance_id")}),
+              "r2_gets": sum(row.get("telemetry", {}).get("r2_gets", 0) for row in rows),
+              "cache_hits": sum(row.get("telemetry", {}).get("cache_hits", 0) for row in rows),
+              "cache_misses": sum(row.get("telemetry", {}).get("cache_misses", 0) for row in rows),
+              "worker_timing_samples": [row.get("telemetry", {}).get("timing_ms", {}) for row in rows[:3]],
+          }
+          print(json.dumps(result, sort_keys=True))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("```json\n" + json.dumps(result, indent=2, sort_keys=True) + "\n```\n")
+          if any(row["status"] != 200 for row in rows):
+              raise SystemExit("diagnostic observed non-200 responses; see summary")
+          PY
