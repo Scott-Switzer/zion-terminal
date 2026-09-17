@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from zion_terminal.temporal import TemporalError, normalize_source_instant, parse_instant
 from zion_terminal.world_router import WorldRegistry
 
 METRICS = ("revenue", "operating_margin", "last_price")
@@ -63,9 +64,9 @@ def _as_of(value: Any) -> datetime | None:
     if not isinstance(value, str):
         raise QueryServiceError("INVALID_REQUEST", "as_of must be an ISO-8601 string")
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise QueryServiceError("INVALID_REQUEST", "as_of must be a valid ISO-8601 timestamp") from exc
+        return parse_instant(value, field="as_of").as_datetime
+    except TemporalError as exc:
+        raise QueryServiceError("INVALID_REQUEST", str(exc)) from exc
 
 
 def _evidence_response(world: dict[str, Any], entity: dict[str, Any], evidence: list[dict[str, Any]], release: dict[str, Any], request_id: str) -> dict[str, Any]:
@@ -170,12 +171,21 @@ class SyntheticReleaseClient:
         return _evidence_response(world, {key: entity[key] for key in ("entity_id", "display_name", "symbol")}, evidence, release, request["request_id"])
 
 
+def _source_as_of(value: Any) -> datetime | None:
+    if value in (None, ""):
+        return None
+    try:
+        return normalize_source_instant(value, field="available_at").as_datetime
+    except TemporalError:
+        return None
+
+
 def _filter_evidence(evidence: list[dict[str, Any]], metrics: list[str], as_of: datetime | None) -> list[dict[str, Any]]:
     output = []
     for metric in metrics:
         candidates = [row for row in evidence if row.get("metric") == metric]
         if as_of is not None:
-            candidates = [row for row in candidates if _as_of(row.get("available_at")) is not None and _as_of(row["available_at"]) <= as_of]
+            candidates = [row for row in candidates if _source_as_of(row.get("available_at")) is not None and _source_as_of(row["available_at"]) <= as_of]
         if candidates:
             output.append(candidates[-1])
     return output
