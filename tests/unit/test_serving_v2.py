@@ -62,6 +62,21 @@ def test_request_telemetry_starts_with_uncached_current_contract():
     assert stats == {"r2_gets": 0, "cache_hits": 0, "cache_misses": 0, "cache_errors": 0, "current_uncached": True, "current_cache_hit": 0, "current_cache_miss": 0, "current_cache_age_ms": 0.0, "current_cache_ttl_ms": 0, "current_r2_get_ms": 0.0, "current_serving_release_id": None, "timing_ms": {}}
 
 
+def test_isolate_diagnostics_are_lazy_and_explicit():
+    from types import SimpleNamespace
+
+    begin_telemetry(SimpleNamespace(DIAGNOSTIC_ISOLATE_TELEMETRY="true"))
+    first = telemetry_snapshot()
+    begin_telemetry(SimpleNamespace(DIAGNOSTIC_ISOLATE_TELEMETRY="true"))
+    second = telemetry_snapshot()
+    assert first["isolate_instance_id"]
+    assert second["isolate_instance_id"] == first["isolate_instance_id"]
+    assert second["isolate_request_seq"] == first["isolate_request_seq"] + 1
+    assert second["isolate_first_request_at"] == first["isolate_first_request_at"]
+    begin_telemetry()
+    assert "isolate_instance_id" not in telemetry_snapshot()
+
+
 def test_invalid_manifest_hash_is_rejected():
     import asyncio
     import hashlib

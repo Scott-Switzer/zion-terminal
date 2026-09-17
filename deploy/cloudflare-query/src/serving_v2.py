@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 from contextvars import ContextVar
-from datetime import datetime
+from datetime import datetime, timezone
 from time import perf_counter
 from decimal import Decimal
 from typing import Any
@@ -16,10 +16,24 @@ from typing import Any
 CURRENT_KEY = "gold/serving/CURRENT.json"
 SCHEMA_VERSION = "financial-serving-v2"
 _TELEMETRY: ContextVar[dict[str, Any] | None] = ContextVar("serving_v2_telemetry", default=None)
+# These are intentionally initialized lazily on the first request. Initializing
+# them at module import could make a deploy-time memory snapshot look like one
+# shared isolate identity across multiple runtime isolates.
+_ISOLATE_INSTANCE_ID: str | None = None
+_ISOLATE_REQUEST_SEQ = 0
+_ISOLATE_FIRST_REQUEST_AT: str | None = None
 
 
-def begin_telemetry() -> None:
-    _TELEMETRY.set({
+def begin_telemetry(env: Any = None) -> None:
+    global _ISOLATE_INSTANCE_ID, _ISOLATE_REQUEST_SEQ, _ISOLATE_FIRST_REQUEST_AT
+    diagnostic = str(getattr(env, "DIAGNOSTIC_ISOLATE_TELEMETRY", "false")).lower() in {"1", "true", "yes", "on"}
+    if diagnostic:
+        if _ISOLATE_INSTANCE_ID is None:
+            import uuid
+            _ISOLATE_INSTANCE_ID = uuid.uuid4().hex
+            _ISOLATE_FIRST_REQUEST_AT = datetime.now(timezone.utc).isoformat()
+        _ISOLATE_REQUEST_SEQ += 1
+    stats = {
         "r2_gets": 0,
         "cache_hits": 0,
         "cache_misses": 0,
@@ -33,7 +47,14 @@ def begin_telemetry() -> None:
         "current_serving_release_id": None,
         "_started": perf_counter(),
         "_timing_ms": {},
-    })
+    }
+    if diagnostic:
+        stats.update({
+            "isolate_instance_id": _ISOLATE_INSTANCE_ID,
+            "isolate_request_seq": _ISOLATE_REQUEST_SEQ,
+            "isolate_first_request_at": _ISOLATE_FIRST_REQUEST_AT,
+        })
+    _TELEMETRY.set(stats)
 
 
 def _mark(name: str, elapsed: float) -> None:
