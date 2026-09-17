@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "financial-temporal-v1",
+  "schema_version": "financial-temporal-v1",
+  "description": "Canonical temporal contract for financial observations, serving releases, and point-in-time queries.",
+  "instant": {
+    "type": "object",
+    "required": ["iso_utc", "epoch_ns", "precision", "normalization_policy"],
+    "properties": {
+      "iso_utc": {"type": "string", "description": "RFC3339 UTC instant ending in Z."},
+      "epoch_ns": {"type": "integer", "description": "Signed integer nanoseconds since Unix epoch; never derived through floating point."},
+      "precision": {"enum": ["date", "second", "millisecond", "microsecond", "nanosecond", "unknown"]},
+      "source_timezone": {"type": ["string", "null"]},
+      "source_value": {"type": ["string", "null"]},
+      "normalization_policy": {"type": "string"}
+    }
+  },
+  "clocks": {
+    "event_time": "When the underlying economic or market event occurred; period_end is not event_time.",
+    "published_at": "When the source publicly published the information.",
+    "available_at": "Earliest instant at which a PIT query may expose the observation.",
+    "ingested_at": "When this infrastructure received or persisted the record; backfill ingestion must not simulate historical availability."
+  },
+  "as_of": {
+    "required_timezone": true,
+    "rule": "An observation is eligible exactly when available_at <= as_of after UTC normalization.",
+    "naive_policy": "reject"
+  },
+  "date_fields": ["period_start", "period_end", "session_date", "fiscal_date"],
+  "date_policy": "Calendar dates remain YYYY-MM-DD semantic dates and are never implicitly converted to midnight UTC.",
+  "date_only_source_policy": "date_only_end_of_day_utc",
+  "legacy_date_only_compatibility_policy": "DATE_ONLY_NEXT_DAY_ET_V1",
+  "dst_policy": "Named timezone local civil times that are nonexistent or ambiguous without an explicit offset/fold are rejected.",
+  "session_policy": "US equities session_date is market-local calendar metadata and is not derived from UTC timestamp date.",
+  "derived_policy": "derived.available_at is the maximum normalized available_at of all inputs and retains input evidence IDs and calculation ID.",
+  "allowed_session_phases": ["PRE", "REGULAR", "POST", "CLOSED"]
+}

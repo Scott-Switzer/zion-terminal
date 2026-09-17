@@ -11,6 +11,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from workers import WorkerEntrypoint, asgi
 
+from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION, TemporalError, normalize_source_instant, parse_instant
 from serving_v2 import ServingV2Error, begin_telemetry as serving_v2_begin_telemetry, enabled as serving_v2_enabled, finish_telemetry as serving_v2_finish_telemetry, fundamentals as serving_v2_fundamentals, latest_price as serving_v2_latest_price, price_history as serving_v2_price_history, query as serving_v2_query, telemetry_snapshot as serving_v2_telemetry
 
 app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None, redoc_url=None)
@@ -79,7 +80,10 @@ def before(value: str | None, as_of: datetime | None) -> bool:
         return True
     if not value:
         return False
-    return datetime.fromisoformat(iso(value).replace("Z", "+00:00")) <= as_of
+    try:
+        return normalize_source_instant(value, field="available_at").as_datetime <= as_of
+    except TemporalError:
+        return False
 
 
 def parse_as_of(value: Any) -> datetime | None:
@@ -88,9 +92,9 @@ def parse_as_of(value: Any) -> datetime | None:
     if not isinstance(value, str):
         raise ValueError("INVALID_REQUEST: as_of must be an ISO-8601 string")
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ValueError("INVALID_REQUEST: as_of must be a valid ISO-8601 timestamp") from exc
+        return parse_instant(value, field="as_of").as_datetime
+    except TemporalError as exc:
+        raise ValueError(f"INVALID_REQUEST: {exc}") from exc
 
 
 async def text_object(bucket: Any, key: str) -> str:
@@ -380,7 +384,7 @@ async def readyz(): return {"status": "ready", "service": "zion-terminal"}
 @app.get("/v1/capabilities")
 async def capabilities(request: Request):
     env = request.scope["env"]
-    return {"schema_version": "1", "service_version": getattr(env, "SERVICE_VERSION", "staging"), "git_sha": "cloudflare-staging", "worlds": ["real", "synthetic"], "metrics": list(METRICS), "tools": {name: {"supported_worlds": ["real", "synthetic"]} for name in ("resolve_entity", "get_price", "get_price_history", "get_fundamentals", "get_filing", "get_evidence", "calculate", "compare")}, "calculation_operations": ["change", "percent_change", "average", "min", "max", "basis_point_change"]}
+    return {"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(env, "SERVICE_VERSION", "staging"), "git_sha": "cloudflare-staging", "worlds": ["real", "synthetic"], "metrics": list(METRICS), "tools": {name: {"supported_worlds": ["real", "synthetic"]} for name in ("resolve_entity", "get_price", "get_price_history", "get_fundamentals", "get_filing", "get_evidence", "calculate", "compare")}, "calculation_operations": ["change", "percent_change", "average", "min", "max", "basis_point_change"]}
 
 def tool_as_query(result: dict, request_id: str) -> dict:
     data = result.get("data", {})

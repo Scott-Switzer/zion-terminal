@@ -13,6 +13,8 @@ from time import perf_counter
 from decimal import Decimal
 from typing import Any
 
+from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION, TemporalError, normalize_source_instant, parse_instant
+
 CURRENT_KEY = "gold/serving/CURRENT.json"
 SCHEMA_VERSION = "financial-serving-v2"
 _TELEMETRY: ContextVar[dict[str, Any] | None] = ContextVar("serving_v2_telemetry", default=None)
@@ -86,6 +88,9 @@ class ServingV2Error(Exception):
         self.code = code
         self.message = message
         self.retryable = retryable
+
+    def __str__(self) -> str:
+        return f"{self.code}: {self.message}"
 
 
 def _ttl_ms(env: Any) -> int:
@@ -213,14 +218,12 @@ def cache_key(release_id: str, artifact_path: str) -> str:
 
 
 def _as_of(value: Any) -> datetime | None:
-    if value in (None, ""):
+    if value is None:
         return None
-    if not isinstance(value, str):
-        raise ServingV2Error("INVALID_REQUEST", "as_of must be an ISO-8601 string")
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ServingV2Error("INVALID_REQUEST", "as_of must be a valid ISO-8601 timestamp") from exc
+        return parse_instant(value, field="as_of").as_datetime
+    except TemporalError as exc:
+        raise ServingV2Error("INVALID_REQUEST", str(exc)) from exc
 
 
 def _available(row: dict[str, Any], as_of: datetime | None) -> bool:
@@ -230,11 +233,9 @@ def _available(row: dict[str, Any], as_of: datetime | None) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=as_of.tzinfo)
+        parsed = normalize_source_instant(value, field="available_at").as_datetime
         return parsed <= as_of
-    except ValueError:
+    except TemporalError:
         return False
 
 
@@ -405,7 +406,7 @@ async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str
     if metrics and {row.get("metric_id") for row in selected} < set(metrics):
         raise ServingV2Error("METRIC_NOT_AVAILABLE", "one or more requested metrics are unavailable")
     served = [_serve_row(row, release_id=manifest["serving_release_id"], artifact_path=f"entities/{key}/fundamentals/{source}.json", source_snapshot_id=manifest["source"]["fundamentals"]["snapshot_id"]) for row in selected]
-    return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "entity": {"entity_id": snapshot["entity_id"], "symbol": snapshot["symbol"], "display_name": snapshot["symbol"]}, "observations": served, "release": {"serving_release_id": manifest["serving_release_id"], "source": manifest["source"]}, "request_id": request_id}
+    return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "entity": {"entity_id": snapshot["entity_id"], "symbol": snapshot["symbol"], "display_name": snapshot["symbol"]}, "observations": served, "release": {"serving_release_id": manifest["serving_release_id"], "source": manifest["source"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256}, "request_id": request_id}
 
 
 async def price_history(env: Any, symbol: str, *, limit: int = 500, start_date: str | None = None, end_date: str | None = None, as_of: Any = None, request_id: str = "") -> dict[str, Any]:
@@ -431,7 +432,7 @@ async def price_history(env: Any, symbol: str, *, limit: int = 500, start_date: 
     rows = sorted(rows, key=lambda row: row["session_date"])[-min(limit, 500):]
     for row in rows:
         row["provenance"] = {"serving_release_id": manifest["serving_release_id"], "source_snapshot_id": manifest["source"]["prices"]["snapshot_id"], "artifact": f"entities/{key}/prices/daily/{row['session_date'][:4]}.json"}
-    return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "prices": rows, "release": {"serving_release_id": manifest["serving_release_id"], "source": manifest["source"]}, "request_id": request_id}
+    return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "prices": rows, "release": {"serving_release_id": manifest["serving_release_id"], "source": manifest["source"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256}, "request_id": request_id}
 
 
 async def query(env: Any, symbol: str, metrics: list[str], *, as_of: Any = None, request_id: str = "") -> dict[str, Any]:
@@ -464,4 +465,4 @@ async def latest_price(env: Any, symbol: str, *, as_of: Any = None, request_id: 
         if not history["prices"]:
             raise ServingV2Error("METRIC_NOT_AVAILABLE", "price is unavailable")
         row = history["prices"][-1]
-    return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "metric": {"metric": "last_price", "value": row["close"], "unit": row["unit"], "period": row["session_date"], "available_at": row["available_at"], "volume": row.get("volume"), "evidence_id": row.get("evidence_id"), "provenance": {"serving_release_id": manifest["serving_release_id"], "source_snapshot_id": manifest["source"]["prices"]["snapshot_id"], "artifact": f"entities/{key}/prices/daily/{row['session_date'][:4]}.json"}}, "release": {"serving_release_id": manifest["serving_release_id"], "source": manifest["source"]}, "request_id": request_id}
+    return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "metric": {"metric": "last_price", "value": row["close"], "unit": row["unit"], "period": row["session_date"], "available_at": row["available_at"], "volume": row.get("volume"), "evidence_id": row.get("evidence_id"), "provenance": {"serving_release_id": manifest["serving_release_id"], "source_snapshot_id": manifest["source"]["prices"]["snapshot_id"], "artifact": f"entities/{key}/prices/daily/{row['session_date'][:4]}.json"}}, "release": {"serving_release_id": manifest["serving_release_id"], "source": manifest["source"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256}, "request_id": request_id}
