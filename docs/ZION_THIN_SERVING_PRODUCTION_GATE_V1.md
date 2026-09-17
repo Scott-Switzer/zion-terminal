@@ -14,10 +14,11 @@ The thin Worker is a reproducible deterministic serving candidate with exact par
 - PR #18: merged
 - PR #18 merge SHA: `186858bab5331f80d61594a5e754483856a756f4`
 - PR #19: merged
-- PR #19 merge SHA / final main SHA: `529054fb6ff47a7f0a4b296ef8ad13b0e6f8ee7c`
+- PR #19 merge SHA: `529054fb6ff47a7f0a4b296ef8ad13b0e6f8ee7c`
 - Starting main: `4fd6731b6fb46e62c183ae380c700a70f8ae3ea6`
 - Working branch for this candidate: `feat/thin-serving-production-gate`
-- Final main: `529054fb6ff47a7f0a4b296ef8ad13b0e6f8ee7c`
+- Final implementation SHA: `529054fb6ff47a7f0a4b296ef8ad13b0e6f8ee7c`
+- Final main after documentation follow-up: `8df297e3882f4c727e5d8251b9853068481d7361`
 - Current serving release: `99d7088a2f0985e663a516a90c290f15`
 - CURRENT pointer: unchanged
 
