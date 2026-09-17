@@ -13,8 +13,11 @@ The thin Worker is a reproducible deterministic serving candidate with exact par
 - Repository: `Scott-Switzer/zion-terminal`
 - PR #18: merged
 - PR #18 merge SHA: `186858bab5331f80d61594a5e754483856a756f4`
+- PR #19: merged
+- PR #19 merge SHA / final main SHA: `529054fb6ff47a7f0a4b296ef8ad13b0e6f8ee7c`
 - Starting main: `4fd6731b6fb46e62c183ae380c700a70f8ae3ea6`
 - Working branch for this candidate: `feat/thin-serving-production-gate`
+- Final main: `529054fb6ff47a7f0a4b296ef8ad13b0e6f8ee7c`
 - Current serving release: `99d7088a2f0985e663a516a90c290f15`
 - CURRENT pointer: unchanged
 
