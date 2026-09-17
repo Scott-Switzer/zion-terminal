@@ -384,7 +384,7 @@ async def readyz(): return {"status": "ready", "service": "zion-terminal"}
 @app.get("/v1/capabilities")
 async def capabilities(request: Request):
     env = request.scope["env"]
-    return {"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(env, "SERVICE_VERSION", "staging"), "git_sha": "cloudflare-staging", "worlds": ["real", "synthetic"], "metrics": list(METRICS), "tools": {name: {"supported_worlds": ["real", "synthetic"]} for name in ("resolve_entity", "get_price", "get_price_history", "get_fundamentals", "get_filing", "get_evidence", "calculate", "compare")}, "calculation_operations": ["change", "percent_change", "average", "min", "max", "basis_point_change"]}
+    return {"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(env, "SERVICE_VERSION", "staging"), "git_sha": "cloudflare-staging", "worlds": ["real", "synthetic"], "metrics": list(METRICS), "tools": {name: {"supported_worlds": ["real", "synthetic"]} for name in ("resolve_entity", "get_price", "get_price_history", "get_fundamentals", "get_filing", "get_evidence", "calculate", "compare")}, "calculation_operations": ["change", "percent_change", "average", "min", "max", "basis_point_change"]}
 
 def tool_as_query(result: dict, request_id: str) -> dict:
     data = result.get("data", {})

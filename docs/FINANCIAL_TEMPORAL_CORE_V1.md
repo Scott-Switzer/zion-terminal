@@ -5,7 +5,7 @@
 The shared contract is `contracts/financial-temporal-v1.json` and its golden vectors are in `contracts/financial-temporal-v1-vectors.json`.
 
 - Schema: `financial-temporal-v1`
-- Contract SHA-256: `855a215abed372ba794f82701c21366c39fd5c9e6c9cd9c22e1ced6232ca7666`
+- Contract SHA-256: `5d225691cb60251d1997bb8d749267da845f0b3cda32137cbf76c3fbd2783b1d`
 - Canonical instants are timezone-aware RFC3339 values normalized to UTC and represented internally as signed integer `epoch_ns`.
 - `period_start`, `period_end`, `fiscal_date`, and `session_date` remain calendar dates; they are not midnight UTC instants.
 - Source precision is retained as `date`, `second`, `millisecond`, `microsecond`, `nanosecond`, or `unknown`.
@@ -16,7 +16,7 @@ The clocks have distinct meanings: `event_time` is when the economic event occur
 
 `as_of` is an instant input and must include `Z` or an explicit numeric offset. Naive timestamps and date-only values are rejected by Zion's request parser. Offset-equivalent values normalize to the same integer instant. PIT eligibility is `available_at <= as_of`; invalid availability is not eligible in the serving path and strict leakage validation raises an error.
 
-Date-only source evidence uses the explicit `date_only_end_of_day_utc` policy in the Temporal Core. This prevents a filing date from becoming visible before the source proves availability during that date. Exact SEC accepted timestamps take precedence; otherwise the producer records date-only evidence and its policy.
+Date-only source evidence uses the explicit `date_only_end_of_day_utc` policy in the strict Temporal Core. Legacy lakehouse rows use the named `DATE_ONLY_NEXT_DAY_ET_V1` compatibility policy: the following calendar day at midnight America/New_York, normalized to UTC. This prevents intra-day look-ahead when exact publication time is unknown. Exact SEC accepted timestamps take precedence; otherwise the producer records date-only evidence and its policy.
 
 Derived observations retain input evidence and must have availability at or after every input. Amendment selection is performed after eligibility filtering, preserving original-before-amendment and amended-after-boundary behavior.
 

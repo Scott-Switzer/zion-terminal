@@ -29,6 +29,7 @@
   "date_fields": ["period_start", "period_end", "session_date", "fiscal_date"],
   "date_policy": "Calendar dates remain YYYY-MM-DD semantic dates and are never implicitly converted to midnight UTC.",
   "date_only_source_policy": "date_only_end_of_day_utc",
+  "legacy_date_only_compatibility_policy": "DATE_ONLY_NEXT_DAY_ET_V1",
   "dst_policy": "Named timezone local civil times that are nonexistent or ambiguous without an explicit offset/fold are rejected.",
   "session_policy": "US equities session_date is market-local calendar metadata and is not derived from UTC timestamp date.",
   "derived_policy": "derived.available_at is the maximum normalized available_at of all inputs and retains input evidence IDs and calculation ID.",

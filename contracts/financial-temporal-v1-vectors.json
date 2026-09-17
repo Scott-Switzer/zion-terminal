@@ -8,6 +8,7 @@
     {"id": "pre_1970", "kind": "instant", "input": "1969-12-31T23:59:59.500000Z", "iso_utc": "1969-12-31T23:59:59.500000Z", "epoch_ns": -500000000, "precision": "microsecond"},
     {"id": "post_2038", "kind": "instant", "input": "2040-01-01T00:00:00Z", "iso_utc": "2040-01-01T00:00:00Z", "epoch_ns": 2208988800000000000, "precision": "second"},
     {"id": "date_only", "kind": "date_only", "input": "2026-09-17", "policy": "date_only_end_of_day_utc", "iso_utc": "2026-09-17T23:59:59.999999999Z", "precision": "date"},
+    {"id": "legacy_date_only_next_day_et", "kind": "legacy_date_only", "input": "2025-05-20", "policy": "DATE_ONLY_NEXT_DAY_ET_V1", "iso_utc": "2025-05-21T04:00:00Z", "precision": "date"},
     {"id": "naive_rejected", "kind": "reject", "input": "2026-09-17T20:50:00"},
     {"id": "date_as_instant_rejected", "kind": "reject", "input": "2026-09-17"},
     {"id": "dst_spring_nonexistent", "kind": "local_reject", "input": "2026-03-08T02:30:00", "timezone": "America/New_York"},

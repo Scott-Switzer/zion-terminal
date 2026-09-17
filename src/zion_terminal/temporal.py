@@ -10,7 +10,7 @@ _EPOCH = date(1970, 1, 1)
 _INSTANT = re.compile(r"^(?P<day>\d{4}-\d{2}-\d{2})T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})(?:\.(?P<fraction>\d{1,9}))?(?P<offset>Z|[+-]\d{2}:\d{2})$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TEMPORAL_SCHEMA_VERSION = "financial-temporal-v1"
-TEMPORAL_CONTRACT_SHA256 = "855a215abed372ba794f82701c21366c39fd5c9e6c9cd9c22e1ced6232ca7666"
+TEMPORAL_CONTRACT_SHA256 = "5d225691cb60251d1997bb8d749267da845f0b3cda32137cbf76c3fbd2783b1d"
 
 
 class TemporalError(ValueError):
@@ -82,6 +82,22 @@ def normalize_source_instant(value: Any, *, field: str = "source instant") -> Te
     if isinstance(value, str) and _DATE.fullmatch(value):
         return normalize_date_only(value)
     return parse_instant(value, field=field)
+
+
+def normalize_legacy_date_only(value: Any, *, policy: str = "DATE_ONLY_NEXT_DAY_ET_V1") -> TemporalInstant:
+    if not isinstance(value, str) or not _DATE.fullmatch(value):
+        raise TemporalError("legacy date-only value must be YYYY-MM-DD")
+    if policy != "DATE_ONLY_NEXT_DAY_ET_V1":
+        raise TemporalError(f"unsupported legacy date-only policy: {policy}")
+    try:
+        source_date = date.fromisoformat(value)
+        zone = ZoneInfo("America/New_York")
+        local_midnight = datetime.combine(source_date + timedelta(days=1), datetime.min.time(), tzinfo=zone)
+    except (ValueError, ZoneInfoNotFoundError) as exc:
+        raise TemporalError("invalid legacy date-only value") from exc
+    utc = local_midnight.astimezone(timezone.utc)
+    epoch_ns = _epoch_ns(utc, None)
+    return TemporalInstant(_iso_from_epoch(epoch_ns, fractional_digits=0), epoch_ns, "date", "America/New_York", value, policy)
 
 
 def from_epoch_ns(epoch_ns: int, *, precision: str = "nanosecond", source_value: str | None = None) -> TemporalInstant:

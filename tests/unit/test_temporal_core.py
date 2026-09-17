@@ -8,7 +8,7 @@ ROOT = Path(__file__).parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "deploy" / "cloudflare-query" / "src"))
 
-from temporal_core import TemporalError, normalize_date_only, parse_instant, parse_local_civil, us_equity_session, validate_leakage
+from temporal_core import TemporalError, normalize_date_only, normalize_legacy_date_only, parse_instant, parse_local_civil, us_equity_session, validate_leakage
 from zion_terminal.temporal import parse_instant as package_parse_instant
 
 
@@ -16,7 +16,7 @@ VECTORS = json.loads((ROOT / "contracts" / "financial-temporal-v1-vectors.json")
 
 
 def test_shared_golden_vectors_and_round_trip():
-    assert len(VECTORS) == 12
+    assert len(VECTORS) == 13
     for vector in VECTORS:
         kind = vector["kind"]
         if kind == "instant":
@@ -29,6 +29,10 @@ def test_shared_golden_vectors_and_round_trip():
             assert parse_instant(parsed.iso_utc).epoch_ns == parsed.epoch_ns
         elif kind == "date_only":
             parsed = normalize_date_only(vector["input"], policy=vector["policy"])
+            assert parsed.iso_utc == vector["iso_utc"]
+            assert parsed.precision == "date"
+        elif kind == "legacy_date_only":
+            parsed = normalize_legacy_date_only(vector["input"], policy=vector["policy"])
             assert parsed.iso_utc == vector["iso_utc"]
             assert parsed.precision == "date"
         elif kind in {"reject", "local_reject"}:
@@ -56,6 +60,20 @@ def test_strict_as_of_rejects_date_and_naive_values():
         else:
             raise AssertionError(f"accepted invalid as_of: {value}")
     assert _as_of("2026-09-17T16:00:00-04:00") == _as_of("2026-09-17T20:00:00Z")
+
+
+def test_legacy_date_only_next_day_et_policy_boundaries_and_dst():
+    available = normalize_legacy_date_only("2025-05-20")
+    assert available.iso_utc == "2025-05-21T04:00:00Z"
+    try:
+        validate_leakage([{"available_at": available.iso_utc}], "2025-05-20T23:59:59-04:00")
+    except TemporalError:
+        pass
+    else:
+        raise AssertionError("legacy date-only value became visible during source day")
+    validate_leakage([{"available_at": available.iso_utc}], "2025-05-21T00:00:00-04:00")
+    assert normalize_legacy_date_only("2025-01-10").iso_utc.endswith("05:00:00Z")
+    assert normalize_legacy_date_only("2025-07-10").iso_utc.endswith("04:00:00Z")
 
 
 def test_date_only_policy_is_conservative_for_pit():
