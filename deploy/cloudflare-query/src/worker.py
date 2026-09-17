@@ -18,7 +18,11 @@ app = FastAPI(title="Zion Financial Truth Query", version="1.0.0", docs_url=None
 
 @app.middleware("http")
 async def serving_timing_headers(request: Request, call_next):
-    serving_v2_begin_telemetry(request.scope.get("env"))
+    # Query/tool handlers own their telemetry context so release payloads and
+    # diagnostics contain application stages. Health endpoints have no handler
+    # telemetry setup, so initialize them here for diagnostic headers.
+    if request.url.path in {"/healthz", "/readyz"}:
+        serving_v2_begin_telemetry(request.scope.get("env"))
     response = await call_next(request)
     telemetry = serving_v2_finish_telemetry()
     if telemetry:
