@@ -12,7 +12,10 @@ from serving_v2 import (
     ServingV2Error,
     begin_telemetry,
     fundamentals,
+    corporate_actions,
     finish_telemetry,
+    load_release,
+    resolve_security,
     latest_price,
     price_history,
     query as serving_query,
@@ -85,7 +88,7 @@ class Default(WorkerEntrypoint):
         if request.method == "GET" and path in {"/healthz", "/readyz"}:
             return self._response({"status": "ok", "service": "zion-financial-serving-v2-thin", "runtime": "cloudflare-python-worker"})
         if request.method == "GET" and path == "/v1/capabilities":
-            return self._response({"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": ["real"]} for name in ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare")}})
+            return self._response({"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": ["real"]} for name in ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare", "resolve_security", "get_corporate_actions")}})
         try:
             if request.method != "POST":
                 return self._error(rid, "NOT_FOUND", "route not found", 404)
@@ -147,6 +150,12 @@ class Default(WorkerEntrypoint):
         if world != REAL_WORLD:
             raise LookupError("WORLD_NOT_FOUND")
         symbol = str(body.get("entity", body.get("symbol", ""))).upper()
+        if name == "resolve_security":
+            result = await resolve_security(self.env, (await load_release(self.env))[1], symbol, body.get("as_of"))
+            return {"tool": name, "world": world, "data": result, "evidence": [result.get("identity", {}).get("evidence_id")], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": result["serving_release_id"], "temporal_contract_hash": result["temporal_contract_sha256"]}}
+        if name == "get_corporate_actions":
+            result = await corporate_actions(self.env, symbol=symbol or None, entity_id=body.get("entity_id"), instrument_id=body.get("instrument_id"), start=body.get("start"), end=body.get("end"), as_of=body.get("as_of"), action_types=body.get("action_types"), request_id=rid)
+            return {"tool": name, "world": result["world"], "data": result["data"], "evidence": result["evidence"], "quality": {"status": "VERIFIED"}, "release": result["release"]}
         if name == "get_fundamentals":
             metrics = body.get("metrics") or [body.get("metric", "revenue")]
             result = await fundamentals(self.env, symbol, metrics, period=body.get("period"), lookback=min(int(body.get("lookback", 40)), 40), as_of=body.get("as_of"), request_id=rid)
