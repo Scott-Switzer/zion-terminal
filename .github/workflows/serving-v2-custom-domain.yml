@@ -18,7 +18,7 @@ on:
       expected_release:
         description: Optional exact serving release ID
         required: false
-        default: "2726c81026adf8465fa70f002f78c2ff"
+        default: "895eb69371fa2e944eed20463f7f9fc2"
   schedule:
     - cron: "17 3 * * *"
 
@@ -32,7 +32,7 @@ jobs:
     env:
       BASE_URL: ${{ inputs.base_url || 'https://api-thin-staging.scotttunnel.xyz' }}
       SYMBOL: ${{ inputs.symbol || 'MSFT' }}
-      EXPECTED_RELEASE: ${{ inputs.expected_release || '2726c81026adf8465fa70f002f78c2ff' }}
+      EXPECTED_RELEASE: ${{ inputs.expected_release || '895eb69371fa2e944eed20463f7f9fc2' }}
       SAMPLES: ${{ inputs.samples || '50' }}
     steps:
       - name: TLS and health checks
