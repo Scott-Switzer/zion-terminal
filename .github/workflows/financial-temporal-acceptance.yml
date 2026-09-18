@@ -1,0 +1,38 @@
+name: Financial Temporal Core Acceptance Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Final staging custom domain or safe workers.dev endpoint
+        required: false
+        default: https://api-thin-staging.scotttunnel.xyz
+      samples:
+        description: Requests per case and run
+        required: false
+        default: "100"
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [Q1, Q2, Q3, Q4, Q5]
+        run: [1, 2, 3]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: ${{ inputs.base_url || 'https://api-thin-staging.scotttunnel.xyz' }}
+      SAMPLES: ${{ inputs.samples || '100' }}
+      QUERY_CASE: ${{ matrix.case }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Health check
+        run: curl --fail-with-body --silent --show-error --tlsv1.2 "$BASE_URL/healthz"
+      - name: Persistent benchmark
+        run: python3 scripts/temporal_acceptance_benchmark.py | tee "$RUNNER_TEMP/result.json"
+      - name: Publish result
+        run: cat "$RUNNER_TEMP/result.json" >> "$GITHUB_STEP_SUMMARY"
