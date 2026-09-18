@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "zion-financial-serving-v2-entity-actions-staging",
+  "main": "../src/thin_worker.py",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["python_workers", "disable_python_external_sdk"],
+  "workers_dev": true,
+  "r2_buckets": [
+    {"binding": "MARKET_DATA", "bucket_name": "financial-system-datasets"},
+    {"binding": "SEC_CORPUS", "bucket_name": "ppe-sec-intelligence-prod"}
+  ],
+  "vars": {
+    "SERVING_V2_ENABLED": "true",
+    "SERVING_V2_CURRENT_KEY": "gold/serving/entity-actions/CURRENT.json",
+    "CURRENT_POINTER_CACHE_TTL_MS": "0",
+    "DIAGNOSTIC_ISOLATE_TELEMETRY": "true",
+    "SERVICE_VERSION": "2.0.0-serving-thin-entity-actions-candidate"
+  },
+  "observability": {"enabled": true, "logs": {"head_sampling_rate": 1}}
+}
