@@ -11,10 +11,10 @@
   ],
   "vars": {
     "SERVING_V2_ENABLED": "true",
-    "SERVING_V2_CURRENT_KEY": "gold/serving/CURRENT.json",
+    "SERVING_V2_CURRENT_KEY": "gold/serving/coverage25/CURRENT.json",
     "CURRENT_POINTER_CACHE_TTL_MS": "0",
     "DIAGNOSTIC_ISOLATE_TELEMETRY": "true",
-    "SERVICE_VERSION": "2.0.0-serving-thin-staging"
+    "SERVICE_VERSION": "2.0.0-serving-thin-coverage25-staging"
   },
   "observability": {"enabled": true, "logs": {"head_sampling_rate": 1}}
 }
