@@ -437,6 +437,9 @@ async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: s
         if end and event_date[:10] > end: continue
         if as_of and normalize_source_instant(row["available_at"], field="available_at").epoch_ns > normalize_source_instant(as_of, field="as_of").epoch_ns:
             continue
+        row = dict(row)
+        if as_of and row.get("effective_date") and str(as_of)[:10] < row["effective_date"]:
+            row["status"] = "ANNOUNCED"
         selected.append(row)
     return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "data": {"actions": sorted(selected, key=lambda row: (row.get("effective_date") or "", row["action_id"]))}, "evidence": selected, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256}, "request_id": request_id}
 
