@@ -85,7 +85,7 @@ class Default(WorkerEntrypoint):
         if request.method == "GET" and path in {"/healthz", "/readyz"}:
             return self._response({"status": "ok", "service": "zion-financial-serving-v2-thin", "runtime": "cloudflare-python-worker"})
         if request.method == "GET" and path == "/v1/capabilities":
-            return self._response({"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"]})
+            return self._response({"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": ["real"]} for name in ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare")}})
         try:
             if request.method != "POST":
                 return self._error(rid, "NOT_FOUND", "route not found", 404)
