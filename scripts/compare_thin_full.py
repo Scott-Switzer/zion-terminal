@@ -40,7 +40,7 @@ def fetch(base: str, path: str, body: dict) -> tuple[int, dict]:
 
 def normalize(value):
     if isinstance(value, dict):
-        return {key: normalize(item) for key, item in sorted(value.items()) if key not in {"request_id", "answer", "serving_telemetry", "retrieved_at"}}
+        return {key: normalize(item) for key, item in sorted(value.items()) if key not in {"request_id", "answer", "serving_telemetry", "retrieved_at", "temporal_schema_version", "temporal_contract_hash", "temporal_contract_sha256"}}
     if isinstance(value, list):
         return [normalize(item) for item in value]
     return value
