@@ -1,0 +1,71 @@
+name: Tool Contract V2 Operations
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy the checked-out main SHA to thin staging before acceptance
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "47 4 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_URL: https://api-thin-staging.scotttunnel.xyz
+      EXPECTED_RELEASE: 895eb69371fa2e944eed20463f7f9fc2
+      CONTRACT_SHA: 763e01d48975d02532224de73d668952bc33a199021654b5653b6c6bff9235f8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: python -m pip install --disable-pip-version-check -e ".[dev]"
+      - name: Verify contract and tests
+        run: |
+          python scripts/generate_tool_contract.py
+          git diff --exit-code -- contracts/zion-tool-contract-v2.json contracts/zion-tool-contract-v2.sha256
+          python -m pytest -q tests/unit/test_tool_contract_v2.py tests/unit/test_temporal_core.py tests/unit/test_serving_v2.py
+          python -m py_compile deploy/cloudflare-query/src/contract_v2.py deploy/cloudflare-query/src/thin_worker.py
+      - name: Deploy merged main SHA when requested
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy == true }}
+        working-directory: deploy/cloudflare-query
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          npx --yes wrangler@4.135.0 deploy --config thin/wrangler.jsonc --var "GIT_SHA:${GITHUB_SHA}" --var "TOOL_CONTRACT_VERSION:zion-tool-contract-v2" --var "TOOL_CONTRACT_SHA256:${CONTRACT_SHA}" --var "SERVICE_VERSION:zion-tool-contract-v2-${GITHUB_SHA}"
+      - name: Hosted REST and MCP canaries and parity
+        env:
+          ZION_BASE_URL: ${{ env.BASE_URL }}
+          EXPECTED_SERVING_RELEASE: ${{ env.EXPECTED_RELEASE }}
+          PARITY_OUTPUT: artifacts/tool-contract-v2/rest-mcp-parity.json
+        run: python scripts/tool_contract_v2_external_acceptance.py
+      - name: Hosted TLS evidence
+        run: |
+          getent ahosts "$BASE_URL" || true
+          openssl s_client -connect api-thin-staging.scotttunnel.xyz:443 -servername api-thin-staging.scotttunnel.xyz -tls1_2 </dev/null 2>/tmp/tls.log | openssl x509 -noout -subject -issuer -dates -ext subjectAltName
+          grep -E "Protocol|Cipher|Verify return code" /tmp/tls.log || true
+          curl --fail-with-body --silent --show-error --tlsv1.2 -D /tmp/headers "$BASE_URL/healthz" -o /tmp/health.json
+          grep -iE "cf-ray|HTTP/" /tmp/headers || true
+          cat /tmp/health.json
+      - name: Applicable official MCP protocol scenarios
+        run: |
+          npx --yes @modelcontextprotocol/conformance@0.1.16 --version
+          npx --yes @modelcontextprotocol/conformance@0.1.16 list --server --spec-version 2025-11-25
+          for scenario in server-initialize logging-set-level ping completion-complete tools-list; do
+            npx --yes @modelcontextprotocol/conformance@0.1.16 server --url "$BASE_URL/mcp" --scenario "$scenario" --spec-version 2025-11-25 --verbose
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tool-contract-v2-parity
+          path: artifacts/tool-contract-v2
+          if-no-files-found: ignore

@@ -1,0 +1,798 @@
+{
+  "contract_version": "zion-tool-contract-v2",
+  "envelope_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "arguments": {
+        "type": "object"
+      },
+      "as_of": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "serving_release_id": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "world": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "world_id": {
+            "type": "string"
+          },
+          "world_type": {
+            "enum": [
+              "real",
+              "synthetic"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "world_type",
+          "world_id"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "world",
+      "arguments"
+    ],
+    "type": "object"
+  },
+  "response_schema_version": "zion-tool-response-v2",
+  "schema_draft": "https://json-schema.org/draft/2020-12/schema",
+  "tools": {
+    "calculate": {
+      "description": "Perform a bounded exact-decimal calculation.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "operation": {
+            "enum": [
+              "difference",
+              "percent_change",
+              "average",
+              "sum",
+              "ratio"
+            ],
+            "type": "string"
+          },
+          "unit": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "operation",
+          "values"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real",
+        "synthetic"
+      ],
+      "title": "Calculate"
+    },
+    "compare": {
+      "description": "Compare a bounded metric series across entities.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entities": {
+            "items": {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "type": "array"
+          },
+          "lookback": {
+            "maximum": 40,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "metric": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "period": {
+            "enum": [
+              "annual",
+              "quarterly"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "entities",
+          "metric"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Compare"
+    },
+    "get_corporate_actions": {
+      "description": "Return evidence-backed corporate actions under PIT visibility.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "action_types": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "end": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "entity_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "instrument_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "start": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Get corporate actions"
+    },
+    "get_evidence": {
+      "description": "Retrieve canonical provenance by evidence ID.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "evidence_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "observation_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_id"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Get evidence"
+    },
+    "get_fundamentals": {
+      "description": "Return entity-scoped exact financial observations with PIT filtering.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entity": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "lookback": {
+            "maximum": 40,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "metrics": {
+            "items": {
+              "maxLength": 256,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          },
+          "period": {
+            "enum": [
+              "annual",
+              "quarterly"
+            ],
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "metrics"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Get fundamentals"
+    },
+    "get_price": {
+      "description": "Return the latest point-in-time listing price.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instrument_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "listing_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Get price"
+    },
+    "get_price_history": {
+      "description": "Return bounded listing price history.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "end_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "instrument_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "listing_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "start_date": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Get price history"
+    },
+    "get_revision_history": {
+      "description": "Return known revisions of one financial observation identity.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "entity": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "metric": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "period_end": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "period_start": {
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "type": "string"
+          },
+          "period_type": {
+            "enum": [
+              "annual",
+              "quarterly"
+            ],
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "metric"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Get revision history"
+    },
+    "resolve_entity": {
+      "description": "Resolve an issuer entity by canonical ID, CIK, or symbol.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cik": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "entity_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Resolve entity"
+    },
+    "resolve_security": {
+      "description": "Resolve a security and listing using point-in-time identifier validity.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "as_of": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exchange": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "instrument_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "listing_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "symbol": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Resolve security"
+    },
+    "screen": {
+      "description": "Run a bounded deterministic screen over the materialized serving universe.",
+      "deterministic": true,
+      "input_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "filters": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "operator": {
+                  "enum": [
+                    "eq",
+                    "ne",
+                    "gt",
+                    "gte",
+                    "lt",
+                    "lte",
+                    "between"
+                  ],
+                  "type": "string"
+                },
+                "value": {},
+                "values": {
+                  "maxItems": 2,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "field",
+                "operator"
+              ],
+              "type": "object"
+            },
+            "maxItems": 8,
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "sort": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "asc",
+                    "desc"
+                  ],
+                  "type": "string"
+                },
+                "field": {
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "field"
+              ],
+              "type": "object"
+            },
+            "maxItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "filters"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": true,
+        "required": [
+          "schema_version",
+          "tool_contract_version",
+          "request_id",
+          "tool",
+          "world",
+          "data",
+          "evidence",
+          "quality",
+          "provenance",
+          "release"
+        ],
+        "type": "object"
+      },
+      "read_only": true,
+      "supported_worlds": [
+        "real"
+      ],
+      "title": "Screen"
+    }
+  },
+  "world_schema": {
+    "additionalProperties": false,
+    "properties": {
+      "version": {
+        "type": "string"
+      },
+      "world_id": {
+        "type": "string"
+      },
+      "world_type": {
+        "enum": [
+          "real",
+          "synthetic"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "world_type",
+      "world_id"
+    ],
+    "type": "object"
+  }
+}
