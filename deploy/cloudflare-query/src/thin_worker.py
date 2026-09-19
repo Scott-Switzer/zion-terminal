@@ -341,6 +341,9 @@ class Default(WorkerEntrypoint):
 
     async def _mcp(self, request, rid: str):
         body = await request.json()
+        is_batch = isinstance(body, list)
+        if is_batch:
+            body = body[0] if body and isinstance(body[0], dict) else {}
         method = body.get("method") if isinstance(body, dict) else None
         rpc_id = body.get("id") if isinstance(body, dict) else None
         try:
