@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import uuid
@@ -312,6 +313,16 @@ class Default(WorkerEntrypoint):
         cached = _SCREEN_CACHE.get(cache_key)
         if cached is not None:
             return cached
+        cache_url = "https://screen-v2.internal/" + hashlib.sha256(cache_key.encode()).hexdigest()
+        try:
+            from js import Request, caches  # type: ignore
+            cache_response = await caches.default.match(Request.new(cache_url))
+            if cache_response is not None:
+                cached = json.loads(await cache_response.text())
+                _SCREEN_CACHE[cache_key] = cached
+                return cached
+        except Exception:
+            pass
         index = await artifact(self.env, manifest, "identity/resolver_index.json")
         symbols = sorted(index.get("symbols", {}).keys())[:100]
         filters = args.get("filters", [])
@@ -346,6 +357,13 @@ class Default(WorkerEntrypoint):
         if len(_SCREEN_CACHE) >= 16:
             _SCREEN_CACHE.pop(next(iter(_SCREEN_CACHE)))
         _SCREEN_CACHE[cache_key] = result
+        try:
+            from js import Request, Response, caches  # type: ignore
+            cache_response = Response.new(json.dumps(result, separators=(",", ":")))
+            cache_response.headers.set("Cache-Control", "public, max-age=300")
+            await caches.default.put(Request.new(cache_url), cache_response)
+        except Exception:
+            pass
         return result
 
     async def _mcp(self, request, rid: str):
