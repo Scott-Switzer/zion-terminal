@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlparse
 
 from workers import Response, WorkerEntrypoint
@@ -19,6 +20,19 @@ from serving_v2 import (
     latest_price,
     price_history,
     query as serving_query,
+    artifact,
+    _as_of,
+    _available,
+    _serve_row,
+)
+from contract_v2 import (
+    CONTRACT_VERSION,
+    TOOLS,
+    ContractError,
+    calculate_exact,
+    contract_sha256,
+    success as contract_success,
+    validate_object,
 )
 
 REAL_WORLD = {"world_type": "real", "world_id": "us-public-markets"}
@@ -88,20 +102,28 @@ class Default(WorkerEntrypoint):
         if request.method == "GET" and path in {"/healthz", "/readyz"}:
             return self._response({"status": "ok", "service": "zion-financial-serving-v2-thin", "runtime": "cloudflare-python-worker"})
         if request.method == "GET" and path == "/v1/capabilities":
-            return self._response({"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": ["real"]} for name in ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare", "resolve_security", "get_corporate_actions")}})
+            return self._response(self._capabilities_v1())
+        if request.method == "GET" and path == "/v2/capabilities":
+            return self._response(await self._capabilities_v2())
+        if request.method == "POST" and path == "/mcp":
+            return await self._mcp(request, rid)
         try:
             if request.method != "POST":
                 return self._error(rid, "NOT_FOUND", "route not found", 404)
             body = await request.json()
             if not isinstance(body, dict) or len(json.dumps(body)) > 32000:
                 return self._error(rid, "INVALID_REQUEST", "bounded JSON object required", 400)
-            if path == "/v1/query":
+            if path.startswith("/v2/tools/"):
+                result = await self._tool_v2(path.rsplit("/", 1)[-1], body, rid)
+            elif path == "/v1/query":
                 result = await self._query(body, rid)
             elif path.startswith("/v1/tools/"):
                 result = await self._tool(path.rsplit("/", 1)[-1], body, rid)
             else:
                 return self._error(rid, "NOT_FOUND", "route not found", 404)
             return self._response(add_telemetry(result))
+        except ContractError as error:
+            return self._error(rid, error.code, error.message, error.status, error.retryable)
         except ServingV2Error as error:
             return self._error(rid, error.code, error.message, 503 if error.retryable else 404, error.retryable)
         except LookupError as error:
@@ -187,6 +209,155 @@ class Default(WorkerEntrypoint):
             else: raise ValueError("CALCULATION_NOT_SUPPORTED: operation or inputs are invalid")
             return {"tool": name, "world": world, "data": {"operation": operation, "value": value, "inputs": values, "formula": operation}, "evidence": [], "quality": {"status": "CALCULATED"}}
         raise LookupError("TOOL_NOT_FOUND")
+
+    def _capabilities_v1(self) -> dict:
+        legacy = ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare", "resolve_security", "get_corporate_actions")
+        return {"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "tool_contract_version": CONTRACT_VERSION, "tool_contract_sha256": contract_sha256(), "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": TOOLS[name]["supported_worlds"]} for name in legacy}}
+
+    async def _capabilities_v2(self) -> dict:
+        try:
+            _, manifest = await load_release(self.env)
+            release_id = manifest.get("serving_release_id")
+        except Exception:
+            release_id = None
+        return {"schema_version": RESPONSE_SCHEMA_VERSION if False else "zion-tool-capabilities-v2", "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "tool_contract_version": CONTRACT_VERSION, "tool_contract_sha256": contract_sha256(), "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "serving_release_id": release_id, "worlds": [{"world_type": "real", "world_id": "us-public-markets"}], "tools": [{"name": name, "title": definition["title"], "description": definition["description"], "input_schema": definition["input_schema"], "output_schema": definition["output_schema"], "read_only": True, "deterministic": True, "supported_worlds": definition["supported_worlds"]} for name, definition in TOOLS.items()]}
+
+    async def _tool_v2(self, name: str, body: dict, rid: str) -> dict:
+        definition = TOOLS.get(name)
+        if definition is None:
+            raise ContractError("TOOL_NOT_FOUND", "tool is not registered", status=404)
+        if not isinstance(body.get("world"), dict) or not isinstance(body.get("arguments"), dict):
+            raise ContractError("INVALID_REQUEST", "world and arguments are required")
+        validate_object(body["world"], {"type": "object", "required": ["world_type", "world_id"], "properties": {"world_type": {"type": "string"}, "world_id": {"type": "string"}, "version": {"type": "string"}}, "additionalProperties": False})
+        if body["world"].get("world_type") != "real" or body["world"].get("world_id") != "us-public-markets":
+            raise ContractError("WORLD_NOT_FOUND", "world is not available", status=404)
+        if body.get("serving_release_id") is not None:
+            if not isinstance(body["serving_release_id"], str):
+                raise ContractError("INVALID_ARGUMENT", "serving_release_id must be a release identifier")
+            _, pinned_manifest = await load_release(self.env)
+            if pinned_manifest.get("serving_release_id") != body["serving_release_id"]:
+                raise ContractError("RELEASE_NOT_FOUND", "requested serving release is not CURRENT", status=404)
+        validate_object(body["arguments"], definition["input_schema"])
+        args = dict(body["arguments"])
+        if body.get("as_of") is not None: args["as_of"] = body["as_of"]
+        if body.get("serving_release_id") is not None: args["serving_release_id"] = body["serving_release_id"]
+        if name == "calculate":
+            if any(isinstance(value, float) for value in args["values"]):
+                raise ContractError("INVALID_ARGUMENT", "calculator values must be JSON integers or decimal strings")
+            data = calculate_exact(args["operation"], args["values"])
+            return contract_success(name, data, world=body["world"], evidence=[], quality={"status": "CALCULATED", "warnings": [], "source_limitations": []}, provenance={"deterministic": True}, release=None, request_id=rid, sha=contract_sha256())
+        if name == "screen":
+            return await self._screen_v2(args, body["world"], rid)
+        if name == "resolve_entity":
+            symbol = args.get("symbol") or args.get("entity_id") or args.get("cik")
+            if not symbol: raise ContractError("INVALID_ARGUMENT", "one of symbol, entity_id, or cik is required")
+            result = await self._tool("resolve_security", {"world": body["world"], "symbol": symbol, "as_of": args.get("as_of")}, rid)
+        elif name == "get_revision_history":
+            result = await self._revision_history_v2(args, body["world"], rid)
+        elif name == "get_evidence" and args.get("evidence_id"):
+            result = await self._evidence_v2(args["evidence_id"], body["world"], rid)
+        elif name == "get_evidence" and not (args.get("observation_id") or args.get("action_id")):
+            raise ContractError("INVALID_ARGUMENT", "evidence_id is required")
+        elif name == "get_evidence" and args.get("evidence_id"):
+            result = await self._evidence_v2(args["evidence_id"], body["world"], rid)
+        else:
+            result = await self._tool(name, {**args, "world": body["world"]}, rid)
+        if name == "get_price_history" and not result.get("evidence"):
+            result["evidence"] = result.get("data", {}).get("prices", [])
+        if name == "compare":
+            series = result.get("data", {}).get("series", {})
+            result["data"] = {"metric": result.get("data", {}).get("metric"), "series": [{"requested_identifier": identifier, "entity_id": next((row.get("entity_id") for row in observations if row.get("entity_id")), None), "observations": observations} for identifier, observations in series.items()]}
+        result_release = result.get("release")
+        if result_release is None and result.get("serving_release_id"):
+            result_release = {"serving_release_id": result.get("serving_release_id"), "temporal_contract_sha256": result.get("temporal_contract_sha256")}
+        return contract_success(name, result.get("data", {}), world=result.get("world", body["world"]), evidence=result.get("evidence", []), quality={"status": result.get("quality", {}).get("status", "VERIFIED"), "warnings": [], "source_limitations": []}, provenance={"request_id": rid}, release=result_release, request_id=rid, sha=contract_sha256())
+
+    async def _revision_history_v2(self, args: dict, world: dict, rid: str) -> dict:
+        symbol = args.get("symbol") or args.get("entity")
+        if not symbol:
+            raise ContractError("INVALID_ARGUMENT", "symbol or entity is required")
+        _, manifest = await load_release(self.env)
+        resolved = await resolve_security(self.env, manifest, str(symbol), args.get("as_of"))
+        path = resolved["identity"]["artifact_path"]
+        source = "annual" if args.get("period_type") == "annual" else "quarterly"
+        rows = await artifact(self.env, manifest, f"{path}/fundamentals/{source}.json")
+        cutoff = _as_of(args.get("as_of"))
+        rows = [row for row in rows if row.get("metric_id") == args["metric"] and _available(row, cutoff)]
+        if args.get("period_start"): rows = [row for row in rows if row.get("period_start") == args["period_start"]]
+        if args.get("period_end"): rows = [row for row in rows if row.get("period_end") == args["period_end"]]
+        rows.sort(key=lambda row: row.get("available_at", ""))
+        revisions = [_serve_row(row, release_id=manifest["serving_release_id"], artifact_path=f"{path}/fundamentals/{source}.json", source_snapshot_id=manifest["source"]["fundamentals"]["snapshot_id"]) for row in rows]
+        return {"tool": "get_revision_history", "world": world, "data": {"revisions": revisions}, "evidence": revisions, "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+
+    async def _evidence_v2(self, evidence_id: str, world: dict, rid: str) -> dict:
+        _, manifest = await load_release(self.env)
+        index = await artifact(self.env, manifest, "identity/resolver_index.json")
+        for entry in index.get("symbols", {}).values():
+            path = entry.get("artifact_path")
+            if not path: continue
+            for source in ("annual", "quarterly"):
+                try: rows = await artifact(self.env, manifest, f"{path}/fundamentals/{source}.json")
+                except ServingV2Error as error:
+                    if error.code == "SERVING_ARTIFACT_NOT_FOUND": continue
+                    raise
+                matches = [row for row in rows if row.get("evidence_id") == evidence_id]
+                if matches:
+                    return {"tool": "get_evidence", "world": world, "data": {"evidence": matches}, "evidence": matches, "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+        raise ContractError("ENTITY_NOT_FOUND", "evidence was not found", status=404)
+
+    async def _screen_v2(self, args: dict, world: dict, rid: str) -> dict:
+        _, manifest = await load_release(self.env)
+        index = await artifact(self.env, manifest, "identity/resolver_index.json")
+        symbols = sorted(index.get("symbols", {}).keys())[:100]
+        filters = args.get("filters", [])
+        rows = []
+        evidence_rows = []
+        for symbol in symbols:
+            fields = {}
+            row_evidence = []
+            for field in {item.get("field") for item in filters}:
+                if field not in {"revenue", "operating_margin", "net_income", "last_price"}:
+                    raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
+                tool = "get_price" if field == "last_price" else "get_fundamentals"
+                result = await self._tool(tool, {"world": world, "symbol": symbol, "metrics": [field], "metric": field, "period": "annual", "lookback": 1}, rid)
+                data = result.get("data", {})
+                fields[field] = data.get("value") if field == "last_price" else next((row.get("value") for row in data.get("observations", []) if row.get("metric") == field), None)
+                row_evidence.extend(result.get("evidence", []))
+            def matches(item):
+                value = fields.get(item.get("field")); op = item.get("operator")
+                if value is None: return False
+                try:
+                    left, right = Decimal(str(value)), item.get("value")
+                    if op == "between": return left >= Decimal(str(item["values"][0])) and left <= Decimal(str(item["values"][1]))
+                    right = Decimal(str(right))
+                    return {"eq": left == right, "ne": left != right, "gt": left > right, "gte": left >= right, "lt": left < right, "lte": left <= right}[op]
+                except (KeyError, ValueError, InvalidOperation): return False
+            if all(matches(item) for item in filters):
+                rows.append({"symbol": symbol, "values": fields, "evidence": row_evidence})
+                evidence_rows.extend(row_evidence)
+        for item in reversed(args.get("sort", [])):
+            rows.sort(key=lambda row: (row["values"].get(item["field"]) is None, row["values"].get(item["field"])), reverse=item.get("direction", "desc") == "desc")
+        return {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * 4], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+
+    async def _mcp(self, request, rid: str):
+        body = await request.json()
+        method = body.get("method") if isinstance(body, dict) else None
+        rpc_id = body.get("id") if isinstance(body, dict) else None
+        try:
+            if method == "initialize":
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"protocolVersion": "2026-07-28", "capabilities": {"tools": {"listChanged": False}}, "serverInfo": {"name": "zion-tool-contract-v2", "version": CONTRACT_VERSION}}})
+            if method == "tools/list":
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"tools": [{"name": name, "description": definition["description"], "inputSchema": definition["input_schema"], "annotations": {"readOnlyHint": True, "destructiveHint": False}} for name, definition in TOOLS.items()]}})
+            if method == "tools/call":
+                params = body.get("params") or {}; name = params.get("name"); arguments = dict(params.get("arguments") or {})
+                call_world = arguments.pop("world", {"world_type": "real", "world_id": "us-public-markets"})
+                result = await self._tool_v2(name, {"world": call_world, "arguments": arguments}, rid)
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"content": [{"type": "json", "json": result}], "structuredContent": result}})
+            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32601, "message": "method not found"}}, 400)
+        except ContractError as error:
+            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32602, "message": error.code, "data": {"request_id": rid, "retryable": error.retryable}}}, 200)
+        except LookupError:
+            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32004, "message": "resource not found", "data": {"request_id": rid}}}, 200)
 
     def _response(self, value: dict, status: int = 200):
         telemetry = finish_telemetry()
