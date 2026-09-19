@@ -76,7 +76,8 @@ jobs:
           python3 - <<'PY'
           import json, os, urllib.request
           base = os.environ['BASE_URL']
-          with urllib.request.urlopen(base + '/v2/capabilities', timeout=30) as response:
+          request = urllib.request.Request(base + '/v2/capabilities', headers={'user-agent': 'zion-tool-contract-v2-acceptance/1', 'accept': 'application/json'})
+          with urllib.request.urlopen(request, timeout=30) as response:
               document = json.loads(response.read())
           names = {tool['name'] for tool in document.get('tools', [])}
           expected = {'resolve_entity','resolve_security','get_fundamentals','get_price','get_price_history','get_corporate_actions','get_revision_history','get_evidence','compare','calculate','screen'}
