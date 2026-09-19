@@ -269,7 +269,9 @@
             "type": "string"
           }
         },
-        "required": [],
+        "required": [
+          "evidence_id"
+        ],
         "type": "object"
       },
       "output_schema": {
