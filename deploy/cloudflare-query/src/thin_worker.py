@@ -351,6 +351,14 @@ class Default(WorkerEntrypoint):
                 requested = (body.get("params") or {}).get("protocolVersion")
                 protocol_version = requested if requested in {"2025-06-18", "2025-11-25"} else "2025-11-25"
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"protocolVersion": protocol_version, "capabilities": {"tools": {"listChanged": False}}, "serverInfo": {"name": "zion-tool-contract-v2", "version": CONTRACT_VERSION}}})
+            if method == "notifications/initialized":
+                return Response("", status=202, headers={"content-type": "application/json"})
+            if method == "ping":
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {}})
+            if method == "logging/setLevel":
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {}})
+            if method == "completion/complete":
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"completion": {"values": [], "total": 0, "hasMore": False}}})
             if method == "tools/list":
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"tools": [{"name": name, "description": definition["description"], "inputSchema": definition["input_schema"], "annotations": {"readOnlyHint": True, "destructiveHint": False}} for name, definition in TOOLS.items()]}})
             if method == "tools/call":
@@ -358,6 +366,8 @@ class Default(WorkerEntrypoint):
                 call_world = arguments.pop("world", {"world_type": "real", "world_id": "us-public-markets"})
                 result = await self._tool_v2(name, {"world": call_world, "arguments": arguments}, rid)
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"content": [{"type": "json", "json": result}], "structuredContent": result}})
+            if rpc_id is None:
+                return Response("", status=202, headers={"content-type": "application/json"})
             return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32601, "message": "method not found"}}, 400)
         except ContractError as error:
             return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32602, "message": error.code, "data": {"request_id": rid, "retryable": error.retryable}}}, 200)
