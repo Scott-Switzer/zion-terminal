@@ -326,19 +326,26 @@ class Default(WorkerEntrypoint):
         index = await artifact(self.env, manifest, "identity/resolver_index.json")
         symbols = sorted(index.get("symbols", {}).keys())[:100]
         filters = args.get("filters", [])
-        rows = []
-        evidence_rows = []
-        for symbol in symbols:
-            fields = {}
-            row_evidence = []
-            for field in {item.get("field") for item in filters}:
-                if field not in {"revenue", "operating_margin", "net_income", "last_price"}:
-                    raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
+        import asyncio
+        fields_requested = {item.get("field") for item in filters}
+        for field in fields_requested:
+            if field not in {"revenue", "operating_margin", "net_income", "last_price"}:
+                raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
+
+        async def evaluate(symbol):
+            fields, row_evidence = {}, []
+            for field in fields_requested:
                 tool = "get_price" if field == "last_price" else "get_fundamentals"
                 result = await self._tool(tool, {"world": world, "symbol": symbol, "metrics": [field], "metric": field, "period": "annual", "lookback": 1}, rid)
                 data = result.get("data", {})
                 fields[field] = data.get("value") if field == "last_price" else next((row.get("value") for row in data.get("observations", []) if row.get("metric") == field), None)
                 row_evidence.extend(result.get("evidence", []))
+            return symbol, fields, row_evidence
+
+        evaluated = await asyncio.gather(*(evaluate(symbol) for symbol in symbols))
+        rows = []
+        evidence_rows = []
+        for symbol, fields, row_evidence in evaluated:
             def matches(item):
                 value = fields.get(item.get("field")); op = item.get("operator")
                 if value is None: return False
