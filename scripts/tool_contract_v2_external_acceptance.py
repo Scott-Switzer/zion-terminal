@@ -50,10 +50,14 @@ def clean(value):
 
 def main() -> int:
     get_request = urllib.request.Request(BASE + "/v2/capabilities", headers={"user-agent": "zion-tool-contract-v2-acceptance/1"})
-    with urllib.request.urlopen(get_request, timeout=60) as response:
-        capabilities = json.loads(response.read())
-        status = response.status
-        headers = dict(response.headers)
+    try:
+        with urllib.request.urlopen(get_request, timeout=60) as response:
+            capabilities = json.loads(response.read())
+            status = response.status
+            headers = dict(response.headers)
+    except urllib.error.HTTPError as error:
+        body = error.read().decode(errors="replace")
+        raise SystemExit(json.dumps({"url": get_request.full_url, "status": error.code, "cf_ray": error.headers.get("cf-ray"), "body": body[:2000]}, sort_keys=True)) from error
     names = {tool["name"] for tool in capabilities.get("tools", [])}
     expected_names = set(TOOLS)
     if status != 200 or names != expected_names or capabilities.get("tool_contract_sha256") != EXPECTED_CONTRACT:
