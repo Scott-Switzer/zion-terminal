@@ -345,7 +345,9 @@ class Default(WorkerEntrypoint):
         rpc_id = body.get("id") if isinstance(body, dict) else None
         try:
             if method == "initialize":
-                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"protocolVersion": "2026-07-28", "capabilities": {"tools": {"listChanged": False}}, "serverInfo": {"name": "zion-tool-contract-v2", "version": CONTRACT_VERSION}}})
+                requested = (body.get("params") or {}).get("protocolVersion")
+                protocol_version = requested if requested in {"2025-06-18", "2025-11-25"} else "2025-11-25"
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"protocolVersion": protocol_version, "capabilities": {"tools": {"listChanged": False}}, "serverInfo": {"name": "zion-tool-contract-v2", "version": CONTRACT_VERSION}}})
             if method == "tools/list":
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"tools": [{"name": name, "description": definition["description"], "inputSchema": definition["input_schema"], "annotations": {"readOnlyHint": True, "destructiveHint": False}} for name, definition in TOOLS.items()]}})
             if method == "tools/call":
