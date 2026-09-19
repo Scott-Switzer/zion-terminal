@@ -63,6 +63,17 @@ jobs:
           for scenario in server-initialize logging-set-level ping completion-complete tools-list; do
             npx --yes @modelcontextprotocol/conformance@0.1.16 server --url "$BASE_URL/mcp" --scenario "$scenario" --spec-version 2025-11-25 --verbose
           done
+      - name: Persistent REST performance matrix
+        env:
+          ZION_BASE_URL: ${{ env.BASE_URL }}
+          SAMPLES: "100"
+          CASES: Q1,Q2,Q3,Q4,Q5,resolve_entity,resolve_security,revision_history,screen
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/tool-contract-v2/benchmarks
+          for run in 1 2 3; do
+            python scripts/tool_contract_v2_benchmark.py > "artifacts/tool-contract-v2/benchmarks/run-${run}.jsonl"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
