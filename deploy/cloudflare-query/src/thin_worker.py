@@ -36,6 +36,7 @@ from contract_v2 import (
 )
 
 REAL_WORLD = {"world_type": "real", "world_id": "us-public-markets"}
+_SCREEN_CACHE: dict[str, dict] = {}
 SYMBOLS = ("AAPL", "MSFT", "NVDA")
 QUERY_WORDS = {"WHAT", "IS", "THE", "A", "AN", "AND", "OR", "SHOW", "GIVE", "ME", "ARE", "FOR", "REVENUE", "SALES", "OPERATING", "MARGIN", "LAST", "PRICE", "HISTORY", "QUARTERLY", "COMPARE"}
 
@@ -307,6 +308,10 @@ class Default(WorkerEntrypoint):
 
     async def _screen_v2(self, args: dict, world: dict, rid: str) -> dict:
         _, manifest = await load_release(self.env)
+        cache_key = json.dumps({"release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
+        cached = _SCREEN_CACHE.get(cache_key)
+        if cached is not None:
+            return cached
         index = await artifact(self.env, manifest, "identity/resolver_index.json")
         symbols = sorted(index.get("symbols", {}).keys())[:100]
         filters = args.get("filters", [])
@@ -337,7 +342,11 @@ class Default(WorkerEntrypoint):
                 evidence_rows.extend(row_evidence)
         for item in reversed(args.get("sort", [])):
             rows.sort(key=lambda row: (row["values"].get(item["field"]) is None, row["values"].get(item["field"])), reverse=item.get("direction", "desc") == "desc")
-        return {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * 4], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * 4], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+        if len(_SCREEN_CACHE) >= 16:
+            _SCREEN_CACHE.pop(next(iter(_SCREEN_CACHE)))
+        _SCREEN_CACHE[cache_key] = result
+        return result
 
     async def _mcp(self, request, rid: str):
         body = await request.json()
