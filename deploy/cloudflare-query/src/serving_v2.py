@@ -170,6 +170,26 @@ class CurrentPointerCache:
                 stats["current_cache_hit"] += 1
                 stats["current_cache_age_ms"] = round(age_ms, 3)
             return entry["pointer"]
+        # A short TTL screen override also uses the shared edge cache. This
+        # prevents a new isolate from paying the CURRENT R2 tail while keeping
+        # promotion staleness hard-bounded by the same TTL. TTL=0 never uses it.
+        cache_url = "https://serving-v2.internal/current/" + "/".join(identity)
+        if ttl > 0:
+            try:
+                from js import Request, caches  # type: ignore
+                hit = await caches.default.match(Request.new(cache_url))
+                if hit is not None:
+                    pointer = self._parse((await hit.text()).encode())
+                    now_fetched = clock()
+                    self._entries[identity] = {"pointer": pointer, "fetched_at": now_fetched}
+                    if stats is not None:
+                        stats["current_cache_hit"] += 1
+                        stats["cache_hits"] += 1
+                        stats["current_serving_release_id"] = pointer.get("serving_release_id")
+                    return pointer
+            except Exception:
+                if stats is not None:
+                    stats["cache_errors"] += 1
         inflight = self._inflight.get(identity)
         if inflight is not None:
             pointer, elapsed = await asyncio.shield(inflight)
@@ -192,7 +212,17 @@ class CurrentPointerCache:
             stats["current_cache_miss"] += 1
             stats["current_r2_get_ms"] = elapsed
             stats["current_serving_release_id"] = pointer.get("serving_release_id")
-        self._entries[identity] = {"pointer": pointer, "fetched_at": clock()}
+        fetched_at = clock()
+        self._entries[identity] = {"pointer": pointer, "fetched_at": fetched_at}
+        if ttl > 0:
+            try:
+                from js import Request, Response, caches  # type: ignore
+                response = Response.new(json.dumps(pointer, separators=(",", ":")))
+                response.headers.set("Cache-Control", f"public, max-age={ttl}")
+                await caches.default.put(Request.new(cache_url), response)
+            except Exception:
+                if stats is not None:
+                    stats["cache_errors"] += 1
         return pointer
 
 
