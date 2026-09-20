@@ -308,7 +308,10 @@ class Default(WorkerEntrypoint):
         raise ContractError("ENTITY_NOT_FOUND", "evidence was not found", status=404)
 
     async def _screen_v2(self, args: dict, world: dict, rid: str) -> dict:
-        _, manifest = await load_release(self.env)
+        # Latest screening gets a short, hard-bounded pointer cache so cold
+        # unique screens do not pay the uncached CURRENT tail repeatedly.
+        # The normal financial tools retain their configured CURRENT semantics.
+        _, manifest = await load_release(self.env, pointer_ttl_ms=5000)
         cache_key = json.dumps({"release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
         cached = _SCREEN_CACHE.get(cache_key)
         if cached is not None:

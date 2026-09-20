@@ -15,6 +15,7 @@ from pathlib import Path
 
 BUCKET = "financial-system-datasets"
 ROOT = "gold/serving"
+CURRENT_KEY = "gold/serving/coverage25/CURRENT.json"
 TEMPORAL = "5d225691cb60251d1997bb8d749267da845f0b3cda32137cbf76c3fbd2783b1d"
 FIELDS = ("revenue", "operating_margin", "net_income", "last_price")
 
@@ -84,6 +85,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true", help="copy and upload the additive release")
     parser.add_argument("--promote", action="store_true", help="also atomically update CURRENT after apply")
     parser.add_argument("--updated-by", default="zion-tool-contract-v2-screen-materializer")
+    parser.add_argument("--promote-existing", action="store_true", help="promote an already-uploaded candidate without copying release objects")
     args = parser.parse_args()
     if args.promote and not args.apply:
         parser.error("--promote requires --apply")
@@ -128,16 +130,17 @@ def main() -> int:
         print(json.dumps({"mode": "APPLY" if args.apply else "DRY_RUN", "source_release": source_id, "candidate_release": release_id, "screen_rows": len(rows), "screen_sha256": digest(screen), "manifest_sha256": digest(manifest_path)}, sort_keys=True))
         if not args.apply:
             return 0
-        # Existing objects are copied to a new immutable prefix. The source
-        # release is never overwritten and CURRENT is last.
-        rclone("copy", remote(source_root), remote(f"{ROOT}/releases/{release_id}"), "--immutable")
-        rclone("copyto", str(screen), remote(f"{ROOT}/releases/{release_id}/screens/latest.json"))
-        rclone("copyto", str(manifest_path), remote(f"{ROOT}/releases/{release_id}/manifest.json"))
+        if not args.promote_existing:
+            # Existing objects are copied to a new immutable prefix. The source
+            # release is never overwritten and CURRENT is last.
+            rclone("copy", remote(source_root), remote(f"{ROOT}/releases/{release_id}"), "--immutable")
+            rclone("copyto", str(screen), remote(f"{ROOT}/releases/{release_id}/screens/latest.json"))
+            rclone("copyto", str(manifest_path), remote(f"{ROOT}/releases/{release_id}/manifest.json"))
         if args.promote:
             current["promoted_at"] = "atomic-pointer-update"
             pointer = root / "CURRENT.json"
             pointer.write_text(json.dumps(current, sort_keys=True, separators=(",", ":")) + "\n")
-            rclone("copyto", str(pointer), remote(f"{ROOT}/CURRENT.json"))
+            rclone("copyto", str(pointer), remote(CURRENT_KEY))
         print(json.dumps({"status": "published", "current_updated": args.promote, "candidate_release": release_id}, sort_keys=True))
     return 0
 

@@ -147,12 +147,12 @@ class CurrentPointerCache:
         _mark("current_r2_get", elapsed)
         return pointer, round(elapsed * 1000, 3)
 
-    async def resolve(self, env: Any, *, now: Any = None) -> dict[str, Any]:
-        """Resolve the CURRENT pointer under the configured hard TTL."""
+    async def resolve(self, env: Any, *, now: Any = None, ttl_override_ms: int | None = None) -> dict[str, Any]:
+        """Resolve CURRENT under a configured or explicitly bounded hard TTL."""
         import asyncio
 
         stats = _TELEMETRY.get()
-        ttl = _ttl_ms(env)
+        ttl = ttl_override_ms if ttl_override_ms is not None else _ttl_ms(env)
         if stats is not None:
             stats["current_cache_ttl_ms"] = ttl
         clock = now or perf_counter
@@ -364,12 +364,12 @@ async def _cached_text(env: Any, key: str, *, release_id: str | None, ttl: int) 
     return raw
 
 
-async def load_release(env: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+async def load_release(env: Any, *, pointer_ttl_ms: int | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
     # CURRENT resolution goes through the bounded pointer cache. With the
     # default TTL of 0 this is exactly the previous uncached R2 read. A nonzero
     # TTL bounds pointer staleness per isolate; immutable artifacts always use
     # their release-addressed cache path.
-    current = await current_pointer_cache().resolve(env)
+    current = await current_pointer_cache().resolve(env, ttl_override_ms=pointer_ttl_ms)
     release_id = current.get("serving_release_id")
     if not isinstance(release_id, str) or not release_id:
         raise ServingV2Error("SERVING_POINTER_INVALID", "serving CURRENT has no release identity")
