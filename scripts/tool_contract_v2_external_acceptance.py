@@ -10,7 +10,7 @@ from pathlib import Path
 
 BASE = os.environ.get("ZION_BASE_URL", "https://api-thin-staging.scotttunnel.xyz").rstrip("/")
 WORLD = {"world_type": "real", "world_id": "us-public-markets"}
-EXPECTED_RELEASE = os.environ.get("EXPECTED_SERVING_RELEASE", "895eb69371fa2e944eed20463f7f9fc2")
+EXPECTED_RELEASE = os.environ.get("EXPECTED_SERVING_RELEASE", "6681f0f5437eae68861d6739b1a9438a")
 EXPECTED_CONTRACT = "763e01d48975d02532224de73d668952bc33a199021654b5653b6c6bff9235f8"
 TOOLS = {
     "resolve_entity": {"symbol": "MSFT"},

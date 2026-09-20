@@ -308,7 +308,10 @@ class Default(WorkerEntrypoint):
         raise ContractError("ENTITY_NOT_FOUND", "evidence was not found", status=404)
 
     async def _screen_v2(self, args: dict, world: dict, rid: str) -> dict:
-        _, manifest = await load_release(self.env)
+        # Latest screening gets a short, hard-bounded pointer cache so cold
+        # unique screens do not pay the uncached CURRENT tail repeatedly.
+        # The normal financial tools retain their configured CURRENT semantics.
+        _, manifest = await load_release(self.env, pointer_ttl_ms=5000)
         cache_key = json.dumps({"release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
         cached = _SCREEN_CACHE.get(cache_key)
         if cached is not None:
@@ -323,26 +326,22 @@ class Default(WorkerEntrypoint):
                 return cached
         except Exception:
             pass
-        index = await artifact(self.env, manifest, "identity/resolver_index.json")
-        symbols = sorted(index.get("symbols", {}).keys())[:100]
+        if args.get("as_of") is not None:
+            raise ContractError("PERIOD_NOT_AVAILABLE", "historical screens are not materialized in this release", status=422)
+        screen = await artifact(self.env, manifest, "screens/latest.json")
         filters = args.get("filters", [])
-        import asyncio
         fields_requested = {item.get("field") for item in filters}
+        fields_requested.update(item.get("field") for item in args.get("sort", []))
+        supported = set(screen.get("fields", [])) & {"revenue", "operating_margin", "net_income", "last_price"}
         for field in fields_requested:
-            if field not in {"revenue", "operating_margin", "net_income", "last_price"}:
+            if field not in supported:
                 raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
 
-        async def evaluate(symbol):
-            fields, row_evidence = {}, []
-            for field in fields_requested:
-                tool = "get_price" if field == "last_price" else "get_fundamentals"
-                result = await self._tool(tool, {"world": world, "symbol": symbol, "metrics": [field], "metric": field, "period": "annual", "lookback": 1}, rid)
-                data = result.get("data", {})
-                fields[field] = data.get("value") if field == "last_price" else next((row.get("value") for row in data.get("observations", []) if row.get("metric") == field), None)
-                row_evidence.extend(result.get("evidence", []))
-            return symbol, fields, row_evidence
-
-        evaluated = await asyncio.gather(*(evaluate(symbol) for symbol in symbols))
+        evaluated = []
+        for record in screen.get("rows", [])[:100]:
+            values = record.get("values", {})
+            fields = {field: (values.get(field) or {}).get("value") for field in fields_requested}
+            evaluated.append((record.get("symbol"), fields, record.get("evidence_ids", [])))
         rows = []
         evidence_rows = []
         for symbol, fields, row_evidence in evaluated:
@@ -380,7 +379,36 @@ class Default(WorkerEntrypoint):
             body = body[0] if body and isinstance(body[0], dict) else {}
         method = body.get("method") if isinstance(body, dict) else None
         rpc_id = body.get("id") if isinstance(body, dict) else None
+        params = body.get("params") if isinstance(body, dict) and isinstance(body.get("params"), dict) else {}
+        protocol_header = request.headers.get("MCP-Protocol-Version")
+        stateless = protocol_header == "2026-07-28"
         try:
+            if protocol_header and protocol_header not in {"2025-06-18", "2025-11-25", "2026-07-28"}:
+                return self._mcp_error(rpc_id, -32004, "Unsupported protocol version", {"supported": ["2025-11-25", "2026-07-28"], "requested": protocol_header}, 400)
+            if stateless:
+                meta = params.get("_meta")
+                expected_meta = {
+                    "io.modelcontextprotocol/protocolVersion",
+                    "io.modelcontextprotocol/clientCapabilities",
+                }
+                if not isinstance(meta, dict) or not expected_meta.issubset(meta):
+                    return self._mcp_error(rpc_id, -32602, "Invalid params: required stateless _meta is missing", None, 400)
+                if meta.get("io.modelcontextprotocol/protocolVersion") != protocol_header:
+                    return self._mcp_error(rpc_id, -32020, "Header/body protocol version mismatch", None, 400)
+                if not isinstance(meta.get("io.modelcontextprotocol/clientCapabilities"), dict):
+                    return self._mcp_error(rpc_id, -32602, "Invalid params: clientCapabilities must be an object", None, 400)
+                if request.headers.get("Mcp-Method") != method:
+                    return self._mcp_error(rpc_id, -32020, "Mcp-Method header does not match request method", None, 400)
+                header_name = request.headers.get("Mcp-Name")
+                body_name = params.get("name") if method in {"tools/call", "prompts/get"} else params.get("uri") if method == "resources/read" else None
+                if body_name is not None and header_name != body_name:
+                    return self._mcp_error(rpc_id, -32020, "Mcp-Name header does not match request identity", None, 400)
+                if body_name is None and header_name is not None:
+                    return self._mcp_error(rpc_id, -32020, "Mcp-Name is not valid for this method", None, 400)
+            if stateless and method in {"initialize", "notifications/initialized", "ping", "logging/setLevel", "completion/complete"}:
+                return self._mcp_error(rpc_id, -32601, "method not found", None, 404)
+            if stateless and method == "server/discover":
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"supportedVersions": ["2025-11-25", "2026-07-28"], "capabilities": {"tools": {"listChanged": False}}, "_meta": {"io.modelcontextprotocol/serverInfo": {"name": "zion-tool-contract-v2", "version": CONTRACT_VERSION}}}})
             if method == "initialize":
                 requested = (body.get("params") or {}).get("protocolVersion")
                 protocol_version = requested if requested in {"2025-06-18", "2025-11-25"} else "2025-11-25"
@@ -394,7 +422,10 @@ class Default(WorkerEntrypoint):
             if method == "completion/complete":
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"completion": {"values": [], "total": 0, "hasMore": False}}})
             if method == "tools/list":
-                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"tools": [{"name": name, "description": definition["description"], "inputSchema": definition["input_schema"], "annotations": {"readOnlyHint": True, "destructiveHint": False}} for name, definition in TOOLS.items()]}})
+                result = {"tools": [{"name": name, "description": definition["description"], "inputSchema": definition["input_schema"], "annotations": {"readOnlyHint": True, "destructiveHint": False}} for name, definition in TOOLS.items()]}
+                if stateless:
+                    result.update({"ttlMs": 300000, "cacheScope": "public"})
+                return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": result})
             if method == "tools/call":
                 params = body.get("params") or {}; name = params.get("name"); arguments = dict(params.get("arguments") or {})
                 call_world = arguments.pop("world", {"world_type": "real", "world_id": "us-public-markets"})
@@ -402,11 +433,17 @@ class Default(WorkerEntrypoint):
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"content": [{"type": "json", "json": result}], "structuredContent": result}})
             if rpc_id is None:
                 return Response("", status=202, headers={"content-type": "application/json"})
-            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32601, "message": "method not found"}}, 400)
+            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32601, "message": "method not found"}}, 404 if stateless else 400)
         except ContractError as error:
-            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32602, "message": error.code, "data": {"request_id": rid, "retryable": error.retryable}}}, 200)
+            return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32602, "message": error.code, "data": {"request_id": rid, "retryable": error.retryable}}}, 400 if stateless else 200)
         except LookupError:
             return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": {"code": -32004, "message": "resource not found", "data": {"request_id": rid}}}, 200)
+
+    def _mcp_error(self, rpc_id, code: int, message: str, data: dict | None = None, status: int = 200):
+        error = {"code": code, "message": message}
+        if data is not None:
+            error["data"] = data
+        return self._response({"jsonrpc": "2.0", "id": rpc_id, "error": error}, status)
 
     def _response(self, value: dict, status: int = 200):
         telemetry = finish_telemetry()

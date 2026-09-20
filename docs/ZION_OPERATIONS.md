@@ -6,7 +6,7 @@
 - Canonical REST domain: `https://api-thin-staging.scotttunnel.xyz`
 - MCP endpoint: `https://api-thin-staging.scotttunnel.xyz/mcp`
 - Workers diagnostic endpoint: `https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev`
-- Serving release: `895eb69371fa2e944eed20463f7f9fc2`
+- Serving release: `6681f0f5437eae68861d6739b1a9438a`
 - Temporal contract: `financial-temporal-v1`, SHA256 `5d225691cb60251d1997bb8d749267da845f0b3cda32137cbf76c3fbd2783b1d`
 - Tool contract: `zion-tool-contract-v2`, SHA256 `763e01d48975d02532224de73d668952bc33a199021654b5653b6c6bff9235f8`
 
@@ -38,7 +38,7 @@ The Worker must expose `git_sha`, service version, contract hash, temporal hash,
 
 Hosted acceptance runs from a GitHub runner, not the developer Mac. It checks DNS, TLS hostname validation, `/healthz`, `/readyz`, both capability documents, all 11 REST calls, MCP initialize/tools/list/tools/call, release identity, and contract identity. Runtime telemetry is diagnostic only and is excluded from semantic parity comparisons.
 
-The official conformance CLI currently installed by the workflow is queried at runtime. Its current package may label the latest available dated protocol as `2025-11-25`; the workflow records the package version and scenario list rather than claiming an unavailable `2026-07-28` package. Financial MCP canaries additionally use the official SDK client exercised by the conformance runner.
+The frozen conformance requirements are pinned to upstream conformance commit `232a9014457eaf4c59559916e3d616d2f7f28f05`; requirement file hashes are recorded in the acceptance artifact. The 2025-11-25 path uses the stateful lifecycle, while 2026-07-28 uses stateless per-request `_meta` and standard routing headers. The npm package is not used as a substitute for the frozen revision.
 
 The generic official tool-call scenarios use an `add_numbers` fixture tool and are not applicable to this production financial registry, which is intentionally frozen at exactly 11 tools. Applicable MCP protocol scenarios are run explicitly; no expected-failures file is used.
 
@@ -52,7 +52,7 @@ The generic official tool-call scenarios use an `add_numbers` fixture tool and a
 
 Cloudflare deployment history is immutable. Record the prior and new version IDs from Wrangler. Roll back the Worker version using the Cloudflare deployment rollback command documented by the installed Wrangler version, or redeploy the prior merged `main` SHA with the same configuration. Never alter the financial CURRENT pointer or an immutable serving release during a contract rollback.
 
-After rollback, rerun `/healthz`, `/v2/capabilities`, the representative REST/MCP canaries, and verify the expected serving release remains `895eb69371fa2e944eed20463f7f9fc2`.
+After rollback, rerun `/healthz`, `/v2/capabilities`, the representative REST/MCP canaries, and verify the expected serving release remains `6681f0f5437eae68861d6739b1a9438a`.
 
 ## Diagnosis
 
