@@ -241,6 +241,18 @@ def entity_key(symbol: str) -> str:
     return f"real_equity_{symbol.upper()}"
 
 
+# Coverage releases published before the identity index use SEC-CIK entity
+# paths. Keep this bounded compatibility map local to the serving adapter;
+# it does not alter the frozen contract or the release contents.
+_LEGACY_CIK_BY_SYMBOL = {
+    "AAPL": "0000320193",
+    "MSFT": "0000789019",
+    "NVDA": "0001045810",
+    "JPM": "0000019617",
+    "TSLA": "0001318605",
+}
+
+
 def _identity_covers(entry: dict[str, Any], as_of: Any) -> bool:
     if not as_of:
         return entry.get("valid_to") is None
@@ -267,7 +279,16 @@ async def resolve_security(env: Any, manifest: dict[str, Any], symbol: str, as_o
     if resolver_entry is None:
         # Compatibility releases predate identity artifacts. Preserve their
         # immutable path semantics while making the fallback explicit.
-        resolver_entry = {"entity": None, "instrument": None, "listing": None, "artifact_path": f"entities/{entity_key(symbol)}", "symbol": symbol.upper()}
+        normalized_symbol = symbol.upper().strip()
+        legacy_cik = _LEGACY_CIK_BY_SYMBOL.get(normalized_symbol)
+        candidates = [
+            (f"entities/entity_sec_cik_{legacy_cik}", f"real:entity:{legacy_cik}", "legacy-sec-cik-path") if legacy_cik else None,
+            (f"entities/{entity_key(normalized_symbol)}", None, "legacy-symbol-path"),
+        ]
+        artifact_paths = {item.get("path") for item in manifest.get("artifacts", [])}
+        selected = next((item for item in candidates if item and f"{item[0]}/snapshot.json" in artifact_paths), None)
+        artifact_path, entity_id, compatibility = selected or candidates[-1]
+        resolver_entry = {"entity": entity_id, "instrument": None, "listing": None, "artifact_path": artifact_path, "symbol": normalized_symbol, "compatibility": compatibility}
     return {"query": {"symbol": symbol, "as_of": as_of}, "identity": resolver_entry, "serving_release_id": manifest["serving_release_id"], "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}
 
 
