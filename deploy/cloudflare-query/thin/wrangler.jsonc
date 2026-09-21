@@ -5,6 +5,7 @@
   "compatibility_date": "2026-09-15",
   "compatibility_flags": ["python_workers", "disable_python_external_sdk"],
   "workers_dev": true,
+  "version_metadata": {"binding": "CF_VERSION_METADATA"},
   "r2_buckets": [
     {"binding": "MARKET_DATA", "bucket_name": "financial-system-datasets"},
     {"binding": "SEC_CORPUS", "bucket_name": "ppe-sec-intelligence-prod"}

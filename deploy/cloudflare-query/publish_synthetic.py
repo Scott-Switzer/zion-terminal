@@ -19,6 +19,11 @@ def put(key: str, path: Path) -> None:
     subprocess.run(["wrangler", "r2", "object", "put", f"{BUCKET}/{key}", "--remote", "--file", str(path)], check=True)
 
 
+def get(key: str) -> bytes:
+    result = subprocess.run(["wrangler", "r2", "object", "get", "--remote", "--pipe", f"{BUCKET}/{key}"], check=True, capture_output=True)
+    return result.stdout
+
+
 def publish(export: Path, qc_path: Path, world_id: str, *, staging: bool) -> str:
     if not staging:
         raise ValueError("publishing requires --staging")
@@ -61,6 +66,16 @@ def publish(export: Path, qc_path: Path, world_id: str, *, staging: bool) -> str
         qc_copy = release / "qc_certification.json"
         shutil.copy2(qc_path, qc_copy)
         put(f"{prefix}/qc_certification.json", qc_copy)
+
+        # R2 is strongly consistent. Read every immutable object back before
+        # publishing the tiny world pointer; CURRENT is the commit marker.
+        for path in (*serving_files, qc_copy):
+            key = f"{prefix}/{path.relative_to(release)}"
+            remote = get(key)
+            expected = path.read_bytes()
+            if remote != expected or digest(path) != hashlib.sha256(remote).hexdigest():
+                raise RuntimeError(f"remote publication verification failed: {key}")
+
         pointer = root / "CURRENT.json"
         pointer.write_text(json.dumps({"world_id": world_id, "version": source_manifest["world"].get("version"), "prefix": prefix, "release_id": release_id, "qc_status": "PASS"}, sort_keys=True, separators=(",", ":")))
         put(f"control/synthetic-worlds/{world_id}/CURRENT.json", pointer)

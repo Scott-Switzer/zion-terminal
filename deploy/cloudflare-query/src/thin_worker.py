@@ -238,10 +238,17 @@ class Default(WorkerEntrypoint):
             worlds.append({"world_type": "synthetic", "world_id": world_id, "version": pointer_obj.get("version"), "release_id": pointer_obj.get("release_id")})
         except Exception:
             pass
-        return {"schema_version": "zion-tool-capabilities-v3", "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "tool_contract_version": V3_CONTRACT_VERSION, "tool_contract_sha256": v3_contract_sha256(), "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "worlds": worlds, "tools": [{"name": name, "title": definition["title"], "description": definition["description"], "input_schema": definition["input_schema"], "output_schema": definition["output_schema"], "read_only": True, "deterministic": True, "supported_worlds": definition["supported_worlds"]} for name, definition in V3_TOOLS.items()]}
+        return {"schema_version": "zion-tool-capabilities-v3", "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worker_version_id": self._version_id(), "tool_contract_version": V3_CONTRACT_VERSION, "tool_contract_sha256": v3_contract_sha256(), "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "worlds": worlds, "tools": [{"name": name, "title": definition["title"], "description": definition["description"], "input_schema": definition["input_schema"], "output_schema": definition["output_schema"], "read_only": True, "deterministic": True, "supported_worlds": definition["supported_worlds"]} for name, definition in V3_TOOLS.items()]}
 
     def _synthetic_adapter(self) -> SyntheticReleaseAdapter:
         return SyntheticReleaseAdapter(self.env)
+
+    def _version_id(self) -> str | None:
+        metadata = getattr(self.env, "CF_VERSION_METADATA", None)
+        if metadata is None:
+            return None
+        value = getattr(metadata, "id", None)
+        return str(value) if value else None
 
     async def _tool_v3(self, name: str, body: dict, rid: str) -> dict:
         definition = V3_TOOLS.get(name)
