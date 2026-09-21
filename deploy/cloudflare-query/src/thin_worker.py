@@ -35,6 +35,13 @@ from contract_v2 import (
     success as contract_success,
     validate_object,
 )
+from contract_v3 import (
+    CONTRACT_VERSION as V3_CONTRACT_VERSION,
+    TOOLS as V3_TOOLS,
+    contract_sha256 as v3_contract_sha256,
+    success as v3_contract_success,
+)
+from synthetic_v3 import SyntheticReleaseAdapter, SyntheticReleaseError
 
 REAL_WORLD = {"world_type": "real", "world_id": "us-public-markets"}
 _SCREEN_CACHE: dict[str, dict] = {}
@@ -107,6 +114,8 @@ class Default(WorkerEntrypoint):
             return self._response(self._capabilities_v1())
         if request.method == "GET" and path == "/v2/capabilities":
             return self._response(await self._capabilities_v2())
+        if request.method == "GET" and path == "/v3/capabilities":
+            return self._response(await self._capabilities_v3())
         if request.method == "POST" and path == "/mcp":
             return await self._mcp(request, rid)
         try:
@@ -115,7 +124,9 @@ class Default(WorkerEntrypoint):
             body = await request.json()
             if not isinstance(body, dict) or len(json.dumps(body)) > 32000:
                 return self._error(rid, "INVALID_REQUEST", "bounded JSON object required", 400)
-            if path.startswith("/v2/tools/"):
+            if path.startswith("/v3/tools/"):
+                result = await self._tool_v3(path.rsplit("/", 1)[-1], body, rid)
+            elif path.startswith("/v2/tools/"):
                 result = await self._tool_v2(path.rsplit("/", 1)[-1], body, rid)
             elif path == "/v1/query":
                 result = await self._query(body, rid)
@@ -128,6 +139,8 @@ class Default(WorkerEntrypoint):
             return self._error(rid, error.code, error.message, error.status, error.retryable)
         except ServingV2Error as error:
             return self._error(rid, error.code, error.message, 503 if error.retryable else 404, error.retryable)
+        except SyntheticReleaseError as error:
+            return self._error(rid, error.code, error.message, error.status, error.retryable)
         except LookupError as error:
             return self._error(rid, str(error), str(error).replace("_", " ").lower(), 404)
         except ValueError as error:
@@ -215,6 +228,84 @@ class Default(WorkerEntrypoint):
     def _capabilities_v1(self) -> dict:
         legacy = ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare", "resolve_security", "get_corporate_actions")
         return {"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "tool_contract_version": CONTRACT_VERSION, "tool_contract_sha256": contract_sha256(), "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": TOOLS[name]["supported_worlds"]} for name in legacy}}
+
+    async def _capabilities_v3(self) -> dict:
+        worlds = [{"world_type": "real", "world_id": "us-public-markets"}]
+        try:
+            world_id = getattr(self.env, "SYNTHETIC_WORLD_ID", "test-world-001")
+            pointer_key = getattr(self.env, "SYNTHETIC_CURRENT_KEY", f"control/synthetic-worlds/{world_id}/CURRENT.json")
+            pointer_obj = await self._synthetic_adapter().read_pointer(world_id)
+            worlds.append({"world_type": "synthetic", "world_id": world_id, "version": pointer_obj.get("version"), "release_id": pointer_obj.get("release_id")})
+        except Exception:
+            pass
+        return {"schema_version": "zion-tool-capabilities-v3", "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "tool_contract_version": V3_CONTRACT_VERSION, "tool_contract_sha256": v3_contract_sha256(), "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "worlds": worlds, "tools": [{"name": name, "title": definition["title"], "description": definition["description"], "input_schema": definition["input_schema"], "output_schema": definition["output_schema"], "read_only": True, "deterministic": True, "supported_worlds": definition["supported_worlds"]} for name, definition in V3_TOOLS.items()]}
+
+    def _synthetic_adapter(self) -> SyntheticReleaseAdapter:
+        return SyntheticReleaseAdapter(self.env)
+
+    async def _tool_v3(self, name: str, body: dict, rid: str) -> dict:
+        definition = V3_TOOLS.get(name)
+        if definition is None:
+            raise ContractError("TOOL_NOT_FOUND", "tool is not registered", status=404)
+        world = body.get("world")
+        arguments = body.get("arguments")
+        if not isinstance(world, dict) or not isinstance(arguments, dict):
+            raise ContractError("INVALID_REQUEST", "world and arguments are required")
+        validate_object(world, {"type": "object", "required": ["world_type", "world_id"], "properties": {"world_type": {"type": "string"}, "world_id": {"type": "string"}, "version": {"type": "string"}}, "additionalProperties": False})
+        if world.get("world_type") not in {"real", "synthetic"}:
+            raise ContractError("WORLD_NOT_FOUND", "world is not available", status=404)
+        validate_object(arguments, definition["input_schema"])
+        args = dict(arguments)
+        if body.get("as_of") is not None:
+            args["as_of"] = body["as_of"]
+        pinned = body.get("serving_release_id") or body.get("synthetic_release_id")
+        if world["world_type"] == "real":
+            # V3 real execution delegates unchanged to the frozen V2 path.
+            v2_body = {"world": world, "arguments": args}
+            if body.get("serving_release_id") is not None:
+                v2_body["serving_release_id"] = body["serving_release_id"]
+            result = await self._tool_v2(name, v2_body, rid)
+            return v3_contract_success(name, result.get("data", {}), world=world, evidence=result.get("evidence", []), quality={"status": result.get("quality", {}).get("status", "VERIFIED"), "warnings": [], "source_limitations": []}, provenance={"request_id": rid, "compatibility": "zion-tool-contract-v2"}, release=result.get("release"), request_id=rid)
+        release = await self._synthetic_adapter().load(world, pinned_release_id=pinned)
+        if name == "calculate":
+            if any(isinstance(value, float) for value in args.get("values", [])):
+                raise ContractError("INVALID_ARGUMENT", "calculator values must be JSON integers or decimal strings")
+            data = calculate_exact(args["operation"], args["values"])
+            return v3_contract_success(name, data, world=release.world, evidence=[], quality={"status": "CALCULATED", "warnings": [], "source_limitations": []}, provenance={"deterministic": True}, release=release.release, request_id=rid)
+        if name in {"resolve_entity", "resolve_security"}:
+            entity = release.entity(args.get("symbol") or args.get("entity_id") or args.get("cik"))
+            data = {"entity_id": entity.get("entity_id"), "symbol": entity.get("symbol"), "name": entity.get("display_name"), "match_type": "symbol", "confidence": 1.0}
+            if name == "resolve_security":
+                data["listing_id"] = f"{entity.get('entity_id')}:listing:{entity.get('symbol')}"
+            return v3_contract_success(name, data, world=release.world, evidence=[], quality={"status": "VERIFIED", "warnings": [], "source_limitations": []}, provenance={"producer": release.manifest.get("producer")}, release=release.release, request_id=rid)
+        if name == "get_fundamentals":
+            rows = release.fundamentals(args); data = {"observations": rows}; evidence = rows
+        elif name == "get_price":
+            row = release.latest_price(args); data = row; evidence = [row]
+        elif name == "get_price_history":
+            rows = release.price_history(args); data = {"prices": rows}; evidence = rows
+        elif name == "get_corporate_actions":
+            rows = release.corporate_actions(args); data = {"actions": rows}; evidence = rows
+        elif name == "get_revision_history":
+            rows = release.revisions(args); data = {"revisions": rows}; evidence = rows
+        elif name == "get_evidence":
+            evidence_id = args.get("evidence_id") or args.get("observation_id") or args.get("action_id")
+            if not evidence_id: raise ContractError("INVALID_ARGUMENT", "evidence_id is required")
+            rows = release.evidence(evidence_id); data = {"evidence": rows}; evidence = rows
+        elif name == "compare":
+            entities = args.get("entities", [])
+            if len(set(entities)) != len(entities): raise ContractError("INVALID_ARGUMENT", "compare entities must be unique")
+            series = []
+            for identifier in entities:
+                entity = release.entity(identifier)
+                rows = release.financial_rows(entity, [args["metric"]], period=args.get("period"), as_of=args.get("as_of"))
+                series.append({"requested_identifier": identifier, "entity_id": entity.get("entity_id"), "observations": rows[-min(int(args.get("lookback", 40)), 40):]})
+            data = {"metric": args["metric"], "series": series}; evidence = [row for item in series for row in item["observations"]]
+        elif name == "screen":
+            rows = release.screen(args); data = {"results": rows}; evidence = []
+        else:
+            raise ContractError("TOOL_NOT_SUPPORTED_FOR_WORLD", "tool is not supported for synthetic world", status=422)
+        return v3_contract_success(name, data, world=release.world, evidence=evidence, quality={"status": "VERIFIED", "warnings": [], "source_limitations": []}, provenance={"producer": release.manifest.get("producer"), "public_only": True}, release=release.release, request_id=rid)
 
     async def _capabilities_v2(self) -> dict:
         try:
