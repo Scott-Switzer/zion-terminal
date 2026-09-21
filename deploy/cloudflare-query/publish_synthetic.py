@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
+import shlex
 import subprocess
 import tempfile
 from pathlib import Path
@@ -15,12 +17,16 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _wrangler() -> list[str]:
+    return shlex.split(os.environ.get("WRANGLER_BIN", "wrangler"))
+
+
 def put(key: str, path: Path) -> None:
-    subprocess.run(["wrangler", "r2", "object", "put", f"{BUCKET}/{key}", "--remote", "--file", str(path)], check=True)
+    subprocess.run([*_wrangler(), "r2", "object", "put", f"{BUCKET}/{key}", "--remote", "--file", str(path)], check=True)
 
 
 def get(key: str) -> bytes:
-    result = subprocess.run(["wrangler", "r2", "object", "get", "--remote", "--pipe", f"{BUCKET}/{key}"], check=True, capture_output=True)
+    result = subprocess.run([*_wrangler(), "r2", "object", "get", "--remote", "--pipe", f"{BUCKET}/{key}"], check=True, capture_output=True)
     return result.stdout
 
 
