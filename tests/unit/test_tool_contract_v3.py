@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import sys
@@ -83,32 +84,35 @@ def test_v3_manifest_is_hash_pinned_and_world_capable():
     assert len(contract_sha256()) == 64
 
 
-@pytest.mark.asyncio
-async def test_public_release_loads_and_filters_pit():
-    env, world, release_id = _release()
-    release = await SyntheticReleaseAdapter(env).load(world)
-    assert release.release_id == release_id
-    with pytest.raises(SyntheticReleaseError, match="not available"):
-        release.fundamentals({"symbol": "NOVA", "metrics": ["revenue"], "as_of": "2026-04-01T00:00:00Z"})
-    assert len(release.fundamentals({"symbol": "NOVA", "metrics": ["revenue"], "as_of": "2026-05-01T00:00:00Z"})) == 1
-    row = release.fundamentals({"symbol": "NOVA", "metrics": ["revenue"]})[0]
-    assert row["evidence_id"].startswith("synthetic:financial:")
+def test_public_release_loads_and_filters_pit():
+    async def check():
+        env, world, release_id = _release()
+        release = await SyntheticReleaseAdapter(env).load(world)
+        assert release.release_id == release_id
+        with pytest.raises(SyntheticReleaseError, match="not available"):
+            release.fundamentals({"symbol": "NOVA", "metrics": ["revenue"], "as_of": "2026-04-01T00:00:00Z"})
+        assert len(release.fundamentals({"symbol": "NOVA", "metrics": ["revenue"], "as_of": "2026-05-01T00:00:00Z"})) == 1
+        row = release.fundamentals({"symbol": "NOVA", "metrics": ["revenue"]})[0]
+        assert row["evidence_id"].startswith("synthetic:financial:")
+    asyncio.run(check())
 
 
-@pytest.mark.asyncio
-async def test_hidden_public_payload_is_rejected():
-    env, world, _ = _release(hidden=True)
-    with pytest.raises(SyntheticReleaseError, match="hidden-only"):
-        await SyntheticReleaseAdapter(env).load(world)
+def test_hidden_public_payload_is_rejected():
+    async def check():
+        env, world, _ = _release(hidden=True)
+        with pytest.raises(SyntheticReleaseError, match="hidden-only"):
+            await SyntheticReleaseAdapter(env).load(world)
+    asyncio.run(check())
 
 
-@pytest.mark.asyncio
-async def test_world_and_release_mismatches_fail_closed():
-    env, _, release_id = _release()
-    with pytest.raises(SyntheticReleaseError) as unknown:
-        await SyntheticReleaseAdapter(env).load({"world_type": "synthetic", "world_id": "other"})
-    assert unknown.value.code == "WORLD_NOT_FOUND"
-    with pytest.raises(SyntheticReleaseError) as pinned:
-        await SyntheticReleaseAdapter(env).load({"world_type": "synthetic", "world_id": "world-1"}, pinned_release_id="0" * 64)
-    assert pinned.value.code == "SYNTHETIC_RELEASE_UNAVAILABLE"
-    assert release_id
+def test_world_and_release_mismatches_fail_closed():
+    async def check():
+        env, _, release_id = _release()
+        with pytest.raises(SyntheticReleaseError) as unknown:
+            await SyntheticReleaseAdapter(env).load({"world_type": "synthetic", "world_id": "other"})
+        assert unknown.value.code == "WORLD_NOT_FOUND"
+        with pytest.raises(SyntheticReleaseError) as pinned:
+            await SyntheticReleaseAdapter(env).load({"world_type": "synthetic", "world_id": "world-1"}, pinned_release_id="0" * 64)
+        assert pinned.value.code == "SYNTHETIC_RELEASE_UNAVAILABLE"
+        assert release_id
+    asyncio.run(check())
