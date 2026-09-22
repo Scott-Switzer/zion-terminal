@@ -267,12 +267,22 @@ class Default(WorkerEntrypoint):
             args["as_of"] = body["as_of"]
         pinned = body.get("serving_release_id") or body.get("synthetic_release_id")
         if world["world_type"] == "real":
-            # V3 real execution delegates unchanged to the frozen V2 path.
-            v2_body = {"world": world, "arguments": args}
+            # Keep V3 envelope fields at the V2 envelope boundary. In particular,
+            # V2 validates tool arguments before applying its temporal envelope.
+            v2_body = {"world": world, "arguments": dict(arguments)}
+            if body.get("as_of") is not None:
+                v2_body["as_of"] = body["as_of"]
             if body.get("serving_release_id") is not None:
                 v2_body["serving_release_id"] = body["serving_release_id"]
             result = await self._tool_v2(name, v2_body, rid)
-            return v3_contract_success(name, result.get("data", {}), world=world, evidence=result.get("evidence", []), quality={"status": result.get("quality", {}).get("status", "VERIFIED"), "warnings": [], "source_limitations": []}, provenance={"request_id": rid, "compatibility": "zion-tool-contract-v2"}, release=result.get("release"), request_id=rid)
+            release = dict(result.get("release") or {})
+            expected_release = body.get("serving_release_id")
+            observed_release = release.get("serving_release_id")
+            if expected_release is not None:
+                if observed_release not in {None, expected_release}:
+                    raise ContractError("RELEASE_MISMATCH", "V2 result release differs from V3 request pin", status=502)
+                release["serving_release_id"] = expected_release
+            return v3_contract_success(name, result.get("data", {}), world=world, evidence=result.get("evidence", []), quality={"status": result.get("quality", {}).get("status", "VERIFIED"), "warnings": [], "source_limitations": []}, provenance={"request_id": rid, "compatibility": "zion-tool-contract-v2"}, release=release, request_id=rid)
         release = await self._synthetic_adapter().load(world, pinned_release_id=pinned)
         if name == "calculate":
             if any(isinstance(value, float) for value in args.get("values", [])):

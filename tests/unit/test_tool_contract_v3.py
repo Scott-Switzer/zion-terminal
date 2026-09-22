@@ -4,14 +4,23 @@ import asyncio
 import hashlib
 import json
 import sys
+import types
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parents[2] / "deploy" / "cloudflare-query" / "src"))
 
+from contract_v2 import ContractError
 from contract_v3 import CONTRACT_VERSION, TOOLS, contract_sha256
 from synthetic_v3 import SyntheticReleaseAdapter, SyntheticReleaseError
+
+# The Cloudflare workers package imports the runtime-only ``js`` module. These
+# bridge tests call the pure async dispatch method, so provide its two class
+# symbols without importing the runtime adapter.
+if "workers" not in sys.modules:
+    sys.modules["workers"] = types.SimpleNamespace(Response=object, WorkerEntrypoint=object)
+from thin_worker import Default
 
 
 class _Obj:
@@ -82,6 +91,78 @@ def test_v3_manifest_is_hash_pinned_and_world_capable():
     assert len(TOOLS) == 11
     assert all(item["supported_worlds"] == ["real", "synthetic"] for item in TOOLS.values())
     assert len(contract_sha256()) == 64
+
+
+class _RealV3Harness:
+    def __init__(self, result):
+        self.result = result
+        self.calls = []
+
+    async def _tool_v2(self, name, body, rid):
+        self.calls.append((name, body, rid))
+        return self.result
+
+
+def _run_real_v3(name, arguments, result, *, as_of=None, release="real-release"):
+    harness = _RealV3Harness(result)
+    body = {
+        "world": {"world_type": "real", "world_id": "us-public-markets"},
+        "arguments": arguments,
+        "serving_release_id": release,
+    }
+    if as_of is not None:
+        body["as_of"] = as_of
+    response = asyncio.run(Default._tool_v3(harness, name, body, "req-real"))
+    return harness, response
+
+
+def test_real_v3_pit_keeps_as_of_in_v2_envelope_and_pins_release():
+    harness, response = _run_real_v3(
+        "get_fundamentals",
+        {"symbol": "MSFT", "metrics": ["revenue"], "period": "annual", "lookback": 8},
+        {
+            "data": {"observations": [{"period": "2023-06-30"}]},
+            "evidence": [{"period": "2023-06-30"}],
+            "quality": {"status": "VERIFIED"},
+            "release": {},
+        },
+        as_of="2024-01-01T00:00:00Z",
+    )
+    _, v2_body, _ = harness.calls[0]
+    assert v2_body["as_of"] == "2024-01-01T00:00:00Z"
+    assert "as_of" not in v2_body["arguments"]
+    assert response["release"]["serving_release_id"] == "real-release"
+    assert response["data"]["observations"][0]["period"] == "2023-06-30"
+
+
+def test_real_v3_compare_preserves_pinned_release():
+    _, response = _run_real_v3(
+        "compare",
+        {"entities": ["MSFT", "NVDA", "TSLA"], "metric": "operating_margin"},
+        {"data": {"series": []}, "evidence": [], "quality": {"status": "VERIFIED"}, "release": {}},
+    )
+    assert response["release"]["serving_release_id"] == "real-release"
+
+
+def test_real_v3_calculate_preserves_exact_result_and_pinned_release():
+    _, response = _run_real_v3(
+        "calculate",
+        {"operation": "percent_change", "values": ["10", "12"]},
+        {"data": {"value": "20.00", "operation": "percent_change"}, "evidence": [], "quality": {"status": "CALCULATED"}, "release": {}},
+    )
+    assert response["data"]["value"] == "20.00"
+    assert response["release"]["serving_release_id"] == "real-release"
+
+
+def test_real_v3_release_mismatch_fails_closed():
+    with pytest.raises(ContractError, match="V2 result release differs") as error:
+        _run_real_v3(
+            "compare",
+            {"entities": ["MSFT", "NVDA"], "metric": "revenue"},
+            {"data": {}, "evidence": [], "quality": {}, "release": {"serving_release_id": "other-release"}},
+        )
+    assert error.value.code == "RELEASE_MISMATCH"
+    assert error.value.status == 502
 
 
 def test_public_release_loads_and_filters_pit():
