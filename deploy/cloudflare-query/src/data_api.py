@@ -72,12 +72,35 @@ async def dispatch(env,method,path,params,body,rid):
  _,manifest=await load_release(env);release=manifest['serving_release_id']
  if params.get('release_id') and params['release_id']!=release:raise ContractError('RELEASE_CHANGED','restart pagination against the current release',status=409)
  result={'release':{'serving_release_id':release,'source':manifest['source']},'request_id':rid}
+ if method=='GET' and path in ('/v1/metrics','/v1/archive/securities','/v1/coverage'):
+  filename={'/v1/metrics':'catalog/metrics.json','/v1/archive/securities':'archive/index.json','/v1/coverage':'catalog/coverage.json'}[path]
+  if not any(a['path']==filename for a in manifest['artifacts']):raise ContractError('DATA_NOT_PUBLISHED','catalog is not published in this release',status=422)
+  rows=await artifact(env,manifest,filename)
+  if isinstance(rows,list):
+   q=params.get('q','').casefold();rows=[row for row in rows if not q or q in str(row).casefold()]
+   result['data'],result['page']=page(rows,params,release)
+  else:result['data']=rows
+  return result
+ if method=='GET' and path.startswith('/v1/archive/prices/'):
+  symbol=unquote(path.removeprefix('/v1/archive/prices/')).upper()
+  index=await artifact(env,manifest,'archive/index.json');entry=next((row for row in index if row['symbol']==symbol),None)
+  if entry is None:raise ContractError('SECURITY_NOT_FOUND','source security is not published',status=404)
+  start,end=date_range(params);cutoff=_as_of(params.get('as_of'));prefix='archive/'+symbol+'/prices/';rows=[];excluded=0
+  for item in sorted(manifest['artifacts'],key=lambda a:a['path']):
+   filename=item['path'];year=filename.removeprefix(prefix).removesuffix('.json')
+   if not filename.startswith(prefix) or (start and year<start[:4]) or (end and year>end[:4]):continue
+   for row in await artifact(env,manifest,filename):
+    if (start and row['session_date']<start) or (end and row['session_date']>end):continue
+    if not _available(row,cutoff):excluded+=1;continue
+    rows.append({**row,'provenance':{'serving_release_id':release,'artifact':filename,'storage_key':item.get('storage_key')}})
+  rows.sort(key=lambda row:row['session_date']);result['coverage']={'source_security':entry,'pit_excluded':excluded,'identity_policy':'source-qualified; no inferred current issuer merge'}
+  rows,result['page']=page(rows,params,release);result['data']={'prices':rows};return result
  if path=='/v1/bulk/query' and method=='POST':
   queries=body.get('queries') if isinstance(body,dict) else None
   if not isinstance(queries,list) or not 1<=len(queries)<=20:raise ContractError('INVALID_ARGUMENT','queries must contain 1–20 requests')
   results=[]
   for query in queries:
-   if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
+   if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or query['path'].startswith('/v1/archive/prices/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
    parameters=query.get('params',{})
    if not isinstance(parameters,dict):raise ContractError('INVALID_ARGUMENT','bulk params must be objects')
    results.append(await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid))

@@ -452,7 +452,10 @@ async def artifact(env: Any, manifest: dict[str, Any], relative: str) -> Any:
     entry = next((item for item in manifest.get("artifacts", []) if item.get("path") == relative), None)
     if entry is None:
         raise ServingV2Error("SERVING_ARTIFACT_NOT_FOUND", f"artifact is not in the manifest: {relative}")
-    raw = await _cached_text(env, prefix + relative, release_id=release_id, ttl=31536000)
+    storage_key = entry.get("storage_key", prefix + relative)
+    if not isinstance(storage_key, str) or not storage_key.startswith("gold/serving/releases/") or any(part in ("", ".", "..") for part in storage_key.split("/")) or not storage_key.endswith(".json"):
+        raise ServingV2Error("SERVING_MANIFEST_CORRUPT", "artifact reference must name an immutable serving JSON object")
+    raw = await _cached_text(env, storage_key, release_id=release_id, ttl=31536000)
     hash_started = perf_counter()
     if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
         _mark("hash_validation", perf_counter() - hash_started)

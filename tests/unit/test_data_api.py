@@ -86,3 +86,24 @@ def test_tool_price_history_does_not_stop_on_rows_unavailable_at_pit_cutoff():
  result=asyncio.run(price_history(env(),'META',limit=100,as_of='2014-01-01T00:00:00Z'))
  assert len(result['prices'])==100
  assert all(r['session_date'].startswith('2013-') for r in result['prices'])
+
+
+def test_immutable_artifact_reference_reuses_hash_verified_parent_object():
+ from serving_v2 import artifact, ServingV2Error
+ e=env();key='gold/serving/releases/test/entities/meta/prices/daily/2013.json';raw=e.MARKET_DATA.objects[key]
+ manifest={'serving_release_id':'child','artifacts':[{'path':'history.json','storage_key':key,'sha256':hashlib.sha256(raw).hexdigest()}]}
+ assert len(asyncio.run(artifact(e,manifest,'history.json')))==336
+ manifest['artifacts'][0]['storage_key']='raw/private/secret.json'
+ with pytest.raises(ServingV2Error):asyncio.run(artifact(e,manifest,'history.json'))
+
+
+def test_metrics_and_source_archive_prices_are_paginated_and_pit_safe():
+ e=env()
+ values={'catalog/metrics.json':[{'metric_id':'revenue','issuer_count':439}],'archive/index.json':[{'symbol':'FB','rows':1,'pit_status':'SOURCE_LIMITED'}],'archive/FB/prices/2012.json':[{'session_date':'2012-05-18','available_at':None,'close':'38.22999954223633','source_symbol':'FB','evidence_id':'e'}]}
+ key='gold/serving/releases/test/manifest.json';manifest=json.loads(e.MARKET_DATA.objects[key])
+ for path,value in values.items():
+  raw=json.dumps(value).encode();e.MARKET_DATA.objects['gold/serving/releases/test/'+path]=raw;manifest['artifacts'].append({'path':path,'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()})
+ raw=json.dumps(manifest).encode();e.MARKET_DATA.objects[key]=raw;e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':key,'manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
+ result=asyncio.run(dispatch(e,'GET','/v1/metrics',{},None,'r'));assert result['data'][0]['metric_id']=='revenue'
+ result=asyncio.run(dispatch(e,'GET','/v1/archive/prices/FB',{},None,'r'));assert result['data']['prices'][0]['close']=='38.22999954223633'
+ result=asyncio.run(dispatch(e,'GET','/v1/archive/prices/FB',{'as_of':'2018-01-01T00:00:00Z'},None,'r'));assert result['data']['prices']==[];assert result['coverage']['pit_excluded']==1
