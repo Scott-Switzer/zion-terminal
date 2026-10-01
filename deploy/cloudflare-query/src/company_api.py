@@ -4,16 +4,96 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from time import perf_counter
 from typing import Any
 from urllib.parse import unquote
 
 from contract_v2 import ContractError
 from data_api import date_range
-from market_api import market_dispatch
 from serving_v2 import (
     ServingV2Error, _as_of, _available, _serve_row, _select_revisions,
-    artifact, load_release,
+    _r2_text, artifact, load_release,
 )
+
+
+_COMPANY_RELEASE_CACHE: dict[tuple[int, str], tuple[dict[str, Any], dict[str, Any]]] = {}
+_COMPANY_MARKET_CACHE: dict[tuple[int, str, str], tuple[Any, dict[str, Any]]] = {}
+_COMPANY_CACHE_MAX_RELEASES = 2
+
+
+def _timing(env: Any) -> dict[str, Any]:
+    value = getattr(env, "_company_timing", None)
+    if not isinstance(value, dict):
+        value = {"r2_reads": 0, "market_bytes": 0, "market_parse_ms": 0.0, "market_filter_ms": 0.0, "request_started_at": perf_counter()}
+        try:
+            setattr(env, "_company_timing", value)
+        except Exception:
+            pass
+    return value
+
+
+async def _market_release(env: Any, request_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load the hash-verified market object once and build an isolate-local symbol index."""
+
+    timing = _timing(env)
+    timing["market_cache_hit"] = False
+    started = perf_counter()
+
+    pointer_obj = await env.MARKET_DATA.get("control/daily-prices/CURRENT.json")
+    timing["r2_reads"] += 1
+    if pointer_obj is None:
+        raise ContractError("SOURCE_LIMITED", "whole-market daily publication is not available", status=503)
+    pointer = json.loads(await pointer_obj.text())
+    digest = pointer.get("sha256", "")
+    key = pointer.get("data_key")
+    if not re.fullmatch(r"[a-f0-9]{64}", digest) or pointer.get("version") != digest or key != f"gold/daily-prices/releases/{digest}/data.json":
+        raise ContractError("SOURCE_LIMITED", "invalid daily publication pointer", status=503)
+    cache_key = (id(env.MARKET_DATA), digest, key)
+    cached = _COMPANY_MARKET_CACHE.get(cache_key)
+    if cached is None:
+        raw = await _r2_text(env, key)
+        timing["r2_reads"] += 1
+        timing["market_bytes"] += len(raw)
+        if len(raw) > 16 * 1024 * 1024 or hashlib.sha256(raw).hexdigest() != digest:
+            raise ContractError("SOURCE_LIMITED", "daily publication data exceeds bounds or hash mismatch", status=503)
+        parse_started = perf_counter()
+        try:
+            data = json.loads(raw)
+        except Exception as exc:
+            raise ContractError("SOURCE_LIMITED", "daily publication data is invalid", status=503) from exc
+        timing["market_parse_ms"] += round((perf_counter() - parse_started) * 1000, 3)
+        if data.get("session") != pointer.get("session") or data.get("provider") != pointer.get("provider") or data.get("feed") != pointer.get("feed") or not isinstance(data.get("bars"), list):
+            raise ContractError("SOURCE_LIMITED", "daily publication metadata mismatch", status=503)
+        indexed = dict(data)
+        indexed["_bars_by_symbol"] = {row.get("provider_symbol"): row for row in data["bars"] if isinstance(row, dict) and isinstance(row.get("provider_symbol"), str)}
+        cached = (env.MARKET_DATA, indexed)
+        _COMPANY_MARKET_CACHE[cache_key] = cached
+        while len(_COMPANY_MARKET_CACHE) > _COMPANY_CACHE_MAX_RELEASES:
+            _COMPANY_MARKET_CACHE.pop(next(iter(_COMPANY_MARKET_CACHE)))
+    elif cached[0] is not env.MARKET_DATA:
+        raise ContractError("SOURCE_LIMITED", "market cache binding mismatch", status=503)
+    else:
+        timing["market_cache_hit"] = True
+    data = cached[1]
+    data["_timing"] = timing
+    timing["market_load_ms"] = round((perf_counter() - started) * 1000, 3)
+    result = {
+        "release": {"market_release_id": digest, "provider": data["provider"], "feed": data["feed"], "session": data["session"], "data_key": key, "sha256": digest, "published_at": pointer.get("published_at")},
+        "coverage": {"status": "SOURCE_QUALIFIED", "point_in_time_status": "NOT_ESTABLISHED", "counts": data.get("counts"), "selection_policy": data.get("selection_policy"), "missing_symbols": []},
+        "request_id": request_id,
+    }
+
+
+    return result, data
+
+
+def _market_symbol(data: dict[str, Any], symbol: str) -> tuple[list[dict[str, Any]], list[str]]:
+    timing = data.get("_timing")
+    started = perf_counter()
+    row = data.get("_bars_by_symbol", {}).get(symbol)
+    if timing is not None:
+        timing["market_filter_ms"] += round((perf_counter() - started) * 1000, 3)
+    return ([row] if row else []), ([] if row else [symbol])
 
 
 def _identity_symbol(resolver_index: dict[str, Any], symbol: str, as_of: Any = None) -> dict[str, Any] | None:
@@ -65,6 +145,8 @@ async def company_dispatch(env: Any, path: str, params: dict[str, Any], request_
     if not re.fullmatch(r"[A-Z0-9][A-Z0-9.-]{0,19}", symbol):
         raise ContractError("INVALID_ARGUMENT", "a valid security symbol is required")
     start, end = date_range(params)
+    timing = _timing(env)
+    timing.update({"r2_reads": 0, "market_bytes": 0, "market_parse_ms": 0.0, "market_filter_ms": 0.0, "market_load_ms": 0.0, "market_cache_hit": False, "request_started_at": perf_counter()})
     cutoff_value = params.get("as_of")
     if cutoff_value and re.fullmatch(r"\d{4}-\d{2}-\d{2}", cutoff_value):
         # Match the REST API's date-only contract: an end-of-day UTC cutoff,
@@ -93,8 +175,16 @@ async def company_dispatch(env: Any, path: str, params: dict[str, Any], request_
     snapshot = None
 
     try:
-        _, canonical_manifest = await load_release(env)
+        current_pointer, canonical_manifest = await load_release(env)
         canonical_release = canonical_manifest["serving_release_id"]
+        cache_identity = (id(env.MARKET_DATA), canonical_release)
+        cached_release = _COMPANY_RELEASE_CACHE.get(cache_identity)
+        if cached_release is None:
+            _COMPANY_RELEASE_CACHE[cache_identity] = (current_pointer, canonical_manifest)
+            while len(_COMPANY_RELEASE_CACHE) > _COMPANY_CACHE_MAX_RELEASES:
+                _COMPANY_RELEASE_CACHE.pop(next(iter(_COMPANY_RELEASE_CACHE)))
+        else:
+            current_pointer, canonical_manifest = cached_release
     except ServingV2Error as error:
         if not _missing_artifact(error):
             raise
@@ -125,7 +215,7 @@ async def company_dispatch(env: Any, path: str, params: dict[str, Any], request_
                             row = {**defaults, **compact}
                             if (start and row.get("session_date", "") < start) or (end and row.get("session_date", "") > end):
                                 continue
-                            if _available(row, cutoff):
+                            if cutoff is None:
                                 archive_rows.append({**row, "provenance": {"archive_release_id": archive_release, "serving_release_id": canonical_release, "artifact": filename, "storage_key": item.get("storage_key")}})
                     archive_rows.sort(key=lambda row: row.get("session_date", ""))
                     archive_rows = archive_rows[-limit:]
@@ -169,6 +259,16 @@ async def company_dispatch(env: Any, path: str, params: dict[str, Any], request_
                     }
                     for row in rows
                 ]
+                rows = [
+                    {
+                        **row,
+                        "metric": row.get("metric_id"),
+                        "period": row.get("period_end"),
+                        "value": row.get("value_decimal"),
+                        "source_record": row.get("source_record_id"),
+                    }
+                    for row in rows
+                ]
                 rows = [row for row in rows if _available(row, cutoff) and (not start or row.get("period_end", "") >= start) and (not end or row.get("period_end", "") <= end)]
                 revisions.extend({**row, **_serve_row(row, release_id=canonical_release, artifact_path=artifact_path_period, source_snapshot_id=canonical_manifest.get("source", {}).get("fundamentals", {}).get("snapshot_id"))} for row in rows)
                 rows = _select_revisions(rows, cutoff)
@@ -208,26 +308,30 @@ async def company_dispatch(env: Any, path: str, params: dict[str, Any], request_
     market_published_at = None
     if cutoff is None:
         try:
-            market_result = await market_dispatch(env, f"/v1/market/prices/{symbol}", {}, request_id)
+            market_result, market_data = await _market_release(env, request_id)
         except ContractError as error:
             if error.code != "SOURCE_LIMITED":
                 raise
             market_result = None
+            market_data = None
             market_status = "SOURCE_LIMITED"
         if market_result is not None:
-            market_release = market_result.get("release", {}).get("market_release_id")
-            market_published_at = market_result.get("release", {}).get("published_at")
-            prices = market_result.get("data", {}).get("prices", [])
-            if prices:
-                latest_market = prices[0]
+            market_release = market_result["release"]["market_release_id"]
+            market_published_at = market_result["release"].get("published_at")
+            rows, missing = _market_symbol(market_data, symbol)
+            market_result["coverage"]["missing_symbols"] = missing
+            if rows:
+                latest_market = rows[0]
                 identity["market"] = {key: latest_market.get(key) for key in ("security_id", "instrument_id", "listing_id", "symbol", "provider_symbol", "exchange") if latest_market.get(key) is not None}
                 market_status = "AVAILABLE"
             else:
-                market_status = "SOURCE_LIMITED" if symbol in market_result.get("coverage", {}).get("missing_symbols", []) else "DATA_NOT_PUBLISHED"
+                market_status = "SOURCE_LIMITED"
 
     # A current identity/snapshot is not historical financial evidence. A PIT
     # request must contain at least one eligible canonical observation.
     supported = bool(history or annual or quarterly or archive_rows) if cutoff is not None else bool(snapshot is not None or history or annual or quarterly or archive_rows or latest_market)
+    if cutoff is None and latest_market is None and archive_entry is not None and not archive_rows and snapshot is None and not annual and not quarterly:
+        market_status = "DATA_NOT_PUBLISHED"
     if not supported:
         if cutoff is not None:
             raise ContractError("HISTORICAL_DATA_UNAVAILABLE", "no canonical historical security data is published for this request; the current market release is not eligible", status=422)
@@ -258,5 +362,6 @@ async def company_dispatch(env: Any, path: str, params: dict[str, Any], request_
             "history": {"status": history_status, "observations": history},
             "archive": {"status": "AVAILABLE" if archive_rows else "SOURCE_LIMITED" if archive_entry is not None else "DATA_NOT_PUBLISHED", "pit_status": "SOURCE_LIMITED", "adjustment_status": archive_entry.get("adjustment_status", "source_preserved_retrospective_adjustment_unknown") if archive_entry is not None else None, "observations": archive_rows},
         },
+        "performance": {**{key: value for key, value in _timing(env).items() if key != "request_started_at"}, "total_worker_ms": round((perf_counter() - _timing(env)["request_started_at"]) * 1000, 3)},
         "request_id": request_id,
     }

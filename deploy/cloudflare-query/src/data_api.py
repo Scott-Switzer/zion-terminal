@@ -56,7 +56,7 @@ def date_range(params):
 
 async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
  allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","offset","limit"}
- if not isinstance(params,dict) or (not path.startswith("/v1/company/") and set(params)-allowed) or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
+ if not isinstance(params,dict) or (not path.startswith("/v1/company/") and not path.startswith("/v1/prices/") and set(params)-allowed) or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
  if path.startswith("/v1/market/") and method=="GET":
   from market_api import market_dispatch
   date_range(params)
@@ -64,6 +64,13 @@ async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
  if path.startswith("/v1/company/") and method=="GET":
   from company_api import company_dispatch
   return await company_dispatch(env,path,params,rid)
+ if path.startswith("/v1/prices/") and method=="GET":
+  from price_api import price_history
+  release_context=({"serving_release_id":_release_manifest["serving_release_id"]},_release_manifest) if _release_manifest is not None else None
+  return await price_history(env,path.removeprefix("/v1/prices/"),params,rid,_release_context=release_context)
+ if path=="/v1/bulk/prices" and method=="POST":
+  from price_api import bulk_price_history
+  return await bulk_price_history(env,body,rid)
  if path=="/v1/search":path="/v1/securities"
  for domain in ("prices","fundamentals","revisions","entities","filings"):
   prefix="/v1/"+domain+"/"

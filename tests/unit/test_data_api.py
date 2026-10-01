@@ -3,7 +3,9 @@ from pathlib import Path
 from types import SimpleNamespace
 import pytest
 sys.path.insert(0,str(Path(__file__).parents[2]/'deploy/cloudflare-query/src'))
+
 from data_api import dispatch, select_screen_rows
+from price_api import bulk_price_history, price_history
 
 class Object:
  def __init__(self,raw):self.raw=raw
@@ -20,10 +22,81 @@ def env():
  prices=[{'session_date':f'{year}-{month:02d}-{day:02d}','available_at':f'{year}-{month:02d}-{day:02d}T20:00:00Z','close':'123.123456789012345678901234','observation_id':f'{year}-{month}-{day}'} for year in [2013,2025] for month in range(1,13) for day in range(1,29)]
  values={'identity/resolver_index.json':{'symbols':{'META':{'entity':'entity:meta','instrument':'instrument:meta','listing':'listing:meta','artifact_path':'entities/meta'}}},'entities/meta/snapshot.json':{'symbol':'META','entity_id':'entity:meta'},'corporate-actions/actions.json':[{'action_id':str(year),'entity_id':'entity:meta','effective_date':str(year)+'-01-01','available_at':str(year)+'-01-01T00:00:00Z'} for year in [2013,2025]],'entities/meta/fundamentals/quarterly.json':facts,'entities/meta/prices/daily/2013.json':prices[:336],'entities/meta/prices/daily/2025.json':prices[336:]}
  objects={f'gold/serving/releases/test/{k}':json.dumps(v).encode() for k,v in values.items()}
- manifest={'schema_version':'financial-serving-v2','serving_release_id':'test','source':{'fundamentals':{'snapshot_id':1},'prices':{'snapshot_id':2}},'artifacts':[{'path':k,'sha256':hashlib.sha256(objects[f'gold/serving/releases/test/{k}']).hexdigest(),'bytes':len(objects[f'gold/serving/releases/test/{k}'])} for k in values]}
+ manifest={'schema_version':'financial-serving-v2','serving_release_id':'test','source':{'fundamentals':{'snapshot_id':1},'prices':{'snapshot_id':2,'latest_date':'2025-12-31'}},'artifacts':[{'path':k,'sha256':hashlib.sha256(objects[f'gold/serving/releases/test/{k}']).hexdigest(),'bytes':len(objects[f'gold/serving/releases/test/{k}'])} for k in values]}
  raw=json.dumps(manifest).encode();objects['gold/serving/releases/test/manifest.json']=raw
  objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':'gold/serving/releases/test/manifest.json','manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
  return SimpleNamespace(MARKET_DATA=Bucket(objects))
+
+def test_unified_prices_reads_only_canonical_archive_and_qualifies_identity():
+ e=env();manifest=json.loads(e.MARKET_DATA.objects['gold/serving/releases/test/manifest.json'])
+ archive_index={'symbol':'META','rows':1,'adjustment_status':'source_preserved_retrospective_adjustment_unknown'}
+ archive={'defaults':{'available_at':None,'source_id':'legacy-archive'},'rows':[{'session_date':'2012-05-18','close':'38.22'}]}
+ for path,payload in [('archive/index.json',[archive_index]),('archive/META/prices/all.json',archive)]:
+  raw=json.dumps(payload).encode();e.MARKET_DATA.objects[f'gold/serving/releases/test/{path}']=raw
+  manifest['artifacts'].append({'path':path,'storage_key':f'gold/serving/releases/archive-compact-legacy/{path}','sha256':hashlib.sha256(raw).hexdigest(),'first_date':'2012-05-18','last_date':'2012-05-18'})
+  e.MARKET_DATA.objects[f'gold/serving/releases/archive-compact-legacy/{path}']=raw
+ manifest['source']['archive']={'release_id':'legacy','pit_status':'SOURCE_LIMITED'}
+ raw=json.dumps(manifest).encode();e.MARKET_DATA.objects['gold/serving/releases/test/manifest.json']=raw
+ e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':'gold/serving/releases/test/manifest.json','manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
+ result=asyncio.run(price_history(e,'META',{'start_date':'2012-01-01','end_date':'2012-12-31'},'r'))
+ assert [row['session_date'] for row in result['series']]==['2012-05-18']
+ assert result['segments'][0]['pit_status']=='SOURCE_LIMITED_NOT_PIT_CERTIFIED'
+ assert result['releases']['archive']=='legacy'
+ assert not any(key.startswith('control/daily-prices/') for key in e.MARKET_DATA.reads)
+
+
+def test_unified_prices_keeps_market_only_identity_and_price_only_data():
+ e=env();e.MARKET_DATA.objects.pop('gold/serving/CURRENT.json',None)
+ market_payload={'session':'2026-09-30','provider':'alpaca','feed':'sip','counts':{},'bars':[{'provider_symbol':'BBAI','security_id':'market-security','session_date':'2026-09-30','close':'5.25','exchange':'NASDAQ'}]}
+ raw=json.dumps(market_payload,separators=(',',':')).encode();digest=hashlib.sha256(raw).hexdigest()
+ e.MARKET_DATA.objects['control/daily-prices/CURRENT.json']=json.dumps({'version':digest,'sha256':digest,'data_key':f'gold/daily-prices/releases/{digest}/data.json','session':'2026-09-30','provider':'alpaca','feed':'sip'}).encode()
+ e.MARKET_DATA.objects[f'gold/daily-prices/releases/{digest}/data.json']=raw
+ result=asyncio.run(price_history(e,'BBAI',{},'r'))
+ assert result['series'][0]['close']=='5.25'
+ assert result['identity']['market']['security_id']=='market-security'
+ assert result['releases']['market']==digest
+ assert result['release']['market_release_id']==digest
+ assert result['availability']['canonical']=='DATA_NOT_PUBLISHED'
+
+
+def test_unified_prices_uses_qualified_canonical_rows_and_market_source_by_range():
+ e=env()
+ canonical=asyncio.run(price_history(e,'META',{'start_date':'2025-01-01','end_date':'2025-12-31'},'r'))
+ assert canonical['segments'][0]['source']=='canonical_daily_prices'
+ assert canonical['availability']['current_market']=='NOT_IN_RANGE'
+ assert not any(key.startswith('control/daily-prices/') for key in e.MARKET_DATA.reads)
+
+
+def test_unified_prices_date_only_cutoff_is_rejected_without_market_reads():
+ from contract_v2 import ContractError
+ e=env()
+ with pytest.raises(ContractError,match='unsupported or invalid price query parameters'):
+  asyncio.run(price_history(e,'META',{'source':'raw'},'r'))
+ with pytest.raises(ContractError,match='explicit Z or numeric UTC offset'):
+  asyncio.run(price_history(e,'META',{'as_of':'2026-09-30'},'r'))
+ assert not any(key.startswith('control/daily-prices/') for key in e.MARKET_DATA.reads)
+
+
+def test_unified_prices_canonical_as_of_never_reads_current_market():
+ e=env()
+ result=asyncio.run(price_history(e,'META',{'as_of':'2026-01-01T00:00:00Z'},'r'))
+ assert all(row['session_date']<'2026-01-01' for row in result['series'])
+ assert result['availability']['current_market']=='NOT_USED_FOR_PIT'
+ assert not any(key.startswith('control/daily-prices/') for key in e.MARKET_DATA.reads)
+
+
+def test_unified_bulk_pins_release_loads_market_once_and_returns_symbol_packets():
+ from contract_v2 import ContractError
+ e=env()
+ with pytest.raises(ContractError,match='unique valid symbols'):
+  asyncio.run(bulk_price_history(e,{'symbols':['meta','META','MSFT']},'r'))
+ assert e.MARKET_DATA.reads.count('gold/serving/CURRENT.json')==0
+ result=asyncio.run(bulk_price_history(e,{'symbols':['META'],'start_date':'2025-01-01','end_date':'2025-12-31'},'r'))
+ assert result['release']['serving_release_id']=='test'
+ assert result['coverage']['row_count']==336
+ assert e.MARKET_DATA.reads.count('gold/serving/CURRENT.json')==1
+ assert not any(key.startswith('control/daily-prices/') for key in e.MARKET_DATA.reads)
+
 
 def test_rest_history_has_no_500_row_or_latest_release_year_cap():
  result=asyncio.run(dispatch(env(),'GET','/v1/securities/META/prices',{'start_date':'2013-01-01','end_date':'2026-12-31','limit':'1000'},None,'r'))
@@ -46,6 +119,8 @@ def test_screen_evaluates_every_listing_and_sorts_decimal_not_text():
 
 def test_pagination_rejects_mixing_releases_and_invalid_range():
  from contract_v2 import ContractError
+ with pytest.raises(ContractError,match='YYYY-MM-DD'):
+  asyncio.run(dispatch(env(),'GET','/v1/prices/META',{'start_date':'2013-02-30'},None,'r'))
  with pytest.raises(ContractError,match='restart pagination'):
   asyncio.run(dispatch(env(),'GET','/v1/securities/META/prices',{'release_id':'old'},None,'r'))
  with pytest.raises(ContractError,match='YYYY-MM-DD'):
