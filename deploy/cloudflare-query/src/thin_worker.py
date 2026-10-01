@@ -5,10 +5,11 @@ import json
 import re
 import uuid
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from workers import Response, WorkerEntrypoint
 
+from data_api import dispatch as dispatch_data_api, select_screen_rows, evidence_rows
 from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION
 from serving_v2 import (
     ServingV2Error,
@@ -119,6 +120,19 @@ class Default(WorkerEntrypoint):
         if request.method == "POST" and path == "/mcp":
             return await self._mcp(request, rid)
         try:
+            if path == "/v1/securities" or path.startswith("/v1/securities/") or path in {"/v1/calculate", "/v1/bulk/query"} or path.startswith("/v1/evidence/") or path in {"/v1/search", "/v1/screen", "/v1/compare"} or any(path.startswith("/v1/" + domain + "/") for domain in ("prices", "fundamentals", "revisions", "entities")):
+                parameters = parse_qs(urlparse(request.url).query, strict_parsing=False)
+                if any(len(values) != 1 for values in parameters.values()):
+                    raise ContractError("INVALID_ARGUMENT", "duplicate query parameters are not supported")
+                parameters = {key: values[0] for key, values in parameters.items()}
+                payload = await request.json() if request.method == "POST" else None
+                if payload is not None and (not isinstance(payload, dict) or len(json.dumps(payload)) > 32000):
+                    raise ContractError("INVALID_ARGUMENT", "bounded JSON object required")
+                if path in {"/v1/screen", "/v1/compare"}:
+                    if request.method != "POST" or not isinstance(payload, dict):
+                        raise ContractError("INVALID_ARGUMENT", "POST JSON arguments required")
+                    return self._response(add_telemetry(await self._tool_v2(path.rsplit("/", 1)[-1], {"world": REAL_WORLD, "arguments": payload}, rid)))
+                return self._response(add_telemetry(await dispatch_data_api(self.env, request.method, path, parameters, payload, rid)))
             if request.method != "POST":
                 return self._error(rid, "NOT_FOUND", "route not found", 404)
             body = await request.json()
@@ -138,7 +152,7 @@ class Default(WorkerEntrypoint):
         except ContractError as error:
             return self._error(rid, error.code, error.message, error.status, error.retryable)
         except ServingV2Error as error:
-            return self._error(rid, error.code, error.message, 503 if error.retryable else 404, error.retryable)
+            return self._error(rid, error.code, error.message, 503 if error.retryable else 400 if error.code == "INVALID_REQUEST" else 404, error.retryable)
         except SyntheticReleaseError as error:
             return self._error(rid, error.code, error.message, error.status, error.retryable)
         except LookupError as error:
@@ -401,6 +415,9 @@ class Default(WorkerEntrypoint):
 
     async def _evidence_v2(self, evidence_id: str, world: dict, rid: str) -> dict:
         _, manifest = await load_release(self.env)
+        if any(entry['path'].startswith('evidence/index/') for entry in manifest['artifacts']):
+            matches = await evidence_rows(self.env, manifest, evidence_id)
+            return {"tool": "get_evidence", "world": world, "data": {"evidence": matches}, "evidence": matches, "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
         index = await artifact(self.env, manifest, "identity/resolver_index.json")
         for entry in index.get("symbols", {}).values():
             path = entry.get("artifact_path")
@@ -445,28 +462,8 @@ class Default(WorkerEntrypoint):
             if field not in supported:
                 raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
 
-        evaluated = []
-        for record in screen.get("rows", [])[:100]:
-            values = record.get("values", {})
-            fields = {field: (values.get(field) or {}).get("value") for field in fields_requested}
-            evaluated.append((record.get("symbol"), fields, record.get("evidence_ids", [])))
-        rows = []
-        evidence_rows = []
-        for symbol, fields, row_evidence in evaluated:
-            def matches(item):
-                value = fields.get(item.get("field")); op = item.get("operator")
-                if value is None: return False
-                try:
-                    left, right = Decimal(str(value)), item.get("value")
-                    if op == "between": return left >= Decimal(str(item["values"][0])) and left <= Decimal(str(item["values"][1]))
-                    right = Decimal(str(right))
-                    return {"eq": left == right, "ne": left != right, "gt": left > right, "gte": left >= right, "lt": left < right, "lte": left <= right}[op]
-                except (KeyError, ValueError, InvalidOperation): return False
-            if all(matches(item) for item in filters):
-                rows.append({"symbol": symbol, "values": fields, "evidence": row_evidence})
-                evidence_rows.extend(row_evidence)
-        for item in reversed(args.get("sort", [])):
-            rows.sort(key=lambda row: (row["values"].get(item["field"]) is None, row["values"].get(item["field"])), reverse=item.get("direction", "desc") == "desc")
+        rows = select_screen_rows(screen.get("rows", []), filters, args.get("sort", []), args.get("limit", 100))
+        evidence_rows = [evidence for row in rows for evidence in row["evidence"]]
         result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * 4], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
         if len(_SCREEN_CACHE) >= 16:
             _SCREEN_CACHE.pop(next(iter(_SCREEN_CACHE)))
