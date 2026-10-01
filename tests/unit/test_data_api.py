@@ -107,3 +107,14 @@ def test_metrics_and_source_archive_prices_are_paginated_and_pit_safe():
  result=asyncio.run(dispatch(e,'GET','/v1/metrics',{},None,'r'));assert result['data'][0]['metric_id']=='revenue'
  result=asyncio.run(dispatch(e,'GET','/v1/archive/prices/FB',{},None,'r'));assert result['data']['prices'][0]['close']=='38.22999954223633'
  result=asyncio.run(dispatch(e,'GET','/v1/archive/prices/FB',{'as_of':'2018-01-01T00:00:00Z'},None,'r'));assert result['data']['prices']==[];assert result['coverage']['pit_excluded']==1
+
+
+def test_screen_evidence_matches_selected_metric():
+ row={'symbol':'META','values':{'cash':{'value':'100','evidence_id':'cash-proof'},'revenue':{'value':'300','evidence_id':'revenue-proof'}},'evidence_ids':[{'evidence_id':'wrong'}]}
+ result=select_screen_rows([row],[{'field':'cash','operator':'gt','value':'1'}],[],1)
+ assert [r['evidence_id'] for r in result[0]['evidence']]==['cash-proof']
+
+
+def test_filings_keep_date_only_metadata_and_filter_pit_before_paging():
+ e=env();key='gold/serving/releases/test/manifest.json';m=json.loads(e.MARKET_DATA.objects[key]);path='entities/meta/filings/2025-01.json';rows=[{'filing_id':'1','filing_date':'2025-01-01','available_at':'2025-01-01','metadata_source':'SEC_COMPANYFACTS_FILED_DATE'},{'filing_id':'2','filing_date':'2025-01-02','available_at':'2025-01-02'}];raw=json.dumps(rows).encode();e.MARKET_DATA.objects['gold/serving/releases/test/'+path]=raw;m['artifacts'].append({'path':path,'sha256':hashlib.sha256(raw).hexdigest()});raw=json.dumps(m).encode();e.MARKET_DATA.objects[key]=raw;e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':key,'manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
+ r=asyncio.run(dispatch(e,'GET','/v1/securities/META/filings',{'as_of':'2025-01-02T00:00:00Z','limit':'1'},None,'r'));assert r['page']['total']==1;assert r['data']['filings'][0]['filing_id']=='1';assert r['data']['filings'][0]['metadata_source']=='SEC_COMPANYFACTS_FILED_DATE'

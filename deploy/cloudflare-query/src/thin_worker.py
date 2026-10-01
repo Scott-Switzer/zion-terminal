@@ -120,7 +120,7 @@ class Default(WorkerEntrypoint):
         if request.method == "POST" and path == "/mcp":
             return await self._mcp(request, rid)
         try:
-            if path == "/v1/securities" or path.startswith("/v1/securities/") or path in {"/v1/calculate", "/v1/bulk/query", "/v1/metrics", "/v1/coverage", "/v1/archive/securities"} or path.startswith("/v1/archive/prices/") or path.startswith("/v1/evidence/") or path in {"/v1/search", "/v1/screen", "/v1/compare"} or any(path.startswith("/v1/" + domain + "/") for domain in ("prices", "fundamentals", "revisions", "entities")):
+            if path == "/v1/securities" or path.startswith("/v1/securities/") or path in {"/v1/calculate", "/v1/bulk/query", "/v1/metrics", "/v1/coverage", "/v1/archive/securities"} or path.startswith("/v1/archive/prices/") or path.startswith("/v1/evidence/") or path in {"/v1/search", "/v1/screen", "/v1/compare"} or any(path.startswith("/v1/" + domain + "/") for domain in ("prices", "fundamentals", "revisions", "entities", "filings")):
                 parameters = parse_qs(urlparse(request.url).query, strict_parsing=False)
                 if any(len(values) != 1 for values in parameters.values()):
                     raise ContractError("INVALID_ARGUMENT", "duplicate query parameters are not supported")
@@ -457,14 +457,14 @@ class Default(WorkerEntrypoint):
         filters = args.get("filters", [])
         fields_requested = {item.get("field") for item in filters}
         fields_requested.update(item.get("field") for item in args.get("sort", []))
-        supported = set(screen.get("fields", [])) & {"revenue", "operating_margin", "net_income", "last_price"}
+        supported = set(screen.get("fields", []))
         for field in fields_requested:
             if field not in supported:
                 raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
 
         rows = select_screen_rows(screen.get("rows", []), filters, args.get("sort", []), args.get("limit", 100))
         evidence_rows = [evidence for row in rows for evidence in row["evidence"]]
-        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * 4], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * max(4, len(supported))], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
         if len(_SCREEN_CACHE) >= 16:
             _SCREEN_CACHE.pop(next(iter(_SCREEN_CACHE)))
         _SCREEN_CACHE[cache_key] = result

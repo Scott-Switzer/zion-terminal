@@ -21,7 +21,7 @@ def select_screen_rows(records, filters, sorts, limit):
     right=Decimal(str(item['value']))
     return {'eq':value==right,'ne':value!=right,'gt':value>right,'gte':value>=right,'lt':value<right,'lte':value<=right}[op]
    except (InvalidOperation,KeyError,ValueError):return False
-  if all(matches(f) for f in filters):rows.append({'symbol':record['symbol'],'values':values,'evidence':record.get('evidence_ids',[])})
+  if all(matches(f) for f in filters):rows.append({'symbol':record['symbol'],'values':values,'evidence':[record['values'][f] for f in sorted(fields) if record.get('values',{}).get(f)]})
  for item in reversed(sorts):
   field=item['field'];present=[r for r in rows if r['values'].get(field) is not None];missing=[r for r in rows if r['values'].get(field) is None]
   present.sort(key=lambda r:Decimal(str(r['values'][field])),reverse=item.get('direction','desc')=='desc');rows=present+missing
@@ -49,7 +49,7 @@ async def dispatch(env,method,path,params,body,rid):
  allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","offset","limit"}
  if not isinstance(params,dict) or set(params)-allowed or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
  if path=="/v1/search":path="/v1/securities"
- for domain in ("prices","fundamentals","revisions","entities"):
+ for domain in ("prices","fundamentals","revisions","entities","filings"):
   prefix="/v1/"+domain+"/"
   if path.startswith(prefix):path="/v1/securities/"+path.removeprefix(prefix)+("" if domain=="entities" else "/"+domain);break
  if path=='/v1/calculate' and method=='POST':
@@ -100,7 +100,7 @@ async def dispatch(env,method,path,params,body,rid):
   if not isinstance(queries,list) or not 1<=len(queries)<=20:raise ContractError('INVALID_ARGUMENT','queries must contain 1–20 requests')
   results=[]
   for query in queries:
-   if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or query['path'].startswith('/v1/archive/prices/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
+   if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or query['path'].startswith('/v1/archive/prices/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities','filings'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
    parameters=query.get('params',{})
    if not isinstance(parameters,dict):raise ContractError('INVALID_ARGUMENT','bulk params must be objects')
    results.append(await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid))
@@ -123,6 +123,19 @@ async def dispatch(env,method,path,params,body,rid):
   if params.get('as_of'):raise ContractError('INVALID_ARGUMENT','use fundamentals or prices for as_of requests')
   result['data']=await artifact(env,manifest,key+'/snapshot.json');return result
  start,end=date_range(params);cutoff=_as_of(params.get('as_of'))
+ if kind=='filings':
+  prefix=key+'/filings/';files=[a for a in manifest['artifacts'] if a['path'].startswith(prefix)]
+  if not files:raise ContractError('DATA_NOT_PUBLISHED','filing metadata is not published for this issuer',status=422)
+  _,pagination=page([],params,release);offset=pagination['offset'];limit=pagination['limit'];total=0;selected=[]
+  for item in sorted(files,key=lambda a:a['path']):
+   month=item['path'].removeprefix(prefix).removesuffix('.json')
+   if (start and (item.get('last_date',month)<(start if item.get('last_date') else start[:7]))) or (end and (item.get('first_date',month)>(end if item.get('first_date') else end[:7]))):continue
+   for row in await artifact(env,manifest,item['path']):
+    day=row.get('filing_date') or ''
+    if not _available(row,cutoff) or (start and day<start) or (end and day>end):continue
+    if offset<=total<offset+limit:selected.append({**row,'provenance':{'serving_release_id':release,'artifact':item['path']}})
+    total+=1
+  pagination.update({'total':total,'next_offset':offset+limit if offset+limit<total else None});result['page']=pagination;result['data']={'filings':selected};return result
  if kind in ('fundamentals','revisions'):
   period=params.get('period','quarterly')
   if period not in ('annual','quarterly'):raise ContractError('INVALID_ARGUMENT','period must be annual or quarterly')
