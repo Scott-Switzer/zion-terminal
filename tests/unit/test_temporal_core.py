@@ -113,3 +113,13 @@ def test_derived_availability_cannot_precede_inputs():
         pass
     else:
         raise AssertionError("derived observation preceded an input")
+
+
+def test_sec_date_only_without_host_timezone_database(monkeypatch):
+    import temporal_core
+    from zoneinfo import ZoneInfoNotFoundError
+    def absent(name):
+        raise ZoneInfoNotFoundError(name)
+    monkeypatch.setattr(temporal_core, 'ZoneInfo', absent)
+    for source, expected in [('2025-01-01', '2025-01-02T05:00:00Z'), ('2025-07-01', '2025-07-02T04:00:00Z'), ('2025-03-08', '2025-03-09T05:00:00Z'), ('2025-11-02', '2025-11-03T05:00:00Z')]:
+        assert normalize_legacy_date_only(source).iso_utc == expected

@@ -85,7 +85,11 @@ def normalize_legacy_date_only(value: Any, *, policy: str = "DATE_ONLY_NEXT_DAY_
         raise TemporalError(f"unsupported legacy date-only policy: {policy}")
     try:
         source_date = date.fromisoformat(value)
-        zone = ZoneInfo("America/New_York")
+        try:
+            zone = ZoneInfo("America/New_York")
+        except ZoneInfoNotFoundError:
+            from new_york_tz import new_york_zone
+            zone = new_york_zone()
         local_midnight = datetime.combine(source_date + timedelta(days=1), datetime.min.time(), tzinfo=zone)
     except (ValueError, ZoneInfoNotFoundError) as exc:
         raise TemporalError("invalid legacy date-only value") from exc
