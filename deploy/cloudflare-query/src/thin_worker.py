@@ -120,7 +120,7 @@ class Default(WorkerEntrypoint):
         if request.method == "POST" and path == "/mcp":
             return await self._mcp(request, rid)
         try:
-            if path.startswith("/v1/market/") or path == "/v1/securities" or path.startswith("/v1/securities/") or path in {"/v1/calculate", "/v1/bulk/query", "/v1/metrics", "/v1/coverage", "/v1/archive/securities"} or path.startswith("/v1/archive/prices/") or path.startswith("/v1/evidence/") or path in {"/v1/search", "/v1/screen", "/v1/compare"} or any(path.startswith("/v1/" + domain + "/") for domain in ("prices", "fundamentals", "revisions", "entities", "filings")):
+            if path.startswith("/v1/market/") or path == "/v1/securities" or path.startswith("/v1/securities/") or path in {"/v1/calculate", "/v1/bulk/query", "/v1/metrics", "/v1/coverage", "/v1/archive/securities"} or path.startswith("/v1/archive/prices/") or path.startswith("/v1/company/") or path.startswith("/v1/evidence/") or path in {"/v1/search", "/v1/screen", "/v1/compare"} or any(path.startswith("/v1/" + domain + "/") for domain in ("prices", "fundamentals", "revisions", "entities", "filings")):
                 parameters = parse_qs(urlparse(request.url).query, strict_parsing=False)
                 if any(len(values) != 1 for values in parameters.values()):
                     raise ContractError("INVALID_ARGUMENT", "duplicate query parameters are not supported")
