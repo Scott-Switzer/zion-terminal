@@ -1,7 +1,7 @@
 """REST views over the same immutable, hash-verified canonical release as tools."""
 import hashlib
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, localcontext
 from urllib.parse import unquote
 from contract_v2 import ContractError, calculate_exact
 from serving_v2 import load_release, resolve_security, artifact, _as_of, _available, _select_revisions, _serve_row, corporate_actions, ServingV2Error, _identity_covers
@@ -46,6 +46,8 @@ def date_range(params):
 
 
 async def dispatch(env,method,path,params,body,rid):
+ allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","offset","limit"}
+ if not isinstance(params,dict) or set(params)-allowed or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
  if path=="/v1/search":path="/v1/securities"
  for domain in ("prices","fundamentals","revisions","entities"):
   prefix="/v1/"+domain+"/"
@@ -58,7 +60,15 @@ async def dispatch(env,method,path,params,body,rid):
   try:finite=all(Decimal(str(value)).is_finite() for value in values)
   except InvalidOperation:finite=False
   if not finite:raise ContractError('INVALID_ARGUMENT','values must be finite decimals')
-  return {'data':calculate_exact(body.get('operation'),values),'request_id':rid}
+  nums=[Decimal(str(v)) for v in values]
+  integer_digits=max([max(1,n.adjusted()+1) for n in nums] or [1]);fraction_digits=max([max(0,-n.as_tuple().exponent) for n in nums] or [0])
+  if integer_digits+fraction_digits>4096:raise ContractError('INVALID_ARGUMENT','decimal expansion exceeds 4096 digits')
+  precision=max(64,integer_digits+fraction_digits+len(str(len(nums)))+2)
+  with localcontext() as context:
+   context.prec=precision
+   calculated=calculate_exact(body.get('operation'),values)
+   calculated['arithmetic']={'precision':precision,'rounding':context.rounding,'division_policy':'rounded to stated precision'}
+  return {'data':calculated,'request_id':rid}
  _,manifest=await load_release(env);release=manifest['serving_release_id']
  if params.get('release_id') and params['release_id']!=release:raise ContractError('RELEASE_CHANGED','restart pagination against the current release',status=409)
  result={'release':{'serving_release_id':release,'source':manifest['source']},'request_id':rid}
@@ -84,6 +94,7 @@ async def dispatch(env,method,path,params,body,rid):
  if method!='GET' or not path.startswith('/v1/securities/'):raise ContractError('NOT_FOUND','REST route not found',status=404)
  parts=path.removeprefix('/v1/securities/').split('/');symbol=unquote(parts[0]).upper();kind=parts[1] if len(parts)==2 else 'snapshot' if len(parts)==1 else ''
  resolved=await resolve_security(env,manifest,symbol,params.get('as_of'));key=resolved['identity']['artifact_path'];result['identity']=resolved['identity']
+ if not any(a['path']==key+'/snapshot.json' for a in manifest['artifacts']):raise ContractError('ENTITY_NOT_FOUND','security is not in this release',status=404)
  if kind=='snapshot':
   # Snapshot is explicitly current. PIT requests must use filtered history views.
   if params.get('as_of'):raise ContractError('INVALID_ARGUMENT','use fundamentals or prices for as_of requests')
@@ -108,7 +119,7 @@ async def dispatch(env,method,path,params,body,rid):
     if _available(r,cutoff) and (not start or r['session_date']>=start) and (not end or r['session_date']<=end):rows.append({**r,'provenance':{'serving_release_id':release,'source_snapshot_id':manifest['source']['prices']['snapshot_id'],'artifact':filename}})
   rows.sort(key=lambda r:(r['session_date'],r.get('available_at',''),r.get('observation_id','')))
   rows,result['page']=page(rows,params,release);result['data']={'prices':rows};return result
- if kind=='corporate-actions':return await corporate_actions(env,symbol=symbol,as_of=params.get('as_of'),request_id=rid)
+ if kind=='corporate-actions':return await corporate_actions(env,symbol=symbol,start=start,end=end,as_of=params.get('as_of'),request_id=rid,manifest=manifest)
  raise ContractError('NOT_FOUND','REST route not found',status=404)
 
 

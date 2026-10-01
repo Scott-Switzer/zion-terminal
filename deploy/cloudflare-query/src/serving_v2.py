@@ -468,8 +468,9 @@ async def artifact(env: Any, manifest: dict[str, Any], relative: str) -> Any:
     return value
 
 
-async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: str | None = None, instrument_id: str | None = None, start: str | None = None, end: str | None = None, as_of: Any = None, action_types: list[str] | None = None, request_id: str = "") -> dict[str, Any]:
-    _, manifest = await load_release(env)
+async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: str | None = None, instrument_id: str | None = None, start: str | None = None, end: str | None = None, as_of: Any = None, action_types: list[str] | None = None, request_id: str = "", manifest: dict[str, Any] | None = None) -> dict[str, Any]:
+    if manifest is None:
+        _, manifest = await load_release(env)
     rows = await artifact(env, manifest, "corporate-actions/actions.json")
     target = {value for value in (entity_id, instrument_id) if value}
     resolved = None

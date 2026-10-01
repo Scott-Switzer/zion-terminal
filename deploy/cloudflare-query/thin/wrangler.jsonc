@@ -15,10 +15,10 @@
     "SERVING_V2_CURRENT_KEY": "gold/serving/coverage25/CURRENT.json",
     "CURRENT_POINTER_CACHE_TTL_MS": "0",
     "DIAGNOSTIC_ISOLATE_TELEMETRY": "true",
-    "SERVICE_VERSION": "3.0.0-serving-thin-world-staging",
-    "SYNTHETIC_WORLD_ID": "test-world-001",
-    "SYNTHETIC_WORLD_IDS": "test-world-001",
-    "SYNTHETIC_CURRENT_KEY": "control/synthetic-worlds/test-world-001/CURRENT.json"
+    "SERVICE_VERSION": "3.1.0-zion-financial-data-api-v1",
+    "SYNTHETIC_WORLD_ID": "system-acceptance-v2",
+    "SYNTHETIC_WORLD_IDS": "system-acceptance-v2",
+    "SYNTHETIC_CURRENT_KEY": "control/synthetic-worlds/system-acceptance-v2/CURRENT.json"
   },
   "observability": {"enabled": true, "logs": {"head_sampling_rate": 1}}
 }
