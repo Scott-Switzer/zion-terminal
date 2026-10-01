@@ -511,8 +511,9 @@ async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: s
     return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "data": {"actions": sorted(selected, key=lambda row: (row.get("effective_date") or "", row["action_id"]))}, "evidence": selected, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256}, "request_id": request_id}
 
 
-async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str | None = None, lookback: int = 40, as_of: Any = None, request_id: str = "") -> dict[str, Any]:
-    _, manifest = await load_release(env)
+async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str | None = None, lookback: int = 40, as_of: Any = None, request_id: str = "", manifest: dict[str, Any] | None = None) -> dict[str, Any]:
+    if manifest is None:
+        _, manifest = await load_release(env)
     resolved = await resolve_security(env, manifest, symbol, as_of)
     key = resolved["identity"]["artifact_path"]
     snapshot = await artifact(env, manifest, f"{key}/snapshot.json")

@@ -222,12 +222,13 @@ class Default(WorkerEntrypoint):
             return {"tool": name, "world": result["world"], "data": {"evidence": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED"}, "release": result["release"]}
         if name == "compare":
             metric = body.get("metric", "operating_margin")
+            _, manifest = await load_release(self.env)
             series = {}
             release = {}
             for item in body.get("entities", []):
-                result = await fundamentals(self.env, str(item).upper(), [metric], period=body.get("period"), lookback=min(int(body.get("lookback", 1)), 40), as_of=body.get("as_of"), request_id=rid)
+                result = await fundamentals(self.env, str(item).upper(), [metric], period=body.get("period"), lookback=min(int(body.get("lookback", 1)), 40), as_of=body.get("as_of"), request_id=rid, manifest=manifest)
                 series[str(item).upper()] = result["observations"]
-                release[str(item).upper()] = result["release"]
+                release = result["release"]
             return {"tool": name, "world": world, "data": {"entities": body.get("entities", []), "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": release}
         if name == "calculate":
             values = body.get("values", [])
