@@ -57,6 +57,10 @@ def date_range(params):
 async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
  allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","offset","limit"}
  if not isinstance(params,dict) or set(params)-allowed or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
+ if path.startswith("/v1/market/") and method=="GET":
+  from market_api import market_dispatch
+  date_range(params)
+  return await market_dispatch(env,path,params,rid)
  if path=="/v1/search":path="/v1/securities"
  for domain in ("prices","fundamentals","revisions","entities","filings"):
   prefix="/v1/"+domain+"/"
