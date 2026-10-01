@@ -438,7 +438,7 @@ class Default(WorkerEntrypoint):
         # unique screens do not pay the uncached CURRENT tail repeatedly.
         # The normal financial tools retain their configured CURRENT semantics.
         _, manifest = await load_release(self.env, pointer_ttl_ms=5000)
-        cache_key = json.dumps({"release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
+        cache_key = json.dumps({"unit_policy": "usd-preferred-homogeneous-units-v1", "release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
         cached = _SCREEN_CACHE.get(cache_key)
         if cached is not None:
             return cached
@@ -465,7 +465,7 @@ class Default(WorkerEntrypoint):
 
         rows = select_screen_rows(screen.get("rows", []), filters, args.get("sort", []), args.get("limit", 100))
         evidence_rows = [evidence for row in rows for evidence in row["evidence"]]
-        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * max(4, len(supported))], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)], "unit_policy": "USD preferred for monetary comparisons; otherwise one homogeneous unit; incompatible or unknown units excluded; no FX conversion"}, "evidence": evidence_rows[:args.get("limit", 100) * max(4, len(supported))], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
         if len(_SCREEN_CACHE) >= 16:
             _SCREEN_CACHE.pop(next(iter(_SCREEN_CACHE)))
         _SCREEN_CACHE[cache_key] = result

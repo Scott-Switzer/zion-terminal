@@ -38,7 +38,7 @@ def test_rest_fundamentals_filters_range_and_pit_before_pagination():
  assert result['data']['observations'][0]['value']=='2013'
 
 def test_screen_evaluates_every_listing_and_sorts_decimal_not_text():
- rows=[{'symbol':str(i),'values':{'revenue':{'value':'9'}}} for i in range(101)]+[{'symbol':'META','values':{'revenue':{'value':'100'}}},{'symbol':'missing','values':{}}]
+ rows=[{'symbol':str(i),'values':{'revenue':{'value':'9','unit':'USD'}}} for i in range(101)]+[{'symbol':'META','values':{'revenue':{'value':'100','unit':'USD'}}},{'symbol':'missing','values':{}}]
  result=select_screen_rows(rows,[],[{'field':'revenue','direction':'desc'}],2)
  assert result[0]['symbol']=='META'
  assert result[1]['symbol']!='missing'
@@ -110,7 +110,7 @@ def test_metrics_and_source_archive_prices_are_paginated_and_pit_safe():
 
 
 def test_screen_evidence_matches_selected_metric():
- row={'symbol':'META','values':{'cash':{'value':'100','evidence_id':'cash-proof'},'revenue':{'value':'300','evidence_id':'revenue-proof'}},'evidence_ids':[{'evidence_id':'wrong'}]}
+ row={'symbol':'META','values':{'cash':{'value':'100','unit':'USD','evidence_id':'cash-proof'},'revenue':{'value':'300','unit':'USD','evidence_id':'revenue-proof'}},'evidence_ids':[{'evidence_id':'wrong'}]}
  result=select_screen_rows([row],[{'field':'cash','operator':'gt','value':'1'}],[],1)
  assert [r['evidence_id'] for r in result[0]['evidence']]==['cash-proof']
 
@@ -156,3 +156,10 @@ def test_sec_date_only_availability_waits_for_next_new_york_midnight():
  assert _available(row,_as_of('2025-01-02T05:00:00Z'))
  earlier={**row,'available_at':'2025-01-02T01:00:00Z','value':'2'}
  assert _select_revisions([row,earlier],_as_of('2025-01-02T06:00:00Z'))[0]['value']=='1'
+
+
+def test_monetary_screen_uses_comparable_usd_units_and_returns_units():
+ rows=[{'symbol':'USD','values':{'revenue':{'value':'10','unit':'USD'}}},{'symbol':'CAD','values':{'revenue':{'value':'1000','unit':'CAD'}}},{'symbol':'unknown','values':{'revenue':{'value':'9000'}}}]
+ result=select_screen_rows(rows,[],[{'field':'revenue','direction':'desc'}],10)
+ assert [r['symbol'] for r in result]==['USD']
+ assert result[0]['units']=={'revenue':'USD'}

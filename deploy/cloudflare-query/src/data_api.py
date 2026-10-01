@@ -9,8 +9,16 @@ from serving_v2 import load_release, resolve_security, artifact, _as_of, _availa
 
 def select_screen_rows(records, filters, sorts, limit):
  fields={r['field'] for r in filters+sorts} or {'revenue','operating_margin','net_income','last_price'}
+ comparable={}
+ for field in fields:
+  units={(r.get('values',{}).get(field) or {}).get('unit') for r in records if (r.get('values',{}).get(field) or {}).get('value') is not None}-{None,''}
+  usd=units & {'USD','USD/share','USD/shares'}
+  if len(usd)==1:comparable[field]=next(iter(usd))
+  elif len(units)==1:comparable[field]=next(iter(units))
+  elif len(units)>1:raise ContractError('METRIC_NOT_AVAILABLE','screen field has incompatible units: '+field,status=422)
  rows=[]
  for record in records:
+  if any((record.get('values',{}).get(f) or {}).get('value') is not None and (not record['values'][f].get('unit') or record['values'][f].get('unit')!=comparable.get(f)) for f in fields):continue
   values={f:(record.get('values',{}).get(f) or {}).get('value') for f in fields}
   def matches(item):
    try:
@@ -21,7 +29,7 @@ def select_screen_rows(records, filters, sorts, limit):
     right=Decimal(str(item['value']))
     return {'eq':value==right,'ne':value!=right,'gt':value>right,'gte':value>=right,'lt':value<right,'lte':value<=right}[op]
    except (InvalidOperation,KeyError,ValueError):return False
-  if all(matches(f) for f in filters):rows.append({'symbol':record['symbol'],'values':values,'evidence':[record['values'][f] for f in sorted(fields) if record.get('values',{}).get(f)]})
+  if all(matches(f) for f in filters):rows.append({'symbol':record['symbol'],'values':values,'units':{f:record['values'][f].get('unit') for f in fields if record.get('values',{}).get(f)},'evidence':[record['values'][f] for f in sorted(fields) if record.get('values',{}).get(f)]})
  for item in reversed(sorts):
   field=item['field'];present=[r for r in rows if r['values'].get(field) is not None];missing=[r for r in rows if r['values'].get(field) is None]
   present.sort(key=lambda r:Decimal(str(r['values'][field])),reverse=item.get('direction','desc')=='desc');rows=present+missing
