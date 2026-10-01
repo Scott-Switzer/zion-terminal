@@ -366,3 +366,25 @@ def test_fundamentals_uses_single_release_lineage_per_request():
     # Artifacts resolve through the same pointer identity that fundamentals uses.
     assert run_pointer_case(case)["release"]["serving_release_id"] == "release-a"
     assert _cached_text is not None and hashlib is not None and json is not None
+
+
+def test_edge_pointer_cache_enforces_millisecond_deadline_and_http_seconds(monkeypatch):
+    import json
+    import serving_v2
+    from types import SimpleNamespace
+    writes=[]
+    class Response:
+        def __init__(self,body,headers=None):self.body=body;self.values=headers or {};self.headers=SimpleNamespace(get=lambda k:self.values.get(k),set=lambda k,v:self.values.__setitem__(k,v))
+        async def text(self):return self.body
+    stale=Response(make_current('old').decode(),{'X-Zion-Fetched-At-Ms':'4000'})
+    class Cache:
+        async def match(self,request):return stale
+        async def put(self,request,response):writes.append(response)
+    monkeypatch.setitem(sys.modules,'js',SimpleNamespace(Request=SimpleNamespace(new=lambda u:u),Response=SimpleNamespace(new=Response),caches=SimpleNamespace(default=Cache())))
+    monkeypatch.setattr(serving_v2,'time',lambda:10.0,raising=False)
+    env,bucket=pointer_env({'gold/serving/CURRENT.json':make_current('new')},ttl=5000)
+    result=run_pointer_case(lambda:pointer_store().resolve(env,now=lambda:10.0))
+    assert result['serving_release_id']=='new'
+    assert bucket.gets==1
+    assert writes[0].values['Cache-Control']=='public, max-age=5'
+    assert writes[0].values['X-Zion-Fetched-At-Ms']=='10000.0'

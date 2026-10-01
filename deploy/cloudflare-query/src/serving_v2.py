@@ -9,7 +9,7 @@ import hashlib
 import json
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from time import perf_counter
+from time import perf_counter, time
 from decimal import Decimal
 from typing import Any
 
@@ -173,14 +173,16 @@ class CurrentPointerCache:
         # A short TTL screen override also uses the shared edge cache. This
         # prevents a new isolate from paying the CURRENT R2 tail while keeping
         # promotion staleness hard-bounded by the same TTL. TTL=0 never uses it.
-        cache_url = "https://serving-v2.internal/current/" + "/".join(identity)
+        cache_url = "https://serving-v2.internal/current-ms-v2/" + "/".join(identity)
         if ttl > 0:
             try:
                 from js import Request, caches  # type: ignore
                 hit = await caches.default.match(Request.new(cache_url))
-                if hit is not None:
+                stamp = hit.headers.get("X-Zion-Fetched-At-Ms") if hit is not None else None
+                edge_age_ms = time() * 1000 - float(stamp) if stamp is not None else None
+                if hit is not None and edge_age_ms is not None and 0 <= edge_age_ms < ttl:
                     pointer = self._parse((await hit.text()).encode())
-                    now_fetched = clock()
+                    now_fetched = clock() - edge_age_ms / 1000
                     self._entries[identity] = {"pointer": pointer, "fetched_at": now_fetched}
                     if stats is not None:
                         stats["current_cache_hit"] += 1
@@ -218,7 +220,8 @@ class CurrentPointerCache:
             try:
                 from js import Request, Response, caches  # type: ignore
                 response = Response.new(json.dumps(pointer, separators=(",", ":")))
-                response.headers.set("Cache-Control", f"public, max-age={ttl}")
+                response.headers.set("Cache-Control", f"public, max-age={(ttl + 999) // 1000}")
+                response.headers.set("X-Zion-Fetched-At-Ms", str(time() * 1000))
                 await caches.default.put(Request.new(cache_url), response)
             except Exception:
                 if stats is not None:
