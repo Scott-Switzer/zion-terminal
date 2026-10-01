@@ -79,3 +79,10 @@ def test_unknown_prices_and_nonstring_bulk_params_fail_clearly():
   asyncio.run(dispatch(env(),'GET','/v1/prices/UNKNOWN',{},None,'r'))
  with pytest.raises(ContractError,match='query parameters'):
   asyncio.run(dispatch(env(),'GET','/v1/fundamentals/META',{'metrics':[]},None,'r'))
+
+
+def test_tool_price_history_does_not_stop_on_rows_unavailable_at_pit_cutoff():
+ from serving_v2 import price_history
+ result=asyncio.run(price_history(env(),'META',limit=100,as_of='2014-01-01T00:00:00Z'))
+ assert len(result['prices'])==100
+ assert all(r['session_date'].startswith('2013-') for r in result['prices'])

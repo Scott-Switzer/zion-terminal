@@ -527,19 +527,20 @@ async def price_history(env: Any, symbol: str, *, limit: int = 500, start_date: 
     prefix = f"{key}/prices/daily/"
     years = sorted({item["path"].split("/")[-1].removesuffix(".json") for item in manifest.get("artifacts", []) if item.get("path", "").startswith(prefix)})
     rows: list[dict[str, Any]] = []
+    cutoff = _as_of(as_of)
     for year in reversed(years):
         if end_date and year > end_date[:4]:
             continue
         if start_date and year < start_date[:4]:
             break
         try:
-            rows.extend(await artifact(env, manifest, f"{key}/prices/daily/{year}.json"))
+            year_rows = await artifact(env, manifest, f"{key}/prices/daily/{year}.json")
+            rows.extend(row for row in year_rows if _available(row, cutoff) and (not start_date or row.get("session_date", "") >= start_date) and (not end_date or row.get("session_date", "") <= end_date))
         except ServingV2Error as exc:
             if exc.code != "SERVING_ARTIFACT_NOT_FOUND":
                 raise
         if not start_date and not end_date and len(rows) >= limit:
             break
-    rows = [row for row in rows if _available(row, _as_of(as_of)) and (not start_date or row.get("session_date", "") >= start_date) and (not end_date or row.get("session_date", "") <= end_date)]
     rows = sorted(rows, key=lambda row: row["session_date"])[-min(limit, 500):]
     for row in rows:
         row["provenance"] = {"serving_release_id": manifest["serving_release_id"], "source_snapshot_id": manifest["source"]["prices"]["snapshot_id"], "artifact": f"{key}/prices/daily/{row['session_date'][:4]}.json"}
