@@ -77,7 +77,7 @@ async def dispatch(env,method,path,params,body,rid):
   if not isinstance(queries,list) or not 1<=len(queries)<=20:raise ContractError('INVALID_ARGUMENT','queries must contain 1–20 requests')
   results=[]
   for query in queries:
-   if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not query['path'].startswith('/v1/securities/'):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
+   if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
    parameters=query.get('params',{})
    if not isinstance(parameters,dict):raise ContractError('INVALID_ARGUMENT','bulk params must be objects')
    results.append(await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid))

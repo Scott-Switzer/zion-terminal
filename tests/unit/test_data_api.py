@@ -53,7 +53,7 @@ def test_pagination_rejects_mixing_releases_and_invalid_range():
 
 def test_bulk_uses_history_views_and_calculator_rejects_floats():
  from contract_v2 import ContractError
- result=asyncio.run(dispatch(env(),'POST','/v1/bulk/query',{}, {'queries':[{'path':'/v1/securities/META/fundamentals','params':{'period':'quarterly'}},{'path':'/v1/securities/META/prices'}]},'r'))
+ result=asyncio.run(dispatch(env(),'POST','/v1/bulk/query',{}, {'queries':[{'path':'/v1/fundamentals/META','params':{'period':'quarterly'}},{'path':'/v1/prices/META'}]},'r'))
  assert all(r['release']['serving_release_id']=='test' for r in result['data']['results'])
  with pytest.raises(ContractError):
   asyncio.run(dispatch(env(),'POST','/v1/calculate',{}, {'operation':'sum','values':[0.1]},'r'))
