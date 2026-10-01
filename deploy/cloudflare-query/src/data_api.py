@@ -157,10 +157,11 @@ async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
   if period not in ('annual','quarterly'):raise ContractError('INVALID_ARGUMENT','period must be annual or quarterly')
   artifact_path=f'{key}/fundamentals/{period}.json';rows=await artifact(env,manifest,artifact_path)
   metrics=set(params.get('metrics',params.get('metric','')).split(','))-{''}
+  rows=[r for r in rows if _available(r,cutoff) and (not start or r.get('period_end','')>=start) and (not end or r.get('period_end','')<=end)]
   available_metrics={row.get('metric_id') for row in rows if row.get('metric_id')}
   missing=sorted(metrics-available_metrics)
   result['coverage']={'requested_metrics':sorted(metrics),'available_metrics':sorted(available_metrics),'missing_metrics':missing,'status':'PARTIAL' if missing and metrics & available_metrics else 'SOURCE_LIMITED' if missing else 'AVAILABLE','limitations':[{'metric':metric,'code':'METRIC_NOT_AVAILABLE'} for metric in missing]}
-  rows=[r for r in rows if _available(r,cutoff) and (not metrics or r.get('metric_id') in metrics) and (not start or r.get('period_end','')>=start) and (not end or r.get('period_end','')<=end)]
+  rows=[r for r in rows if not metrics or r.get('metric_id') in metrics]
   if kind=='fundamentals':rows=_select_revisions(rows,cutoff)
   rows=sorted(rows,key=lambda r:(r.get('period_end',''),r.get('metric_id',''),r.get('available_at',''),r.get('observation_id','')))
   rows=[{**r,**_serve_row(r,release_id=release,artifact_path=artifact_path,source_snapshot_id=manifest['source']['fundamentals']['snapshot_id'])} for r in rows]

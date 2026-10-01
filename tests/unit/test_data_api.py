@@ -163,3 +163,10 @@ def test_monetary_screen_uses_comparable_usd_units_and_returns_units():
  result=select_screen_rows(rows,[],[{'field':'revenue','direction':'desc'}],10)
  assert [r['symbol'] for r in result]==['USD']
  assert result[0]['units']=={'revenue':'USD'}
+
+
+def test_metric_discovery_does_not_reveal_future_only_metrics_at_pit_cutoff():
+ r=asyncio.run(dispatch(env(),'GET','/v1/fundamentals/META',{'metrics':'revenue','period':'quarterly','as_of':'2013-01-01T00:00:00Z'},None,'r'))
+ assert r['data']['observations']==[]
+ assert r['coverage']['available_metrics']==[]
+ assert r['coverage']['status']=='SOURCE_LIMITED'
