@@ -1,5 +1,6 @@
 """REST views over the same immutable, hash-verified canonical release as tools."""
 import hashlib
+import json
 from datetime import date
 from decimal import Decimal, InvalidOperation, localcontext
 from urllib.parse import unquote
@@ -113,12 +114,16 @@ async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
   queries=body.get('queries') if isinstance(body,dict) else None
   if not isinstance(queries,list) or not 1<=len(queries)<=20:raise ContractError('INVALID_ARGUMENT','queries must contain 1–20 requests')
   results=[]
+  response_bytes=len(json.dumps({**result,'data':{'results':[]}},separators=(',',':'),ensure_ascii=False).encode('utf-8'))
   for query in queries:
    if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or query['path'].startswith('/v1/archive/prices/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities','filings'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
    parameters=query.get('params',{})
    if not isinstance(parameters,dict):raise ContractError('INVALID_ARGUMENT','bulk params must be objects')
    if parameters.get('release_id') and parameters['release_id']!=release:raise ContractError('RELEASE_CHANGED','bulk query release does not match the pinned release',status=409)
-   results.append(await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid,_release_manifest=manifest))
+   child=await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid,_release_manifest=manifest)
+   response_bytes+=len(json.dumps(child,separators=(',',':'),ensure_ascii=False).encode('utf-8'))+(1 if results else 0)
+   if response_bytes>8*1024*1024:raise ContractError('RESPONSE_TOO_LARGE','bulk response byte limit exceeded; request fewer queries or rows',status=413)
+   results.append(child)
   result['data']={'results':results};return result
  if path.startswith('/v1/evidence/') and method=='GET':
   evidence_id=unquote(path.removeprefix('/v1/evidence/'));result['data']={'evidence':await evidence_rows(env,manifest,evidence_id)};return result

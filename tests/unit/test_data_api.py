@@ -170,3 +170,12 @@ def test_metric_discovery_does_not_reveal_future_only_metrics_at_pit_cutoff():
  assert r['data']['observations']==[]
  assert r['coverage']['available_metrics']==[]
  assert r['coverage']['status']=='SOURCE_LIMITED'
+
+
+def test_bulk_rejects_response_that_exceeds_bounded_byte_budget(monkeypatch):
+ import data_api
+ from contract_v2 import ContractError
+ async def large_child(*args,**kwargs):return {'data':{'observations':[{'source_record_id':'x'*(3*1024*1024)}]}}
+ monkeypatch.setattr(data_api,'dispatch',large_child)
+ with pytest.raises(ContractError,match='response byte limit'):
+  asyncio.run(dispatch(env(),'POST','/v1/bulk/query',{}, {'queries':[{'path':'/v1/prices/META'} for _ in range(3)]},'r'))
