@@ -133,3 +133,17 @@ def test_compact_archive_retains_exact_values_and_shared_provenance():
   raw=json.dumps(v).encode();e.MARKET_DATA.objects['gold/serving/releases/test/'+path]=raw;m['artifacts'].append({'path':path,'sha256':hashlib.sha256(raw).hexdigest(),'first_date':'2012-05-18','last_date':'2012-05-18'})
  raw=json.dumps(m).encode();e.MARKET_DATA.objects['gold/serving/releases/test/manifest.json']=raw;e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':'gold/serving/releases/test/manifest.json','manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
  r=asyncio.run(dispatch(e,'GET','/v1/archive/prices/FB',{'start_date':'2012-01-01','end_date':'2012-12-31'},None,'r'));assert r['data']['prices'][0]['source_id']=='archive';assert r['data']['prices'][0]['close']=='38.22999954223633'
+
+
+def test_bulk_resolves_current_once_and_pins_all_subqueries():
+ e=env();r=asyncio.run(dispatch(e,'POST','/v1/bulk/query',{}, {'queries':[{'path':'/v1/prices/META','params':{'limit':'2'}},{'path':'/v1/fundamentals/META','params':{'period':'quarterly','limit':'2'}}]},'r'))
+ assert all(x['release']['serving_release_id']=='test' for x in r['data']['results'])
+ assert e.MARKET_DATA.reads.count('gold/serving/CURRENT.json')==1
+
+
+def test_multi_metric_history_reports_missing_metric_without_dropping_valid_data():
+ r=asyncio.run(dispatch(env(),'GET','/v1/fundamentals/META',{'metrics':'revenue,gross_profit','period':'quarterly'},None,'r'))
+ assert r['data']['observations']
+ assert r['coverage']['missing_metrics']==['gross_profit']
+ assert r['coverage']['status']=='PARTIAL'
+ assert r['coverage']['limitations'][0]['code']=='METRIC_NOT_AVAILABLE'

@@ -45,7 +45,7 @@ def date_range(params):
  return start,end
 
 
-async def dispatch(env,method,path,params,body,rid):
+async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
  allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","offset","limit"}
  if not isinstance(params,dict) or set(params)-allowed or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
  if path=="/v1/search":path="/v1/securities"
@@ -69,7 +69,9 @@ async def dispatch(env,method,path,params,body,rid):
    calculated=calculate_exact(body.get('operation'),values)
    calculated['arithmetic']={'precision':precision,'rounding':context.rounding,'division_policy':'rounded to stated precision'}
   return {'data':calculated,'request_id':rid}
- _,manifest=await load_release(env);release=manifest['serving_release_id']
+ if _release_manifest is None:_,manifest=await load_release(env)
+ else:manifest=_release_manifest
+ release=manifest['serving_release_id']
  if params.get('release_id') and params['release_id']!=release:raise ContractError('RELEASE_CHANGED','restart pagination against the current release',status=409)
  result={'release':{'serving_release_id':release,'source':manifest['source']},'request_id':rid}
  if method=='GET' and path in ('/v1/metrics','/v1/archive/securities','/v1/coverage'):
@@ -107,7 +109,8 @@ async def dispatch(env,method,path,params,body,rid):
    if not isinstance(query,dict) or not isinstance(query.get('path'),str) or not (query['path'].startswith('/v1/securities/') or query['path'].startswith('/v1/archive/prices/') or any(query['path'].startswith('/v1/'+domain+'/') for domain in ('prices','fundamentals','revisions','entities','filings'))):raise ContractError('INVALID_ARGUMENT','bulk requests require security REST paths')
    parameters=query.get('params',{})
    if not isinstance(parameters,dict):raise ContractError('INVALID_ARGUMENT','bulk params must be objects')
-   results.append(await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid))
+   if parameters.get('release_id') and parameters['release_id']!=release:raise ContractError('RELEASE_CHANGED','bulk query release does not match the pinned release',status=409)
+   results.append(await dispatch(env,'GET',query['path'],{**parameters,'release_id':release},None,rid,_release_manifest=manifest))
   result['data']={'results':results};return result
  if path.startswith('/v1/evidence/') and method=='GET':
   evidence_id=unquote(path.removeprefix('/v1/evidence/'));result['data']={'evidence':await evidence_rows(env,manifest,evidence_id)};return result
@@ -146,6 +149,9 @@ async def dispatch(env,method,path,params,body,rid):
   if period not in ('annual','quarterly'):raise ContractError('INVALID_ARGUMENT','period must be annual or quarterly')
   artifact_path=f'{key}/fundamentals/{period}.json';rows=await artifact(env,manifest,artifact_path)
   metrics=set(params.get('metrics',params.get('metric','')).split(','))-{''}
+  available_metrics={row.get('metric_id') for row in rows if row.get('metric_id')}
+  missing=sorted(metrics-available_metrics)
+  result['coverage']={'requested_metrics':sorted(metrics),'available_metrics':sorted(available_metrics),'missing_metrics':missing,'status':'PARTIAL' if missing and metrics & available_metrics else 'SOURCE_LIMITED' if missing else 'AVAILABLE','limitations':[{'metric':metric,'code':'METRIC_NOT_AVAILABLE'} for metric in missing]}
   rows=[r for r in rows if _available(r,cutoff) and (not metrics or r.get('metric_id') in metrics) and (not start or r.get('period_end','')>=start) and (not end or r.get('period_end','')<=end)]
   if kind=='fundamentals':rows=_select_revisions(rows,cutoff)
   rows=sorted(rows,key=lambda r:(r.get('period_end',''),r.get('metric_id',''),r.get('available_at',''),r.get('observation_id','')))
