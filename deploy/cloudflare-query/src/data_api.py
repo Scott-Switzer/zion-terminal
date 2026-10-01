@@ -88,8 +88,12 @@ async def dispatch(env,method,path,params,body,rid):
   start,end=date_range(params);cutoff=_as_of(params.get('as_of'));prefix='archive/'+symbol+'/prices/';rows=[];excluded=0
   for item in sorted(manifest['artifacts'],key=lambda a:a['path']):
    filename=item['path'];year=filename.removeprefix(prefix).removesuffix('.json')
-   if not filename.startswith(prefix) or (start and year<start[:4]) or (end and year>end[:4]):continue
-   for row in await artifact(env,manifest,filename):
+   if not filename.startswith(prefix) or (start and item.get('last_date',year)<(start if item.get('last_date') else start[:4])) or (end and item.get('first_date',year)>(end if item.get('first_date') else end[:4])):continue
+   payload=await artifact(env,manifest,filename)
+   defaults=payload.get('defaults',{}) if isinstance(payload,dict) else {}
+   records=payload.get('rows',[]) if isinstance(payload,dict) else payload
+   for compact in records:
+    row={**defaults,**compact}
     if (start and row['session_date']<start) or (end and row['session_date']>end):continue
     if not _available(row,cutoff):excluded+=1;continue
     rows.append({**row,'provenance':{'serving_release_id':release,'artifact':filename,'storage_key':item.get('storage_key')}})
@@ -121,7 +125,8 @@ async def dispatch(env,method,path,params,body,rid):
  if kind=='snapshot':
   # Snapshot is explicitly current. PIT requests must use filtered history views.
   if params.get('as_of'):raise ContractError('INVALID_ARGUMENT','use fundamentals or prices for as_of requests')
-  result['data']=await artifact(env,manifest,key+'/snapshot.json');return result
+  snapshot=await artifact(env,manifest,key+'/snapshot.json')
+  result['data']={**snapshot,'source_artifact_release_id':snapshot.get('serving_release_id'),'serving_release_id':release};return result
  start,end=date_range(params);cutoff=_as_of(params.get('as_of'))
  if kind=='filings':
   prefix=key+'/filings/';files=[a for a in manifest['artifacts'] if a['path'].startswith(prefix)]

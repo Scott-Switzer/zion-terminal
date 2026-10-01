@@ -118,3 +118,18 @@ def test_screen_evidence_matches_selected_metric():
 def test_filings_keep_date_only_metadata_and_filter_pit_before_paging():
  e=env();key='gold/serving/releases/test/manifest.json';m=json.loads(e.MARKET_DATA.objects[key]);path='entities/meta/filings/2025-01.json';rows=[{'filing_id':'1','filing_date':'2025-01-01','available_at':'2025-01-01','metadata_source':'SEC_COMPANYFACTS_FILED_DATE'},{'filing_id':'2','filing_date':'2025-01-02','available_at':'2025-01-02'}];raw=json.dumps(rows).encode();e.MARKET_DATA.objects['gold/serving/releases/test/'+path]=raw;m['artifacts'].append({'path':path,'sha256':hashlib.sha256(raw).hexdigest()});raw=json.dumps(m).encode();e.MARKET_DATA.objects[key]=raw;e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':key,'manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
  r=asyncio.run(dispatch(e,'GET','/v1/securities/META/filings',{'as_of':'2025-01-02T00:00:00Z','limit':'1'},None,'r'));assert r['page']['total']==1;assert r['data']['filings'][0]['filing_id']=='1';assert r['data']['filings'][0]['metadata_source']=='SEC_COMPANYFACTS_FILED_DATE'
+
+
+def test_snapshot_reports_current_release_when_reusing_parent_bytes():
+ e=env();key='gold/serving/releases/test/entities/meta/snapshot.json';raw=json.dumps({'symbol':'META','serving_release_id':'parent'}).encode();e.MARKET_DATA.objects[key]=raw;manifest_key='gold/serving/releases/test/manifest.json';m=json.loads(e.MARKET_DATA.objects[manifest_key]);next(a for a in m['artifacts'] if a['path']=='entities/meta/snapshot.json')['sha256']=hashlib.sha256(raw).hexdigest();raw=json.dumps(m).encode();e.MARKET_DATA.objects[manifest_key]=raw;e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':manifest_key,'manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
+ result=asyncio.run(dispatch(e,'GET','/v1/securities/META',{},None,'r'))
+ assert result['data']['serving_release_id']=='test'
+ assert result['data']['source_artifact_release_id']=='parent'
+
+
+def test_compact_archive_retains_exact_values_and_shared_provenance():
+ e=env();values={'archive/index.json':[{'symbol':'FB','rows':1}],'archive/FB/prices/all.json':{'schema_version':'zion-archive-compact-v1','defaults':{'source_id':'archive','available_at':None},'rows':[{'session_date':'2012-05-18','close':'38.22999954223633'}]}};m=json.loads(e.MARKET_DATA.objects['gold/serving/releases/test/manifest.json'])
+ for path,v in values.items():
+  raw=json.dumps(v).encode();e.MARKET_DATA.objects['gold/serving/releases/test/'+path]=raw;m['artifacts'].append({'path':path,'sha256':hashlib.sha256(raw).hexdigest(),'first_date':'2012-05-18','last_date':'2012-05-18'})
+ raw=json.dumps(m).encode();e.MARKET_DATA.objects['gold/serving/releases/test/manifest.json']=raw;e.MARKET_DATA.objects['gold/serving/CURRENT.json']=json.dumps({'serving_release_id':'test','manifest_key':'gold/serving/releases/test/manifest.json','manifest_sha256':hashlib.sha256(raw).hexdigest()}).encode()
+ r=asyncio.run(dispatch(e,'GET','/v1/archive/prices/FB',{'start_date':'2012-01-01','end_date':'2012-12-31'},None,'r'));assert r['data']['prices'][0]['source_id']=='archive';assert r['data']['prices'][0]['close']=='38.22999954223633'
