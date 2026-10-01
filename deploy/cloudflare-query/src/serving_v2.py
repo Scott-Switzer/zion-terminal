@@ -13,7 +13,7 @@ from time import perf_counter
 from decimal import Decimal
 from typing import Any
 
-from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION, TemporalError, normalize_source_instant, parse_instant
+from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION, TemporalError, normalize_source_instant, normalize_legacy_date_only, parse_instant
 
 CURRENT_KEY = "gold/serving/CURRENT.json"
 SCHEMA_VERSION = "financial-serving-v2"
@@ -307,6 +307,13 @@ def _as_of(value: Any) -> datetime | None:
         raise ServingV2Error("INVALID_REQUEST", str(exc)) from exc
 
 
+def _availability_instant(row: dict[str, Any]):
+    value = row.get("available_at")
+    if isinstance(value, str) and len(value) == 10 and (row.get("source_id") in {"SEC", "SEC_OR_ISSUER"} or row.get("availability_policy") == "DATE_ONLY_NEXT_DAY_ET_V1"):
+        return normalize_legacy_date_only(value)
+    return normalize_source_instant(value, field="available_at")
+
+
 def _available(row: dict[str, Any], as_of: datetime | None) -> bool:
     if as_of is None:
         return True
@@ -314,7 +321,7 @@ def _available(row: dict[str, Any], as_of: datetime | None) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        parsed = normalize_source_instant(value, field="available_at").as_datetime
+        parsed = _availability_instant(row).as_datetime
         return parsed <= as_of
     except TemporalError:
         return False
@@ -338,6 +345,7 @@ def _serve_row(row: dict[str, Any], *, release_id: str, artifact_path: str, sour
         "period_type": row.get("period_type"),
         "period_start": row.get("period_start"),
         "available_at": row.get("available_at"),
+        "availability_policy": _availability_instant(row).normalization_policy if row.get("available_at") else None,
         "ingested_at": row.get("ingested_at"),
         "source_record": row.get("source_record_id"),
         "source_revision_id": row.get("source_revision_id"),
@@ -356,7 +364,11 @@ def _select_revisions(rows: list[dict[str, Any]], as_of: datetime | None) -> lis
     for row in eligible:
         identity = (row.get("metric_id"), row.get("period_type"), row.get("period_start"), row.get("period_end"))
         prior = selected.get(identity)
-        if prior is None or (row.get("available_at", ""), row.get("form", "")) > (prior.get("available_at", ""), prior.get("form", "")):
+        def rank(record):
+            try: available = _availability_instant(record).epoch_ns
+            except TemporalError: available = -1
+            return (available, record.get("form") or "", record.get("observation_id") or "")
+        if prior is None or rank(row) > rank(prior):
             selected[identity] = row
     return sorted(selected.values(), key=lambda row: (row.get("period_end") or "", row.get("metric_id") or ""))
 
@@ -490,7 +502,7 @@ async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: s
         event_date = row.get("effective_date") or row.get("announcement_at") or ""
         if start and event_date[:10] < start: continue
         if end and event_date[:10] > end: continue
-        if as_of and normalize_source_instant(row["available_at"], field="available_at").epoch_ns > normalize_source_instant(as_of, field="as_of").epoch_ns:
+        if as_of and not _available(row, _as_of(as_of)):
             continue
         row = dict(row)
         if as_of and row.get("effective_date") and str(as_of)[:10] < row["effective_date"]:

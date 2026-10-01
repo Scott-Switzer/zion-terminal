@@ -147,3 +147,12 @@ def test_multi_metric_history_reports_missing_metric_without_dropping_valid_data
  assert r['coverage']['missing_metrics']==['gross_profit']
  assert r['coverage']['status']=='PARTIAL'
  assert r['coverage']['limitations'][0]['code']=='METRIC_NOT_AVAILABLE'
+
+
+def test_sec_date_only_availability_waits_for_next_new_york_midnight():
+ from serving_v2 import _available,_as_of,_select_revisions
+ row={'available_at':'2025-01-01','source_id':'SEC','metric_id':'revenue','period_type':'quarterly','period_end':'2024-12-31','value':'1'}
+ assert not _available(row,_as_of('2025-01-02T04:59:59Z'))
+ assert _available(row,_as_of('2025-01-02T05:00:00Z'))
+ earlier={**row,'available_at':'2025-01-02T01:00:00Z','value':'2'}
+ assert _select_revisions([row,earlier],_as_of('2025-01-02T06:00:00Z'))[0]['value']=='1'
