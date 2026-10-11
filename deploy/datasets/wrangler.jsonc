@@ -1,0 +1,15 @@
+{
+  "name": "zion-datasets",
+  "main": "src/worker.mjs",
+  "account_id": "51b88c6a6ef833b3c2ff46e98d5d9356",
+  "compatibility_date": "2026-10-10",
+  "workers_dev": false,
+  "preview_urls": false,
+  "r2_buckets": [
+    {"binding": "FINANCIAL_DATA", "bucket_name": "financial-system-datasets"},
+    {"binding": "RESEARCH_DATA", "bucket_name": "financial-data-wrds-private"},
+    {"binding": "SEC_CORPUS", "bucket_name": "ppe-sec-intelligence-prod"},
+    {"binding": "RESEARCH_LAKEHOUSE", "bucket_name": "financial-data-wrds-lakehouse"}
+  ],
+  "observability": {"enabled": true, "head_sampling_rate": 0.05}
+}

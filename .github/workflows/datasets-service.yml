@@ -1,0 +1,16 @@
+name: Validate private dataset service
+on:
+  push:
+    paths: ['deploy/datasets/**', 'tests/datasets/**', '.github/workflows/datasets-service.yml']
+  pull_request:
+    paths: ['deploy/datasets/**', 'tests/datasets/**', '.github/workflows/datasets-service.yml']
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/datasets/*.test.mjs
+      - run: node --check deploy/datasets/src/worker.mjs
