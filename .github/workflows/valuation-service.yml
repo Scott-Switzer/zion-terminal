@@ -1,0 +1,17 @@
+name: Validate compact valuation service
+on:
+  push:
+    paths: ['deploy/valuation/**', 'tests/unit/test_valuation_packets.py', '.github/workflows/valuation-service.yml']
+  pull_request:
+    paths: ['deploy/valuation/**', 'tests/unit/test_valuation_packets.py', '.github/workflows/valuation-service.yml']
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest ruff
+      - run: pytest tests/unit/test_valuation_packets.py -q
+      - run: ruff check deploy/valuation/src tests/unit/test_valuation_packets.py --select F

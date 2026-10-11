@@ -72,3 +72,7 @@ logs/
 deploy/cloudflare-query/.venv-workers/
 deploy/cloudflare-query/python_modules/
 deploy/cloudflare-query/src/vendor/
+
+# Compact valuation Worker build environments
+deploy/valuation/.venv-workers/
+deploy/valuation/python_modules/
