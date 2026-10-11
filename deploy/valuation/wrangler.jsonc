@@ -1,0 +1,11 @@
+{
+  "name": "zion-valuation",
+  "main": "src/worker.py",
+  "account_id": "51b88c6a6ef833b3c2ff46e98d5d9356",
+  "compatibility_date": "2026-10-10",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "r2_buckets": [{"binding": "VALUATION_DATA", "bucket_name": "financial-system-datasets"}],
+  "observability": {"enabled": true, "head_sampling_rate": 0.1}
+}
