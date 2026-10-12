@@ -79,3 +79,6 @@ deploy/valuation/python_modules/
 
 # Private registry evidence (contains private store paths and object hashes)
 artifacts/registry-m1/
+
+# Private registry canary artifacts (report fields, provenance, baseline history)
+artifacts/registry-m2/

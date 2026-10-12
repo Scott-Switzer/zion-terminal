@@ -1,0 +1,584 @@
+{
+  "as_of": {
+    "baseline": "2026-10-11",
+    "candidate": "2026-10-12"
+  },
+  "baseline": {
+    "as_of": "2026-10-11",
+    "company_count": 3,
+    "contract": "zion-sec-fundamentals-contract-v1",
+    "detail_level": "full_report",
+    "label": "baseline",
+    "mode": "live",
+    "provenance_available": true,
+    "schema_version": "zion-financial-registry-report-v1",
+    "tickers": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ]
+  },
+  "candidate": {
+    "as_of": "2026-10-12",
+    "company_count": 3,
+    "contract": "zion-sec-fundamentals-contract-v1",
+    "detail_level": "full_report",
+    "label": "candidate",
+    "mode": "live",
+    "provenance_available": true,
+    "schema_version": "zion-financial-registry-report-v1",
+    "tickers": [
+      "AAPL",
+      "MSFT",
+      "NVDA"
+    ]
+  },
+  "companies": [
+    {
+      "cik": {
+        "baseline": "0000320193",
+        "candidate": "0000320193"
+      },
+      "finding_counts": {
+        "FAIL": 0,
+        "INFO": 0,
+        "PASS": 0,
+        "WARNING": 0
+      },
+      "findings": [],
+      "quality": {
+        "overall": {
+          "baseline": "SOURCE_PARTIALLY_VALIDATED",
+          "candidate": "SOURCE_PARTIALLY_VALIDATED"
+        },
+        "periods": {
+          "baseline": [
+            "2025-09-27",
+            "2024-09-28",
+            "2023-09-30"
+          ],
+          "candidate": [
+            "2025-09-27",
+            "2024-09-28",
+            "2023-09-30"
+          ]
+        },
+        "state_counts": {
+          "baseline": {
+            "PASS_DERIVED": 6,
+            "SOURCE_UNVALIDATED": 16,
+            "SOURCE_VALIDATED": 17
+          },
+          "candidate": {
+            "PASS_DERIVED": 6,
+            "SOURCE_UNVALIDATED": 16,
+            "SOURCE_VALIDATED": 17
+          }
+        }
+      },
+      "severity": "PASS",
+      "ticker": "AAPL"
+    },
+    {
+      "cik": {
+        "baseline": "0000789019",
+        "candidate": "0000789019"
+      },
+      "finding_counts": {
+        "FAIL": 0,
+        "INFO": 0,
+        "PASS": 0,
+        "WARNING": 0
+      },
+      "findings": [],
+      "quality": {
+        "overall": {
+          "baseline": "SOURCE_PARTIALLY_VALIDATED",
+          "candidate": "SOURCE_PARTIALLY_VALIDATED"
+        },
+        "periods": {
+          "baseline": [
+            "2026-06-30",
+            "2025-06-30",
+            "2024-06-30"
+          ],
+          "candidate": [
+            "2026-06-30",
+            "2025-06-30",
+            "2024-06-30"
+          ]
+        },
+        "state_counts": {
+          "baseline": {
+            "MISSING_OBSERVATION": 5,
+            "PASS_DERIVED": 5,
+            "SOURCE_UNVALIDATED": 15,
+            "SOURCE_VALIDATED": 14
+          },
+          "candidate": {
+            "MISSING_OBSERVATION": 5,
+            "PASS_DERIVED": 5,
+            "SOURCE_UNVALIDATED": 15,
+            "SOURCE_VALIDATED": 14
+          }
+        }
+      },
+      "severity": "PASS",
+      "ticker": "MSFT"
+    },
+    {
+      "cik": {
+        "baseline": "0001045810",
+        "candidate": "0001045810"
+      },
+      "finding_counts": {
+        "FAIL": 0,
+        "INFO": 0,
+        "PASS": 0,
+        "WARNING": 14
+      },
+      "findings": [
+        {
+          "baseline": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "field_id": "depreciation_amortization",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "1508000000"
+          },
+          "candidate": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "field_id": "depreciation_amortization",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "1508000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "depreciation_amortization",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2024-01-28",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "field_id": "diluted_weighted_average_shares",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24940000000"
+          },
+          "candidate": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "field_id": "diluted_weighted_average_shares",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24940000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "diluted_weighted_average_shares",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2024-01-28",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "OperatingIncomeLoss",
+            "field_id": "operating_income_ebit",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "32972000000"
+          },
+          "candidate": {
+            "concept": "OperatingIncomeLoss",
+            "field_id": "operating_income_ebit",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "32972000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "operating_income_ebit",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2024-01-28",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "Revenues",
+            "field_id": "revenue",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "60922000000"
+          },
+          "candidate": {
+            "concept": "Revenues",
+            "field_id": "revenue",
+            "period_end": "2024-01-28",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "60922000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "revenue",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2024-01-28",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "field_id": "depreciation_amortization",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "1864000000"
+          },
+          "candidate": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "field_id": "depreciation_amortization",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "1864000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "depreciation_amortization",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2025-01-26",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "field_id": "diluted_weighted_average_shares",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24804000000"
+          },
+          "candidate": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "field_id": "diluted_weighted_average_shares",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24804000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "diluted_weighted_average_shares",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2025-01-26",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "OperatingIncomeLoss",
+            "field_id": "operating_income_ebit",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "81453000000"
+          },
+          "candidate": {
+            "concept": "OperatingIncomeLoss",
+            "field_id": "operating_income_ebit",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "81453000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "operating_income_ebit",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2025-01-26",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "Revenues",
+            "field_id": "revenue",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "130497000000"
+          },
+          "candidate": {
+            "concept": "Revenues",
+            "field_id": "revenue",
+            "period_end": "2025-01-26",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "130497000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "revenue",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2025-01-26",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "field_id": "cash_and_equivalents",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "10605000000"
+          },
+          "candidate": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "field_id": "cash_and_equivalents",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "10605000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "cash_and_equivalents",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2026-01-25",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "LongTermDebtNoncurrent",
+            "field_id": "debt_noncurrent",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "7469000000"
+          },
+          "candidate": {
+            "concept": "LongTermDebtNoncurrent",
+            "field_id": "debt_noncurrent",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "7469000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "debt_noncurrent",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2026-01-25",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "field_id": "depreciation_amortization",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "2843000000"
+          },
+          "candidate": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "field_id": "depreciation_amortization",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "2843000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "depreciation_amortization",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2026-01-25",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "field_id": "diluted_weighted_average_shares",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24514000000"
+          },
+          "candidate": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "field_id": "diluted_weighted_average_shares",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24514000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "diluted_weighted_average_shares",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2026-01-25",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "OperatingIncomeLoss",
+            "field_id": "operating_income_ebit",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "130387000000"
+          },
+          "candidate": {
+            "concept": "OperatingIncomeLoss",
+            "field_id": "operating_income_ebit",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "130387000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "operating_income_ebit",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2026-01-25",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        },
+        {
+          "baseline": {
+            "concept": "Revenues",
+            "field_id": "revenue",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "215938000000"
+          },
+          "candidate": {
+            "concept": "Revenues",
+            "field_id": "revenue",
+            "period_end": "2026-01-25",
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "215938000000"
+          },
+          "code": "NON_INDEPENDENT_CORROBORATION_PREEXISTING",
+          "field_id": "revenue",
+          "note": "an existing validation state rests on evidence that is not independent: every recorded corroborating source references the same stored object this registry read; agreement on one source is not independent corroboration",
+          "period_end": "2026-01-25",
+          "severity": "WARNING",
+          "ticker": "NVDA"
+        }
+      ],
+      "quality": {
+        "overall": {
+          "baseline": "SOURCE_PARTIALLY_VALIDATED",
+          "candidate": "SOURCE_PARTIALLY_VALIDATED"
+        },
+        "periods": {
+          "baseline": [
+            "2026-01-25",
+            "2025-01-26",
+            "2024-01-28"
+          ],
+          "candidate": [
+            "2026-01-25",
+            "2025-01-26",
+            "2024-01-28"
+          ]
+        },
+        "state_counts": {
+          "baseline": {
+            "MISSING_OBSERVATION": 2,
+            "PASS_DERIVED": 5,
+            "SOURCE_UNVALIDATED": 18,
+            "SOURCE_VALIDATED": 14
+          },
+          "candidate": {
+            "MISSING_OBSERVATION": 2,
+            "PASS_DERIVED": 5,
+            "SOURCE_UNVALIDATED": 18,
+            "SOURCE_VALIDATED": 14
+          }
+        }
+      },
+      "severity": "WARNING",
+      "ticker": "NVDA"
+    }
+  ],
+  "comparison_sha256": "73bbb07388892706af78f95a5d2b35b3720434957f34af1a24cc39cd47ed6188",
+  "contract": "zion-sec-fundamentals-contract-v1",
+  "exit_status": {
+    "FAIL": 2,
+    "INFO": 0,
+    "PASS": 0,
+    "WARNING": 1
+  },
+  "finding_counts": {
+    "FAIL": 0,
+    "INFO": 1,
+    "PASS": 0,
+    "WARNING": 14
+  },
+  "findings_total": 15,
+  "interpretation_rules": [
+    "A changed report content address is never a regression by itself.",
+    "Agreement between two adapters that read the same underlying SEC source is not independent corroboration and never promotes a state by itself.",
+    "A value change is explained only by a new accession/filing or a changed source object revision; anything else is unexplained.",
+    "Issuer CIK, concept, unit and fiscal period identify an observation; a change in any of them is a different observation, not a restated one."
+  ],
+  "overall_severity": "WARNING",
+  "report_level": {
+    "finding_counts": {
+      "FAIL": 0,
+      "INFO": 1,
+      "PASS": 0,
+      "WARNING": 0
+    },
+    "findings": [
+      {
+        "baseline": null,
+        "candidate": null,
+        "code": "REPORT_CONTENT_ADDRESS_CHANGED",
+        "field_id": null,
+        "note": "the report content address changed; severity is decided by the classified findings below, never by the address alone",
+        "period_end": null,
+        "severity": "INFO",
+        "ticker": null
+      }
+    ]
+  },
+  "schema_version": "zion-financial-registry-comparison-v1",
+  "severity_scale": {
+    "FAIL": "broken integrity, contradictory identity, prohibited accounting substitution or a material unexplained regression",
+    "INFO": "expected new observations or documented source updates",
+    "PASS": "no material regression",
+    "WARNING": "reduced coverage, staleness or an unresolved change"
+  },
+  "skipped_checks": [
+    "MSFT depreciation_amortization 2024-06-30: MISSING_OBSERVATION unchanged from the baseline",
+    "MSFT depreciation_amortization 2025-06-30: MISSING_OBSERVATION unchanged from the baseline",
+    "MSFT debt_short_term_borrowings 2026-06-30: MISSING_OBSERVATION unchanged from the baseline",
+    "MSFT debt_short_term_total 2026-06-30: MISSING_OBSERVATION unchanged from the baseline",
+    "MSFT depreciation_amortization 2026-06-30: MISSING_OBSERVATION unchanged from the baseline",
+    "NVDA: blocking issue PUBLISHED_SEC_FACTS_NOT_IN_RELEASE persists unchanged",
+    "NVDA debt_short_term_borrowings 2026-01-25: MISSING_OBSERVATION unchanged from the baseline",
+    "NVDA debt_short_term_total 2026-01-25: MISSING_OBSERVATION unchanged from the baseline"
+  ],
+  "thresholds": {
+    "future_availability_grace": "0",
+    "removal_rule": "a change is immaterial only when it is within BOTH bounds",
+    "scale_shift_factors": [
+      "1000",
+      "1000000",
+      "1000000000"
+    ],
+    "value_drift_absolute": "1000000",
+    "value_drift_relative": "0.0005"
+  }
+}
