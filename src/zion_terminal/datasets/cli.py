@@ -120,9 +120,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fixture", help="replay a synthetic fixture tree instead of live storage")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser(
+    catalog = sub.add_parser(
         "catalog", help="declared source families, not evidence of contents"
-    ).set_defaults(func=_cmd_catalog)
+    )
+    catalog.set_defaults(func=_cmd_catalog)
 
     families = sorted(FAMILY_INDEX)
     discover = sub.add_parser("discover", help="bounded listing of one family prefix")
@@ -154,6 +155,14 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--sample", type=int, default=3)
     report.add_argument("--out", default="artifacts/registry-m1")
     report.set_defaults(func=_cmd_report)
+
+    # Accept --fixture either before or after the subcommand. The argument is
+    # also declared globally; SUPPRESS keeps an absent subcommand option from
+    # overwriting the global value. Both forms are supported in operator docs.
+    for command in (catalog, discover, release, report):
+        command.add_argument(
+            "--fixture", default=argparse.SUPPRESS, help=argparse.SUPPRESS
+        )
     return parser
 
 
