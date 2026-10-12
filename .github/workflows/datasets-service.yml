@@ -1,9 +1,23 @@
 name: Validate private dataset service
 on:
   push:
-    paths: ['deploy/datasets/**', 'tests/datasets/**', '.github/workflows/datasets-service.yml']
+    paths:
+      - 'deploy/datasets/**'
+      - 'tests/datasets/**'
+      - 'src/zion_terminal/datasets/**'
+      - 'tests/unit/test_dataset_*.py'
+      - 'tests/unit/test_sec_fundamentals_contract.py'
+      - 'tests/fixtures/datasets/**'
+      - '.github/workflows/datasets-service.yml'
   pull_request:
-    paths: ['deploy/datasets/**', 'tests/datasets/**', '.github/workflows/datasets-service.yml']
+    paths:
+      - 'deploy/datasets/**'
+      - 'tests/datasets/**'
+      - 'src/zion_terminal/datasets/**'
+      - 'tests/unit/test_dataset_*.py'
+      - 'tests/unit/test_sec_fundamentals_contract.py'
+      - 'tests/fixtures/datasets/**'
+      - '.github/workflows/datasets-service.yml'
 jobs:
   contract:
     runs-on: ubuntu-latest
@@ -14,3 +28,16 @@ jobs:
           node-version: '22'
       - run: node --test tests/datasets/*.test.mjs
       - run: node --check deploy/datasets/src/worker.mjs
+  registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest ruff
+      # The registry and contract are validated entirely on the synthetic tree,
+      # so this job needs no R2 access and no credentials.
+      - run: pytest tests/unit/test_dataset_transport.py tests/unit/test_dataset_registry.py tests/unit/test_sec_fundamentals_contract.py tests/unit/test_dataset_report.py -q
+      - run: ruff check src/zion_terminal/datasets tests/unit/test_dataset_registry.py tests/unit/test_dataset_report.py tests/unit/test_dataset_transport.py tests/unit/test_sec_fundamentals_contract.py tests/fixtures/datasets/build_fixtures.py
+      - run: ruff format --check src/zion_terminal/datasets tests/unit/test_dataset_registry.py tests/unit/test_dataset_report.py tests/unit/test_dataset_transport.py tests/unit/test_sec_fundamentals_contract.py tests/fixtures/datasets/build_fixtures.py
