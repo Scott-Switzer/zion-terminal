@@ -26,8 +26,7 @@ def run_cli(*args: str) -> dict:
         check=False,
     )
     assert result.returncode == 0, (
-        f"CLI exited {result.returncode}\n"
-        f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        f"CLI exited {result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     )
     return json.loads(result.stdout)
 
