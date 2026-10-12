@@ -6,11 +6,15 @@ Examples::
     python -m zion_terminal.datasets discover --family serving_release_candidate
     python -m zion_terminal.datasets release --family serving_release_candidate --sample 3
     python -m zion_terminal.datasets report --tickers AAPL,MSFT,NVDA --as-of 2026-10-11
+    python -m zion_terminal.datasets compare \
+        --baseline artifacts/registry-m2/approved-baseline.json \
+        --candidate artifacts/registry-m2/report.json
 
 Live access needs the loopback operator bridge
 (``npx wrangler dev --config deploy/datasets/client/wrangler.jsonc``). Passing
 ``--fixture DIR`` replays a synthetic fixture tree instead, which is how the
-registry is exercised without any production access.
+registry is exercised without any production access. ``compare`` reads two
+report files and needs no bridge at all.
 """
 
 from __future__ import annotations
@@ -21,6 +25,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from zion_terminal.datasets.compare import (
+    EXIT_STATUS,
+    SEVERITY_SCALE,
+    IncomparableReports,
+    compare_reports,
+    load_report,
+    write_comparison,
+)
 from zion_terminal.datasets.registry import FAMILY_INDEX, SOURCE_FAMILIES, FinancialDatasetRegistry
 from zion_terminal.datasets.report import RegistryReport, write_report
 from zion_terminal.datasets.transport import (
@@ -112,6 +124,53 @@ def _cmd_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_compare(args: argparse.Namespace) -> int:
+    baseline = load_report(args.baseline)
+    candidate = load_report(args.candidate)
+    result = compare_reports(
+        baseline,
+        candidate,
+        allow_mode_mismatch=args.allow_mode_mismatch,
+        allow_contract_mismatch=args.allow_contract_mismatch,
+    )
+    written = write_comparison(result, args.out, summary_only=args.summary_only)
+    observed = result["overall_severity"]
+    status = "no_expectation"
+    if args.expect_severity:
+        status = "as_expected" if observed == args.expect_severity else "unexpected"
+    payload = {
+        "schema_version": result["schema_version"],
+        "overall_severity": observed,
+        "expected_severity": args.expect_severity,
+        "status": status,
+        "finding_counts": result["finding_counts"],
+        "exit_status": EXIT_STATUS[observed],
+        "companies": {
+            company["ticker"]: {
+                "severity": company["severity"],
+                "finding_counts": company["finding_counts"],
+                "overall": company["quality"]["overall"],
+            }
+            for company in result["companies"]
+        },
+        "comparison_sha256": result["comparison_sha256"],
+        "skipped_checks": result["skipped_checks"],
+        "written": written,
+    }
+    _print(payload, as_json=True)
+    if args.expect_severity:
+        # A declared expectation turns the command into a strict gate: any change
+        # in the classified findings, in either direction, fails the run.
+        if observed != args.expect_severity:
+            print(
+                f"severity mismatch: observed {observed}, expected {args.expect_severity}",
+                file=sys.stderr,
+            )
+            return 2
+        return 0
+    return EXIT_STATUS[observed]
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m zion_terminal.datasets", description=__doc__)
     parser.add_argument(
@@ -154,6 +213,28 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--out", default="artifacts/registry-m1")
     report.set_defaults(func=_cmd_report)
 
+    compare = sub.add_parser(
+        "compare",
+        help="compare two registry reports and classify every regression",
+    )
+    compare.add_argument("--baseline", required=True, help="approved baseline report or summary")
+    compare.add_argument("--candidate", required=True, help="fresh report or summary")
+    compare.add_argument("--out", default="artifacts/registry-m2")
+    compare.add_argument(
+        "--expect-severity",
+        choices=list(SEVERITY_SCALE),
+        default=None,
+        help="gate: exit 0 only when the observed overall severity matches exactly",
+    )
+    compare.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="write only the sanitized summary, never the private comparison",
+    )
+    compare.add_argument("--allow-mode-mismatch", action="store_true")
+    compare.add_argument("--allow-contract-mismatch", action="store_true")
+    compare.set_defaults(func=_cmd_compare, needs_bridge=False)
+
     # Accept --fixture either before or after the subcommand. The argument is
     # also declared globally; SUPPRESS keeps an absent subcommand option from
     # overwriting the global value. Both forms are supported in operator docs.
@@ -165,11 +246,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        if args.fixture is None:
+        if getattr(args, "needs_bridge", True) and args.fixture is None:
             validate_bridge_url(args.bridge)
         return args.func(args)
     except TransportError as error:
         print(f"{error.code}: {error.message}", file=sys.stderr)
+        return 2
+    except IncomparableReports as error:
+        print(f"INCOMPARABLE_REPORTS: {error}", file=sys.stderr)
         return 2
 
 

@@ -1,0 +1,4263 @@
+{
+  "as_of": "2026-10-11",
+  "companies": [
+    {
+      "blocking_issues": [],
+      "cik": "0000000001",
+      "comparisons": [
+        {
+          "basis_note": null,
+          "field_id": "revenue",
+          "period_end": "2025-12-31",
+          "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+          "secondary_unit": "USD",
+          "secondary_value": "1200.0",
+          "state": "AGREES"
+        },
+        {
+          "basis_note": "published concept RevenueFromContractWithCustomerExcludingAssessedTax",
+          "field_id": "revenue",
+          "period_end": "2025-12-31",
+          "secondary_source": "published SEC facts release as_of 2026-02-20",
+          "secondary_unit": "USD",
+          "secondary_value": "1200",
+          "state": "AGREES"
+        },
+        {
+          "basis_note": null,
+          "delta": "-5.0",
+          "field_id": "operating_income_ebit",
+          "period_end": "2025-12-31",
+          "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+          "secondary_unit": "USD",
+          "secondary_value": "305.0",
+          "state": "CONFLICT"
+        },
+        {
+          "basis_note": "Packet net income sits on the same consolidated basis; comparability is confirmed against the source tag.",
+          "delta": "-10.0",
+          "field_id": "net_income_common",
+          "period_end": "2025-12-31",
+          "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+          "secondary_unit": "USD",
+          "secondary_value": "210.0",
+          "state": "CONFLICT"
+        },
+        {
+          "basis_note": "packet balance-sheet bridge item",
+          "field_id": "cash_and_equivalents",
+          "period_end": "2025-12-31",
+          "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+          "secondary_unit": "USD",
+          "secondary_value": "610.0",
+          "state": "AGREES"
+        },
+        {
+          "basis_note": "packet balance-sheet bridge item",
+          "field_id": "debt_noncurrent",
+          "period_end": "2025-12-31",
+          "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+          "secondary_unit": "USD",
+          "secondary_value": "430.0",
+          "state": "AGREES"
+        },
+        {
+          "basis_note": "Packet short-term debt is a single figure; the contract compares it with the derived current portion plus short-term borrowings.",
+          "field_id": "debt_short_term_total",
+          "period_end": "2025-12-31",
+          "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+          "secondary_unit": "USD",
+          "secondary_value": "115.0",
+          "state": "AGREES"
+        }
+      ],
+      "contract": {
+        "as_of": "2026-10-11",
+        "cik": "0000000001",
+        "contract": "zion-sec-fundamentals-contract-v1",
+        "field_states": {
+          "2023-12-31": {
+            "capital_expenditure": "MISSING_OBSERVATION",
+            "cash_and_equivalents": "SOURCE_UNVALIDATED",
+            "debt_current": "MISSING_OBSERVATION",
+            "debt_noncurrent": "MISSING_OBSERVATION",
+            "debt_short_term_borrowings": "MISSING_OBSERVATION",
+            "debt_short_term_total": "MISSING_OBSERVATION",
+            "debt_total_reported": "MISSING_OBSERVATION",
+            "depreciation_amortization": "SOURCE_UNVALIDATED",
+            "diluted_weighted_average_shares": "MISSING_OBSERVATION",
+            "interest_bearing_debt_total": "MISSING_OBSERVATION",
+            "net_income_common": "CONFLICT",
+            "operating_income_ebit": "SOURCE_UNVALIDATED",
+            "revenue": "SOURCE_UNVALIDATED"
+          },
+          "2024-12-31": {
+            "capital_expenditure": "UNIT_MISMATCH",
+            "cash_and_equivalents": "SOURCE_UNVALIDATED",
+            "debt_current": "SOURCE_UNVALIDATED",
+            "debt_noncurrent": "SOURCE_UNVALIDATED",
+            "debt_short_term_borrowings": "MISSING_OBSERVATION",
+            "debt_short_term_total": "MISSING_OBSERVATION",
+            "debt_total_reported": "SOURCE_UNVALIDATED",
+            "depreciation_amortization": "SOURCE_UNVALIDATED",
+            "diluted_weighted_average_shares": "SOURCE_UNVALIDATED",
+            "interest_bearing_debt_total": "PASS_DERIVED",
+            "net_income_common": "CONFLICT",
+            "operating_income_ebit": "SOURCE_UNVALIDATED",
+            "revenue": "SOURCE_UNVALIDATED"
+          },
+          "2025-12-31": {
+            "capital_expenditure": "UNIT_MISMATCH",
+            "cash_and_equivalents": "SOURCE_VALIDATED",
+            "debt_current": "SOURCE_UNVALIDATED",
+            "debt_noncurrent": "SOURCE_VALIDATED",
+            "debt_short_term_borrowings": "SOURCE_UNVALIDATED",
+            "debt_short_term_total": "PASS_DERIVED",
+            "debt_total_reported": "SOURCE_UNVALIDATED",
+            "depreciation_amortization": "NOT_PIT_ELIGIBLE",
+            "diluted_weighted_average_shares": "PERIOD_MISMATCH",
+            "interest_bearing_debt_total": "PASS_DERIVED",
+            "net_income_common": "CONFLICT",
+            "operating_income_ebit": "CONFLICT",
+            "revenue": "CONFLICT"
+          }
+        },
+        "fields": {
+          "2023-12-31": {
+            "capital_expenditure": {
+              "basis": "Cash paid for property, plant and equipment (cash-flow-statement magnitude).",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "capital_expenditure",
+              "label": "Capital expenditure",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "cash_and_equivalents": {
+              "basis": "Carrying value of cash and cash equivalents at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "CashAndCashEquivalentsAtCarryingValue",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "500"
+                }
+              ],
+              "concept": "CashAndCashEquivalentsAtCarryingValue",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "cash_and_equivalents",
+              "label": "Cash and cash equivalents",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "CashAndCashEquivalentsAtCarryingValue",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "cash_and_equivalents",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "500"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "500"
+            },
+            "debt_current": {
+              "basis": "Current portion of reported long-term debt at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_current",
+              "label": "Interest-bearing debt, current portion",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_noncurrent": {
+              "basis": "Noncurrent interest-bearing debt at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_noncurrent",
+              "label": "Interest-bearing debt, noncurrent",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_borrowings": {
+              "basis": "Short-term borrowings outside the long-term debt schedule at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_borrowings",
+              "label": "Short-term borrowings and commercial paper",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Kept separate from the long-term debt split because issuers such as AAPL report it outside LongTermDebt; combined into the short-term total for comparison only."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_total": {
+              "basis": "Comparable basis for a single reported short-term debt figure.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_total",
+              "label": "Short-term interest-bearing debt (current portion plus short-term borrowings)",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_current",
+                "MISSING_PART:debt_short_term_borrowings"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. Used only to compare with an externally published short-term debt figure."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_total_reported": {
+              "basis": "Issuer-reported long-term debt total including its current portion.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_total_reported",
+              "label": "Reported long-term debt total (cross-check only)",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "This is not total liabilities and not operating lease obligations; it is used only to reconcile the current/noncurrent split."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "depreciation_amortization": {
+              "basis": "Cash-flow-statement depreciation, depletion and amortization.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "DepreciationDepletionAndAmortization",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "60"
+                }
+              ],
+              "concept": "DepreciationDepletionAndAmortization",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "depreciation_amortization",
+              "label": "Depreciation and amortization",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "DepreciationDepletionAndAmortization",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "depreciation_amortization",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "60"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "60"
+            },
+            "diluted_weighted_average_shares": {
+              "basis": "Diluted weighted-average shares outstanding over the annual period.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "diluted_weighted_average_shares",
+              "label": "Diluted weighted-average shares",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "An instant common shares outstanding count is a different measure and does not satisfy this field."
+              ],
+              "unit": "shares",
+              "value": null
+            },
+            "interest_bearing_debt_total": {
+              "basis": "Current portion plus noncurrent long-term debt as separately reported.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "interest_bearing_debt_total",
+              "label": "Long-term debt, current plus noncurrent (sum of reported parts)",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_noncurrent",
+                "MISSING_PART:debt_current"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. It excludes short-term borrowings, operating leases and total liabilities."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "net_income_common": {
+              "basis": "Income attributable to common shareholders for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "150"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "140"
+                }
+              ],
+              "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+              "cross_sources": [],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLoss",
+                  "filed": "2026-02-10",
+                  "kind": "concept_disagreement",
+                  "value": "150"
+                }
+              ],
+              "field_id": "net_income_common",
+              "label": "Net income attributable to common shareholders",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "net_income_common",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "140"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "CONFLICTING_SOURCE_CONCEPTS"
+              ],
+              "state": "CONFLICT",
+              "transformations": [
+                "When only NetIncomeLoss (consolidated) is available the value is labelled NET_INCOME_TO_COMMON_UNADJUSTED and cannot be treated as common income."
+              ],
+              "unit": "USD",
+              "value": "140"
+            },
+            "operating_income_ebit": {
+              "basis": "Reported consolidated operating income/loss. EBIT is not derived from net income.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "OperatingIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "200"
+                }
+              ],
+              "concept": "OperatingIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "operating_income_ebit",
+              "label": "Operating income (EBIT)",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "OperatingIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "operating_income_ebit",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "200"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "200"
+            },
+            "revenue": {
+              "basis": "Consolidated total revenue for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "1000"
+                }
+              ],
+              "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "revenue",
+              "label": "Revenue",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "revenue",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "1000"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "A customer-contract revenue subtotal is not total bank revenue; if only RevenueFromContractWithCustomer* is available for a bank, record SOURCE_UNVALIDATED."
+              ],
+              "unit": "USD",
+              "value": "1000"
+            }
+          },
+          "2024-12-31": {
+            "capital_expenditure": {
+              "basis": "Cash paid for property, plant and equipment (cash-flow-statement magnitude).",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "EUR",
+                  "value": "40"
+                }
+              ],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "capital_expenditure",
+              "label": "Capital expenditure",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "UNIT_NOT_IN_CONTRACT",
+                "OBSERVED_UNIT:EUR"
+              ],
+              "state": "UNIT_MISMATCH",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "cash_and_equivalents": {
+              "basis": "Carrying value of cash and cash equivalents at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "CashAndCashEquivalentsAtCarryingValue",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "560"
+                }
+              ],
+              "concept": "CashAndCashEquivalentsAtCarryingValue",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "cash_and_equivalents",
+              "label": "Cash and cash equivalents",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "CashAndCashEquivalentsAtCarryingValue",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "cash_and_equivalents",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "560"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "560"
+            },
+            "debt_current": {
+              "basis": "Current portion of reported long-term debt at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtCurrent",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "90"
+                }
+              ],
+              "concept": "LongTermDebtCurrent",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_current",
+              "label": "Interest-bearing debt, current portion",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "LongTermDebtCurrent",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_current",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "90"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "90"
+            },
+            "debt_noncurrent": {
+              "basis": "Noncurrent interest-bearing debt at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtNoncurrent",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "410"
+                }
+              ],
+              "concept": "LongTermDebtNoncurrent",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_noncurrent",
+              "label": "Interest-bearing debt, noncurrent",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "LongTermDebtNoncurrent",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_noncurrent",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "410"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "410"
+            },
+            "debt_short_term_borrowings": {
+              "basis": "Short-term borrowings outside the long-term debt schedule at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_borrowings",
+              "label": "Short-term borrowings and commercial paper",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Kept separate from the long-term debt split because issuers such as AAPL report it outside LongTermDebt; combined into the short-term total for comparison only."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_total": {
+              "basis": "Comparable basis for a single reported short-term debt figure.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_total",
+              "label": "Short-term interest-bearing debt (current portion plus short-term borrowings)",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_short_term_borrowings"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. Used only to compare with an externally published short-term debt figure."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_total_reported": {
+              "basis": "Issuer-reported long-term debt total including its current portion.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebt",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "500"
+                }
+              ],
+              "concept": "LongTermDebt",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_total_reported",
+              "label": "Reported long-term debt total (cross-check only)",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "LongTermDebt",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_total_reported",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "500"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "This is not total liabilities and not operating lease obligations; it is used only to reconcile the current/noncurrent split."
+              ],
+              "unit": "USD",
+              "value": "500"
+            },
+            "depreciation_amortization": {
+              "basis": "Cash-flow-statement depreciation, depletion and amortization.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "DepreciationDepletionAndAmortization",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "66"
+                }
+              ],
+              "concept": "DepreciationDepletionAndAmortization",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "depreciation_amortization",
+              "label": "Depreciation and amortization",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "DepreciationDepletionAndAmortization",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "depreciation_amortization",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "66"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "66"
+            },
+            "diluted_weighted_average_shares": {
+              "basis": "Diluted weighted-average shares outstanding over the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "shares",
+                  "value": "1000"
+                }
+              ],
+              "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "diluted_weighted_average_shares",
+              "label": "Diluted weighted-average shares",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "diluted_weighted_average_shares",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "shares",
+                "value": "1000"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "An instant common shares outstanding count is a different measure and does not satisfy this field."
+              ],
+              "unit": "shares",
+              "value": "1000"
+            },
+            "interest_bearing_debt_total": {
+              "basis": "Current portion plus noncurrent long-term debt as separately reported.",
+              "candidates": [],
+              "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+              "cross_sources": [],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtNoncurrent",
+                  "field_id": "debt_noncurrent",
+                  "kind": "derived_component",
+                  "value": "410"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtCurrent",
+                  "field_id": "debt_current",
+                  "kind": "derived_component",
+                  "value": "90"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebt",
+                  "delta": "0",
+                  "kind": "reported_total",
+                  "value": "500",
+                  "within_rounding_slack": true
+                }
+              ],
+              "field_id": "interest_bearing_debt_total",
+              "label": "Long-term debt, current plus noncurrent (sum of reported parts)",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [],
+              "state": "PASS_DERIVED",
+              "transformations": [
+                "Derived, not reported. It excludes short-term borrowings, operating leases and total liabilities."
+              ],
+              "unit": "USD",
+              "value": "500"
+            },
+            "net_income_common": {
+              "basis": "Income attributable to common shareholders for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "180"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "170"
+                }
+              ],
+              "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+              "cross_sources": [],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLoss",
+                  "filed": "2026-02-10",
+                  "kind": "concept_disagreement",
+                  "value": "180"
+                }
+              ],
+              "field_id": "net_income_common",
+              "label": "Net income attributable to common shareholders",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "net_income_common",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "170"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "CONFLICTING_SOURCE_CONCEPTS"
+              ],
+              "state": "CONFLICT",
+              "transformations": [
+                "When only NetIncomeLoss (consolidated) is available the value is labelled NET_INCOME_TO_COMMON_UNADJUSTED and cannot be treated as common income."
+              ],
+              "unit": "USD",
+              "value": "170"
+            },
+            "operating_income_ebit": {
+              "basis": "Reported consolidated operating income/loss. EBIT is not derived from net income.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "OperatingIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "250"
+                }
+              ],
+              "concept": "OperatingIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "operating_income_ebit",
+              "label": "Operating income (EBIT)",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "OperatingIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "operating_income_ebit",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "250"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "250"
+            },
+            "revenue": {
+              "basis": "Consolidated total revenue for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "1100"
+                },
+                {
+                  "accession": "0000000001-26-000001",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2025-02-12",
+                  "unit": "USD",
+                  "value": "1150"
+                }
+              ],
+              "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "cross_sources": [],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000001",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "filed": "2025-02-12",
+                  "kind": "superseded_observation",
+                  "value": "1150"
+                }
+              ],
+              "field_id": "revenue",
+              "label": "Revenue",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "revenue",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "1100"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SUPERSEDED_FILINGS_IGNORED",
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "A customer-contract revenue subtotal is not total bank revenue; if only RevenueFromContractWithCustomer* is available for a bank, record SOURCE_UNVALIDATED."
+              ],
+              "unit": "USD",
+              "value": "1100"
+            }
+          },
+          "2025-12-31": {
+            "capital_expenditure": {
+              "basis": "Cash paid for property, plant and equipment (cash-flow-statement magnitude).",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "EUR",
+                  "value": "44"
+                }
+              ],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "capital_expenditure",
+              "label": "Capital expenditure",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "UNIT_NOT_IN_CONTRACT",
+                "OBSERVED_UNIT:EUR"
+              ],
+              "state": "UNIT_MISMATCH",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "cash_and_equivalents": {
+              "basis": "Carrying value of cash and cash equivalents at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "CashAndCashEquivalentsAtCarryingValue",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "610"
+                }
+              ],
+              "concept": "CashAndCashEquivalentsAtCarryingValue",
+              "cross_sources": [
+                {
+                  "basis_note": "packet balance-sheet bridge item",
+                  "field_id": "cash_and_equivalents",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+                  "secondary_unit": "USD",
+                  "secondary_value": "610.0",
+                  "state": "AGREES"
+                }
+              ],
+              "derivations": [],
+              "field_id": "cash_and_equivalents",
+              "label": "Cash and cash equivalents",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "CashAndCashEquivalentsAtCarryingValue",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "cash_and_equivalents",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "610"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION",
+                "SECOND_SOURCE_AGREES"
+              ],
+              "state": "SOURCE_VALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "610"
+            },
+            "debt_current": {
+              "basis": "Current portion of reported long-term debt at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtCurrent",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "95"
+                }
+              ],
+              "concept": "LongTermDebtCurrent",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_current",
+              "label": "Interest-bearing debt, current portion",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "LongTermDebtCurrent",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_current",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "95"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "95"
+            },
+            "debt_noncurrent": {
+              "basis": "Noncurrent interest-bearing debt at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtNoncurrent",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "430"
+                }
+              ],
+              "concept": "LongTermDebtNoncurrent",
+              "cross_sources": [
+                {
+                  "basis_note": "packet balance-sheet bridge item",
+                  "field_id": "debt_noncurrent",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+                  "secondary_unit": "USD",
+                  "secondary_value": "430.0",
+                  "state": "AGREES"
+                }
+              ],
+              "derivations": [],
+              "field_id": "debt_noncurrent",
+              "label": "Interest-bearing debt, noncurrent",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "LongTermDebtNoncurrent",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_noncurrent",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "430"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION",
+                "SECOND_SOURCE_AGREES"
+              ],
+              "state": "SOURCE_VALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "430"
+            },
+            "debt_short_term_borrowings": {
+              "basis": "Short-term borrowings outside the long-term debt schedule at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "CommercialPaper",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "20"
+                }
+              ],
+              "concept": "CommercialPaper",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_borrowings",
+              "label": "Short-term borrowings and commercial paper",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "CommercialPaper",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_short_term_borrowings",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "20"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "Kept separate from the long-term debt split because issuers such as AAPL report it outside LongTermDebt; combined into the short-term total for comparison only."
+              ],
+              "unit": "USD",
+              "value": "20"
+            },
+            "debt_short_term_total": {
+              "basis": "Comparable basis for a single reported short-term debt figure.",
+              "candidates": [],
+              "concept": "LongTermDebtCurrent+CommercialPaper",
+              "cross_sources": [
+                {
+                  "basis_note": "Packet short-term debt is a single figure; the contract compares it with the derived current portion plus short-term borrowings.",
+                  "field_id": "debt_short_term_total",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+                  "secondary_unit": "USD",
+                  "secondary_value": "115.0",
+                  "state": "AGREES"
+                }
+              ],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtCurrent",
+                  "field_id": "debt_current",
+                  "kind": "derived_component",
+                  "value": "95"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "CommercialPaper",
+                  "field_id": "debt_short_term_borrowings",
+                  "kind": "derived_component",
+                  "value": "20"
+                }
+              ],
+              "field_id": "debt_short_term_total",
+              "label": "Short-term interest-bearing debt (current portion plus short-term borrowings)",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SECOND_SOURCE_AGREES"
+              ],
+              "state": "PASS_DERIVED",
+              "transformations": [
+                "Derived, not reported. Used only to compare with an externally published short-term debt figure."
+              ],
+              "unit": "USD",
+              "value": "115"
+            },
+            "debt_total_reported": {
+              "basis": "Issuer-reported long-term debt total including its current portion.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebt",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "530"
+                }
+              ],
+              "concept": "LongTermDebt",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_total_reported",
+              "label": "Reported long-term debt total (cross-check only)",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "LongTermDebt",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_total_reported",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "530"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "This is not total liabilities and not operating lease obligations; it is used only to reconcile the current/noncurrent split."
+              ],
+              "unit": "USD",
+              "value": "530"
+            },
+            "depreciation_amortization": {
+              "basis": "Cash-flow-statement depreciation, depletion and amortization.",
+              "candidates": [
+                {
+                  "accession": "0000000001-27-000002",
+                  "concept": "DepreciationDepletionAndAmortization",
+                  "eligible": false,
+                  "filed": "2026-10-20",
+                  "unit": "USD",
+                  "value": "72"
+                }
+              ],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "depreciation_amortization",
+              "label": "Depreciation and amortization",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "AVAILABLE_AFTER_AS_OF"
+              ],
+              "state": "NOT_PIT_ELIGIBLE",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "diluted_weighted_average_shares": {
+              "basis": "Diluted weighted-average shares outstanding over the annual period.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "diluted_weighted_average_shares",
+              "label": "Diluted weighted-average shares",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SOURCE_ROW_NOT_ALIGNED_TO_ANNUAL_PERIOD",
+                "DURATION_DAYS:274"
+              ],
+              "state": "PERIOD_MISMATCH",
+              "transformations": [
+                "An instant common shares outstanding count is a different measure and does not satisfy this field."
+              ],
+              "unit": "shares",
+              "value": null
+            },
+            "interest_bearing_debt_total": {
+              "basis": "Current portion plus noncurrent long-term debt as separately reported.",
+              "candidates": [],
+              "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+              "cross_sources": [],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtNoncurrent",
+                  "field_id": "debt_noncurrent",
+                  "kind": "derived_component",
+                  "value": "430"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebtCurrent",
+                  "field_id": "debt_current",
+                  "kind": "derived_component",
+                  "value": "95"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "LongTermDebt",
+                  "delta": "5",
+                  "kind": "reported_total",
+                  "value": "530",
+                  "within_rounding_slack": true
+                }
+              ],
+              "field_id": "interest_bearing_debt_total",
+              "label": "Long-term debt, current plus noncurrent (sum of reported parts)",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "ROUNDING_DIFFERENCE_WITHIN_SLACK"
+              ],
+              "state": "PASS_DERIVED",
+              "transformations": [
+                "Derived, not reported. It excludes short-term borrowings, operating leases and total liabilities."
+              ],
+              "unit": "USD",
+              "value": "525"
+            },
+            "net_income_common": {
+              "basis": "Income attributable to common shareholders for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "210"
+                },
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "200"
+                }
+              ],
+              "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+              "cross_sources": [
+                {
+                  "basis_note": "Packet net income sits on the same consolidated basis; comparability is confirmed against the source tag.",
+                  "delta": "-10.0",
+                  "field_id": "net_income_common",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+                  "secondary_unit": "USD",
+                  "secondary_value": "210.0",
+                  "state": "CONFLICT"
+                }
+              ],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "NetIncomeLoss",
+                  "filed": "2026-02-10",
+                  "kind": "concept_disagreement",
+                  "value": "210"
+                }
+              ],
+              "field_id": "net_income_common",
+              "label": "Net income attributable to common shareholders",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "NetIncomeLossAvailableToCommonStockholdersBasic",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "net_income_common",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "200"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "CONFLICTING_SOURCE_CONCEPTS",
+                "SECOND_SOURCE_DISAGREES"
+              ],
+              "state": "CONFLICT",
+              "transformations": [
+                "When only NetIncomeLoss (consolidated) is available the value is labelled NET_INCOME_TO_COMMON_UNADJUSTED and cannot be treated as common income."
+              ],
+              "unit": "USD",
+              "value": "200"
+            },
+            "operating_income_ebit": {
+              "basis": "Reported consolidated operating income/loss. EBIT is not derived from net income.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "OperatingIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "300"
+                }
+              ],
+              "concept": "OperatingIncomeLoss",
+              "cross_sources": [
+                {
+                  "basis_note": null,
+                  "delta": "-5.0",
+                  "field_id": "operating_income_ebit",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+                  "secondary_unit": "USD",
+                  "secondary_value": "305.0",
+                  "state": "CONFLICT"
+                }
+              ],
+              "derivations": [],
+              "field_id": "operating_income_ebit",
+              "label": "Operating income (EBIT)",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "OperatingIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "operating_income_ebit",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "300"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION",
+                "SECOND_SOURCE_DISAGREES"
+              ],
+              "state": "CONFLICT",
+              "transformations": [],
+              "unit": "USD",
+              "value": "300"
+            },
+            "revenue": {
+              "basis": "Consolidated total revenue for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000001-26-000010",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2026-02-10",
+                  "unit": "USD",
+                  "value": "1200"
+                },
+                {
+                  "accession": "0000000001-26-000011",
+                  "concept": "Revenues",
+                  "eligible": true,
+                  "filed": "2026-03-01",
+                  "unit": "USD",
+                  "value": "1188"
+                }
+              ],
+              "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "cross_sources": [
+                {
+                  "basis_note": null,
+                  "field_id": "revenue",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "approved packet ppe-valuation-packet-v1 cutoff 2026-03-01",
+                  "secondary_unit": "USD",
+                  "secondary_value": "1200.0",
+                  "state": "AGREES"
+                },
+                {
+                  "basis_note": "published concept RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "field_id": "revenue",
+                  "period_end": "2025-12-31",
+                  "secondary_source": "published SEC facts release as_of 2026-02-20",
+                  "secondary_unit": "USD",
+                  "secondary_value": "1200",
+                  "state": "AGREES"
+                }
+              ],
+              "derivations": [
+                {
+                  "accession": "0000000001-26-000011",
+                  "concept": "Revenues",
+                  "filed": "2026-03-01",
+                  "kind": "concept_disagreement",
+                  "value": "1188"
+                }
+              ],
+              "field_id": "revenue",
+              "label": "Revenue",
+              "observation": {
+                "accession": "0000000001-26-000010",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-11T05:00:00Z",
+                "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "revenue",
+                "filed": "2026-02-10",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 5261,
+                  "etag": "fixture-1",
+                  "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+                  "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+                  "store": "filings"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "1200"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "CONFLICTING_SOURCE_CONCEPTS"
+              ],
+              "state": "CONFLICT",
+              "transformations": [
+                "A customer-contract revenue subtotal is not total bank revenue; if only RevenueFromContractWithCustomer* is available for a bank, record SOURCE_UNVALIDATED."
+              ],
+              "unit": "USD",
+              "value": "1200"
+            }
+          }
+        },
+        "limitations": [],
+        "missing_fields": {
+          "2023-12-31": [
+            "capital_expenditure",
+            "debt_current",
+            "debt_noncurrent",
+            "debt_short_term_borrowings",
+            "debt_short_term_total",
+            "debt_total_reported",
+            "diluted_weighted_average_shares",
+            "interest_bearing_debt_total"
+          ],
+          "2024-12-31": [
+            "debt_short_term_borrowings",
+            "debt_short_term_total"
+          ],
+          "2025-12-31": []
+        },
+        "observations_examined": 33,
+        "periods": [
+          "2025-12-31",
+          "2024-12-31",
+          "2023-12-31"
+        ],
+        "source": {
+          "bytes": 5261,
+          "etag": "fixture-1",
+          "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+          "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+          "store": "filings"
+        },
+        "ticker": "TSTA"
+      },
+      "facts_origin": {
+        "object": {
+          "bytes": 5261,
+          "etag": "fixture-1",
+          "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+          "quality": "HASH_VERIFIED",
+          "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+          "store": "filings"
+        },
+        "origin": "sec filing-intelligence corpus"
+      },
+      "identity_source": {
+        "cik": "0000000001",
+        "cutoff_date": "2026-03-01",
+        "kind": "approved_valuation_packet",
+        "packet": {
+          "bytes": 1418,
+          "etag": "fixture-1",
+          "notes": [
+            "sha256 matches approved index pin"
+          ],
+          "path": "gold/valuation/releases/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/companies/TSTA.json",
+          "quality": "SCHEMA_VALIDATED",
+          "release_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "schema_version": "ppe-valuation-packet-v1",
+          "sha256": "73fe603a29791e856e70383ed9ec7b2d4311612b5285dcf15d2c23ca34a58568",
+          "store": "financial"
+        }
+      },
+      "overall": "CONFLICT",
+      "source_identity": [
+        {
+          "check": "published_source_evidence_sha256",
+          "expected": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+          "note": "published source object is the object this registry read",
+          "observed": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+          "state": "MATCH"
+        },
+        {
+          "check": "approved_packet_sec_source_cash",
+          "expected": "1111111111111111111111111111111111111111111111111111111111111111",
+          "expected_crc32": "00000000",
+          "expected_member": "CIK0000000001.json",
+          "note": "approval was built from a different source object; compare values, not bytes",
+          "observed": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+          "observed_crc32": null,
+          "observed_member": null,
+          "state": "DIFFERENT_SOURCE_OBJECT"
+        }
+      ],
+      "state_counts": {
+        "CONFLICT": 5,
+        "MISSING_OBSERVATION": 10,
+        "NOT_PIT_ELIGIBLE": 1,
+        "PASS_DERIVED": 3,
+        "PERIOD_MISMATCH": 1,
+        "SOURCE_UNVALIDATED": 15,
+        "SOURCE_VALIDATED": 2,
+        "UNIT_MISMATCH": 2
+      },
+      "ticker": "TSTA"
+    },
+    {
+      "blocking_issues": [
+        "PUBLISHED_SEC_FACTS_NOT_IN_RELEASE",
+        "NO_SECOND_SOURCE_CONFIRMATION"
+      ],
+      "cik": "0000000002",
+      "comparisons": [],
+      "contract": {
+        "as_of": "2026-10-11",
+        "cik": "0000000002",
+        "contract": "zion-sec-fundamentals-contract-v1",
+        "field_states": {
+          "2023-12-31": {
+            "capital_expenditure": "SOURCE_UNVALIDATED",
+            "cash_and_equivalents": "MISSING_OBSERVATION",
+            "debt_current": "MISSING_OBSERVATION",
+            "debt_noncurrent": "MISSING_OBSERVATION",
+            "debt_short_term_borrowings": "MISSING_OBSERVATION",
+            "debt_short_term_total": "MISSING_OBSERVATION",
+            "debt_total_reported": "MISSING_OBSERVATION",
+            "depreciation_amortization": "SOURCE_UNVALIDATED",
+            "diluted_weighted_average_shares": "MISSING_OBSERVATION",
+            "interest_bearing_debt_total": "MISSING_OBSERVATION",
+            "net_income_common": "SOURCE_UNVALIDATED",
+            "operating_income_ebit": "SOURCE_UNVALIDATED",
+            "revenue": "SOURCE_UNVALIDATED"
+          },
+          "2024-12-31": {
+            "capital_expenditure": "SOURCE_UNVALIDATED",
+            "cash_and_equivalents": "MISSING_OBSERVATION",
+            "debt_current": "MISSING_OBSERVATION",
+            "debt_noncurrent": "MISSING_OBSERVATION",
+            "debt_short_term_borrowings": "MISSING_OBSERVATION",
+            "debt_short_term_total": "MISSING_OBSERVATION",
+            "debt_total_reported": "MISSING_OBSERVATION",
+            "depreciation_amortization": "SOURCE_UNVALIDATED",
+            "diluted_weighted_average_shares": "MISSING_OBSERVATION",
+            "interest_bearing_debt_total": "MISSING_OBSERVATION",
+            "net_income_common": "SOURCE_UNVALIDATED",
+            "operating_income_ebit": "SOURCE_UNVALIDATED",
+            "revenue": "SOURCE_UNVALIDATED"
+          },
+          "2025-12-31": {
+            "capital_expenditure": "SOURCE_UNVALIDATED",
+            "cash_and_equivalents": "SOURCE_UNVALIDATED",
+            "debt_current": "SOURCE_UNVALIDATED",
+            "debt_noncurrent": "SOURCE_UNVALIDATED",
+            "debt_short_term_borrowings": "MISSING_OBSERVATION",
+            "debt_short_term_total": "MISSING_OBSERVATION",
+            "debt_total_reported": "SOURCE_UNVALIDATED",
+            "depreciation_amortization": "SOURCE_UNVALIDATED",
+            "diluted_weighted_average_shares": "SOURCE_UNVALIDATED",
+            "interest_bearing_debt_total": "PASS_DERIVED",
+            "net_income_common": "SOURCE_UNVALIDATED",
+            "operating_income_ebit": "SOURCE_UNVALIDATED",
+            "revenue": "SOURCE_UNVALIDATED"
+          }
+        },
+        "fields": {
+          "2023-12-31": {
+            "capital_expenditure": {
+              "basis": "Cash paid for property, plant and equipment (cash-flow-statement magnitude).",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "12"
+                }
+              ],
+              "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "capital_expenditure",
+              "label": "Capital expenditure",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "capital_expenditure",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "12"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "12"
+            },
+            "cash_and_equivalents": {
+              "basis": "Carrying value of cash and cash equivalents at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "cash_and_equivalents",
+              "label": "Cash and cash equivalents",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_current": {
+              "basis": "Current portion of reported long-term debt at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_current",
+              "label": "Interest-bearing debt, current portion",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_noncurrent": {
+              "basis": "Noncurrent interest-bearing debt at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_noncurrent",
+              "label": "Interest-bearing debt, noncurrent",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_borrowings": {
+              "basis": "Short-term borrowings outside the long-term debt schedule at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_borrowings",
+              "label": "Short-term borrowings and commercial paper",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Kept separate from the long-term debt split because issuers such as AAPL report it outside LongTermDebt; combined into the short-term total for comparison only."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_total": {
+              "basis": "Comparable basis for a single reported short-term debt figure.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_total",
+              "label": "Short-term interest-bearing debt (current portion plus short-term borrowings)",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_current",
+                "MISSING_PART:debt_short_term_borrowings"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. Used only to compare with an externally published short-term debt figure."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_total_reported": {
+              "basis": "Issuer-reported long-term debt total including its current portion.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_total_reported",
+              "label": "Reported long-term debt total (cross-check only)",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "This is not total liabilities and not operating lease obligations; it is used only to reconcile the current/noncurrent split."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "depreciation_amortization": {
+              "basis": "Cash-flow-statement depreciation, depletion and amortization.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "DepreciationDepletionAndAmortization",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "15"
+                }
+              ],
+              "concept": "DepreciationDepletionAndAmortization",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "depreciation_amortization",
+              "label": "Depreciation and amortization",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "DepreciationDepletionAndAmortization",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "depreciation_amortization",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "15"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "15"
+            },
+            "diluted_weighted_average_shares": {
+              "basis": "Diluted weighted-average shares outstanding over the annual period.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "diluted_weighted_average_shares",
+              "label": "Diluted weighted-average shares",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "An instant common shares outstanding count is a different measure and does not satisfy this field."
+              ],
+              "unit": "shares",
+              "value": null
+            },
+            "interest_bearing_debt_total": {
+              "basis": "Current portion plus noncurrent long-term debt as separately reported.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "interest_bearing_debt_total",
+              "label": "Long-term debt, current plus noncurrent (sum of reported parts)",
+              "observation": null,
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_noncurrent",
+                "MISSING_PART:debt_current"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. It excludes short-term borrowings, operating leases and total liabilities."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "net_income_common": {
+              "basis": "Income attributable to common shareholders for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "NetIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "75"
+                }
+              ],
+              "concept": "NetIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "net_income_common",
+              "label": "Net income attributable to common shareholders",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "NetIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "net_income_common",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "75"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "NET_INCOME_TO_COMMON_UNADJUSTED"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "When only NetIncomeLoss (consolidated) is available the value is labelled NET_INCOME_TO_COMMON_UNADJUSTED and cannot be treated as common income."
+              ],
+              "unit": "USD",
+              "value": "75"
+            },
+            "operating_income_ebit": {
+              "basis": "Reported consolidated operating income/loss. EBIT is not derived from net income.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "OperatingIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "100"
+                }
+              ],
+              "concept": "OperatingIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "operating_income_ebit",
+              "label": "Operating income (EBIT)",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "OperatingIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "operating_income_ebit",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "100"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "100"
+            },
+            "revenue": {
+              "basis": "Consolidated total revenue for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "300"
+                }
+              ],
+              "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "revenue",
+              "label": "Revenue",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "revenue",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2023,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2023-12-31",
+                "period_kind": "duration",
+                "period_start": "2023-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "300"
+              },
+              "period_end": "2023-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "A customer-contract revenue subtotal is not total bank revenue; if only RevenueFromContractWithCustomer* is available for a bank, record SOURCE_UNVALIDATED."
+              ],
+              "unit": "USD",
+              "value": "300"
+            }
+          },
+          "2024-12-31": {
+            "capital_expenditure": {
+              "basis": "Cash paid for property, plant and equipment (cash-flow-statement magnitude).",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "13"
+                }
+              ],
+              "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "capital_expenditure",
+              "label": "Capital expenditure",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "capital_expenditure",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "13"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "13"
+            },
+            "cash_and_equivalents": {
+              "basis": "Carrying value of cash and cash equivalents at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "cash_and_equivalents",
+              "label": "Cash and cash equivalents",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_current": {
+              "basis": "Current portion of reported long-term debt at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_current",
+              "label": "Interest-bearing debt, current portion",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_noncurrent": {
+              "basis": "Noncurrent interest-bearing debt at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_noncurrent",
+              "label": "Interest-bearing debt, noncurrent",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_borrowings": {
+              "basis": "Short-term borrowings outside the long-term debt schedule at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_borrowings",
+              "label": "Short-term borrowings and commercial paper",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Kept separate from the long-term debt split because issuers such as AAPL report it outside LongTermDebt; combined into the short-term total for comparison only."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_total": {
+              "basis": "Comparable basis for a single reported short-term debt figure.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_total",
+              "label": "Short-term interest-bearing debt (current portion plus short-term borrowings)",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_current",
+                "MISSING_PART:debt_short_term_borrowings"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. Used only to compare with an externally published short-term debt figure."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_total_reported": {
+              "basis": "Issuer-reported long-term debt total including its current portion.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_total_reported",
+              "label": "Reported long-term debt total (cross-check only)",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "This is not total liabilities and not operating lease obligations; it is used only to reconcile the current/noncurrent split."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "depreciation_amortization": {
+              "basis": "Cash-flow-statement depreciation, depletion and amortization.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "DepreciationDepletionAndAmortization",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "16"
+                }
+              ],
+              "concept": "DepreciationDepletionAndAmortization",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "depreciation_amortization",
+              "label": "Depreciation and amortization",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "DepreciationDepletionAndAmortization",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "depreciation_amortization",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "16"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "16"
+            },
+            "diluted_weighted_average_shares": {
+              "basis": "Diluted weighted-average shares outstanding over the annual period.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "diluted_weighted_average_shares",
+              "label": "Diluted weighted-average shares",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "An instant common shares outstanding count is a different measure and does not satisfy this field."
+              ],
+              "unit": "shares",
+              "value": null
+            },
+            "interest_bearing_debt_total": {
+              "basis": "Current portion plus noncurrent long-term debt as separately reported.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "interest_bearing_debt_total",
+              "label": "Long-term debt, current plus noncurrent (sum of reported parts)",
+              "observation": null,
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_noncurrent",
+                "MISSING_PART:debt_current"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. It excludes short-term borrowings, operating leases and total liabilities."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "net_income_common": {
+              "basis": "Income attributable to common shareholders for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "NetIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "82"
+                }
+              ],
+              "concept": "NetIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "net_income_common",
+              "label": "Net income attributable to common shareholders",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "NetIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "net_income_common",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "82"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "NET_INCOME_TO_COMMON_UNADJUSTED"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "When only NetIncomeLoss (consolidated) is available the value is labelled NET_INCOME_TO_COMMON_UNADJUSTED and cannot be treated as common income."
+              ],
+              "unit": "USD",
+              "value": "82"
+            },
+            "operating_income_ebit": {
+              "basis": "Reported consolidated operating income/loss. EBIT is not derived from net income.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "OperatingIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "110"
+                }
+              ],
+              "concept": "OperatingIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "operating_income_ebit",
+              "label": "Operating income (EBIT)",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "OperatingIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "operating_income_ebit",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "110"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "110"
+            },
+            "revenue": {
+              "basis": "Consolidated total revenue for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "330"
+                }
+              ],
+              "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "revenue",
+              "label": "Revenue",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "contract_equivalent": true,
+                "duration_days": 365,
+                "field_id": "revenue",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2024,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2024-12-31",
+                "period_kind": "duration",
+                "period_start": "2024-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "330"
+              },
+              "period_end": "2024-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "A customer-contract revenue subtotal is not total bank revenue; if only RevenueFromContractWithCustomer* is available for a bank, record SOURCE_UNVALIDATED."
+              ],
+              "unit": "USD",
+              "value": "330"
+            }
+          },
+          "2025-12-31": {
+            "capital_expenditure": {
+              "basis": "Cash paid for property, plant and equipment (cash-flow-statement magnitude).",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "14"
+                }
+              ],
+              "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "capital_expenditure",
+              "label": "Capital expenditure",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "capital_expenditure",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "14"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "14"
+            },
+            "cash_and_equivalents": {
+              "basis": "Carrying value of cash and cash equivalents at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "CashAndCashEquivalentsAtCarryingValue",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "75"
+                }
+              ],
+              "concept": "CashAndCashEquivalentsAtCarryingValue",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "cash_and_equivalents",
+              "label": "Cash and cash equivalents",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "CashAndCashEquivalentsAtCarryingValue",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "cash_and_equivalents",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "75"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "75"
+            },
+            "debt_current": {
+              "basis": "Current portion of reported long-term debt at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "LongTermDebtCurrent",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "20"
+                }
+              ],
+              "concept": "LongTermDebtCurrent",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_current",
+              "label": "Interest-bearing debt, current portion",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "LongTermDebtCurrent",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_current",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "20"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "20"
+            },
+            "debt_noncurrent": {
+              "basis": "Noncurrent interest-bearing debt at the fiscal period end.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "LongTermDebtNoncurrent",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "180"
+                }
+              ],
+              "concept": "LongTermDebtNoncurrent",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_noncurrent",
+              "label": "Interest-bearing debt, noncurrent",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "LongTermDebtNoncurrent",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_noncurrent",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "180"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "180"
+            },
+            "debt_short_term_borrowings": {
+              "basis": "Short-term borrowings outside the long-term debt schedule at the fiscal period end.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_borrowings",
+              "label": "Short-term borrowings and commercial paper",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "NO_SOURCE_ROW_FOR_PERIOD"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Kept separate from the long-term debt split because issuers such as AAPL report it outside LongTermDebt; combined into the short-term total for comparison only."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_short_term_total": {
+              "basis": "Comparable basis for a single reported short-term debt figure.",
+              "candidates": [],
+              "concept": null,
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_short_term_total",
+              "label": "Short-term interest-bearing debt (current portion plus short-term borrowings)",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "MISSING_PART:debt_short_term_borrowings"
+              ],
+              "state": "MISSING_OBSERVATION",
+              "transformations": [
+                "Derived, not reported. Used only to compare with an externally published short-term debt figure."
+              ],
+              "unit": "USD",
+              "value": null
+            },
+            "debt_total_reported": {
+              "basis": "Issuer-reported long-term debt total including its current portion.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "LongTermDebt",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "200"
+                }
+              ],
+              "concept": "LongTermDebt",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "debt_total_reported",
+              "label": "Reported long-term debt total (cross-check only)",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "LongTermDebt",
+                "contract_equivalent": true,
+                "duration_days": null,
+                "field_id": "debt_total_reported",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "instant",
+                "period_start": null,
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "200"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "This is not total liabilities and not operating lease obligations; it is used only to reconcile the current/noncurrent split."
+              ],
+              "unit": "USD",
+              "value": "200"
+            },
+            "depreciation_amortization": {
+              "basis": "Cash-flow-statement depreciation, depletion and amortization.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "DepreciationDepletionAndAmortization",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "18"
+                }
+              ],
+              "concept": "DepreciationDepletionAndAmortization",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "depreciation_amortization",
+              "label": "Depreciation and amortization",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "DepreciationDepletionAndAmortization",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "depreciation_amortization",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "18"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "18"
+            },
+            "diluted_weighted_average_shares": {
+              "basis": "Diluted weighted-average shares outstanding over the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "shares",
+                  "value": "500"
+                }
+              ],
+              "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "diluted_weighted_average_shares",
+              "label": "Diluted weighted-average shares",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "diluted_weighted_average_shares",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "shares",
+                "value": "500"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "An instant common shares outstanding count is a different measure and does not satisfy this field."
+              ],
+              "unit": "shares",
+              "value": "500"
+            },
+            "interest_bearing_debt_total": {
+              "basis": "Current portion plus noncurrent long-term debt as separately reported.",
+              "candidates": [],
+              "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+              "cross_sources": [],
+              "derivations": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "LongTermDebtNoncurrent",
+                  "field_id": "debt_noncurrent",
+                  "kind": "derived_component",
+                  "value": "180"
+                },
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "LongTermDebtCurrent",
+                  "field_id": "debt_current",
+                  "kind": "derived_component",
+                  "value": "20"
+                },
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "LongTermDebt",
+                  "delta": "0",
+                  "kind": "reported_total",
+                  "value": "200",
+                  "within_rounding_slack": true
+                }
+              ],
+              "field_id": "interest_bearing_debt_total",
+              "label": "Long-term debt, current plus noncurrent (sum of reported parts)",
+              "observation": null,
+              "period_end": "2025-12-31",
+              "reason_codes": [],
+              "state": "PASS_DERIVED",
+              "transformations": [
+                "Derived, not reported. It excludes short-term borrowings, operating leases and total liabilities."
+              ],
+              "unit": "USD",
+              "value": "200"
+            },
+            "net_income_common": {
+              "basis": "Income attributable to common shareholders for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "NetIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "90"
+                }
+              ],
+              "concept": "NetIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "net_income_common",
+              "label": "Net income attributable to common shareholders",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "NetIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "net_income_common",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "90"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "NET_INCOME_TO_COMMON_UNADJUSTED"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "When only NetIncomeLoss (consolidated) is available the value is labelled NET_INCOME_TO_COMMON_UNADJUSTED and cannot be treated as common income."
+              ],
+              "unit": "USD",
+              "value": "90"
+            },
+            "operating_income_ebit": {
+              "basis": "Reported consolidated operating income/loss. EBIT is not derived from net income.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "OperatingIncomeLoss",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "120"
+                }
+              ],
+              "concept": "OperatingIncomeLoss",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "operating_income_ebit",
+              "label": "Operating income (EBIT)",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "OperatingIncomeLoss",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "operating_income_ebit",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "120"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [],
+              "unit": "USD",
+              "value": "120"
+            },
+            "revenue": {
+              "basis": "Consolidated total revenue for the annual period.",
+              "candidates": [
+                {
+                  "accession": "0000000002-26-000005",
+                  "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                  "eligible": true,
+                  "filed": "2026-02-20",
+                  "unit": "USD",
+                  "value": "360"
+                }
+              ],
+              "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+              "cross_sources": [],
+              "derivations": [],
+              "field_id": "revenue",
+              "label": "Revenue",
+              "observation": {
+                "accession": "0000000002-26-000005",
+                "availability_evidence": "DATE_ONLY",
+                "available_at": "2026-02-21T05:00:00Z",
+                "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+                "contract_equivalent": true,
+                "duration_days": 364,
+                "field_id": "revenue",
+                "filed": "2026-02-20",
+                "fiscal_period": "FY",
+                "fiscal_year": 2025,
+                "form": "10-K",
+                "frame": null,
+                "period_end": "2025-12-31",
+                "period_kind": "duration",
+                "period_start": "2025-01-01",
+                "source": {
+                  "bytes": 772,
+                  "etag": "fixture-1",
+                  "member": "CIK0000000002.json",
+                  "member_crc32": "e8c6f4ad",
+                  "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+                  "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+                  "store": "research"
+                },
+                "taxonomy": "us-gaap",
+                "unit": "USD",
+                "value": "360"
+              },
+              "period_end": "2025-12-31",
+              "reason_codes": [
+                "SINGLE_SOURCE_OBSERVATION"
+              ],
+              "state": "SOURCE_UNVALIDATED",
+              "transformations": [
+                "A customer-contract revenue subtotal is not total bank revenue; if only RevenueFromContractWithCustomer* is available for a bank, record SOURCE_UNVALIDATED."
+              ],
+              "unit": "USD",
+              "value": "360"
+            }
+          }
+        },
+        "limitations": [],
+        "missing_fields": {
+          "2023-12-31": [
+            "cash_and_equivalents",
+            "debt_current",
+            "debt_noncurrent",
+            "debt_short_term_borrowings",
+            "debt_short_term_total",
+            "debt_total_reported",
+            "diluted_weighted_average_shares",
+            "interest_bearing_debt_total"
+          ],
+          "2024-12-31": [
+            "cash_and_equivalents",
+            "debt_current",
+            "debt_noncurrent",
+            "debt_short_term_borrowings",
+            "debt_short_term_total",
+            "debt_total_reported",
+            "diluted_weighted_average_shares",
+            "interest_bearing_debt_total"
+          ],
+          "2025-12-31": [
+            "debt_short_term_borrowings",
+            "debt_short_term_total"
+          ]
+        },
+        "observations_examined": 20,
+        "periods": [
+          "2025-12-31",
+          "2024-12-31",
+          "2023-12-31"
+        ],
+        "source": {
+          "bytes": 772,
+          "etag": "fixture-1",
+          "member": "CIK0000000002.json",
+          "member_crc32": "e8c6f4ad",
+          "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+          "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+          "store": "research"
+        },
+        "ticker": "TSTB"
+      },
+      "facts_origin": {
+        "object": {
+          "bytes": 772,
+          "etag": "fixture-1",
+          "member": "CIK0000000002.json",
+          "member_compressed_bytes": 503,
+          "member_crc32": "e8c6f4ad",
+          "notes": [
+            "ETag-pinned ranged reads; member CRC32 from the archive directory"
+          ],
+          "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+          "quality": "HASH_VERIFIED",
+          "ranged_bytes": 986,
+          "ranged_reads": 4,
+          "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+          "store": "research"
+        },
+        "origin": "SEC nightly bulk archive sec-nightly-20260101"
+      },
+      "identity_source": {
+        "cik": "0000000002",
+        "kind": "per_company_dataset",
+        "record": {
+          "bytes": 184,
+          "etag": "fixture-1",
+          "path": "datasets/sec/TSTB/versions/dddddddddddddddddddddddddddddddd/data.json",
+          "quality": "HASH_VERIFIED",
+          "release_id": "dddddddddddddddddddddddddddddddd",
+          "schema_version": "1",
+          "sha256": "3662f957acca381b89c4b53314a390a3379b730aa221740e2101a5343453833b",
+          "store": "financial"
+        }
+      },
+      "overall": "SOURCE_UNVALIDATED",
+      "source_identity": [],
+      "state_counts": {
+        "MISSING_OBSERVATION": 18,
+        "PASS_DERIVED": 1,
+        "SOURCE_UNVALIDATED": 20
+      },
+      "ticker": "TSTB"
+    }
+  ],
+  "contract": "zion-sec-fundamentals-contract-v1",
+  "fields": [
+    "revenue",
+    "operating_income_ebit",
+    "net_income_common",
+    "depreciation_amortization",
+    "capital_expenditure",
+    "diluted_weighted_average_shares",
+    "cash_and_equivalents",
+    "debt_current",
+    "debt_short_term_borrowings",
+    "debt_noncurrent",
+    "debt_total_reported",
+    "interest_bearing_debt_total",
+    "debt_short_term_total"
+  ],
+  "generated_at": "2026-10-12T17:36:43+00:00",
+  "inventory": {
+    "objects": [
+      {
+        "bytes": 268,
+        "etag": "fixture-1",
+        "path": "gold/serving/coverage25/CURRENT.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "2d4b97333996c286fbe7648c4111eefd197c7d7514632cb4d9f3971d96e49cf8",
+        "store": "financial"
+      },
+      {
+        "bytes": 648,
+        "etag": "fixture-1",
+        "path": "gold/serving/releases/11111111111111111111111111111111/manifest.json",
+        "quality": "HASH_VERIFIED",
+        "release_id": "11111111111111111111111111111111",
+        "schema_version": "financial-serving-v2",
+        "sha256": "2bcfc6de0473d86279ab3045ab869de83aa49594f68a024037020de7ffab9a23",
+        "store": "financial"
+      },
+      {
+        "bytes": 643,
+        "etag": "fixture-1",
+        "notes": [
+          "manifest artifact present"
+        ],
+        "path": "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json",
+        "quality": "DISCOVERED",
+        "release_id": "11111111111111111111111111111111",
+        "store": "financial"
+      },
+      {
+        "bytes": 268,
+        "etag": "fixture-1",
+        "path": "gold/serving/CURRENT.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "2d4b97333996c286fbe7648c4111eefd197c7d7514632cb4d9f3971d96e49cf8",
+        "store": "financial"
+      },
+      {
+        "bytes": 648,
+        "etag": "fixture-1",
+        "path": "gold/serving/releases/11111111111111111111111111111111/manifest.json",
+        "quality": "HASH_VERIFIED",
+        "release_id": "11111111111111111111111111111111",
+        "schema_version": "financial-serving-v2",
+        "sha256": "2bcfc6de0473d86279ab3045ab869de83aa49594f68a024037020de7ffab9a23",
+        "store": "financial"
+      },
+      {
+        "bytes": 643,
+        "etag": "fixture-1",
+        "notes": [
+          "manifest artifact present"
+        ],
+        "path": "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json",
+        "quality": "DISCOVERED",
+        "release_id": "11111111111111111111111111111111",
+        "store": "financial"
+      },
+      {
+        "bytes": 259,
+        "etag": "fixture-1",
+        "path": "control/valuation/CURRENT.json",
+        "quality": "SCHEMA_VALIDATED",
+        "release_id": "control/valuation",
+        "schema_version": "ppe-valuation-index-v1",
+        "sha256": "a0fe7a444f3c986a2d96e7efe30e7ff72ab2fcfc8f133c9a154fd19768c1b759",
+        "store": "financial"
+      },
+      {
+        "bytes": 744,
+        "etag": "fixture-1",
+        "path": "manifests/sec-facts/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "dd024205df33e12c864946f561a70cacad89676367a3906e5e9d9981e960bd85",
+        "store": "financial"
+      },
+      {
+        "bytes": 643,
+        "etag": "fixture-1",
+        "path": "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "2f896f03d25a09afd8a2194a5ddc749b18e6306ffb4d4f8afa6420e9717d1d1c",
+        "store": "financial"
+      },
+      {
+        "bytes": 259,
+        "etag": "fixture-1",
+        "path": "control/valuation/CURRENT.json",
+        "quality": "SCHEMA_VALIDATED",
+        "release_id": "control/valuation",
+        "schema_version": "ppe-valuation-index-v1",
+        "sha256": "a0fe7a444f3c986a2d96e7efe30e7ff72ab2fcfc8f133c9a154fd19768c1b759",
+        "store": "financial"
+      },
+      {
+        "bytes": 1418,
+        "etag": "fixture-1",
+        "notes": [
+          "sha256 matches approved index pin"
+        ],
+        "path": "gold/valuation/releases/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc/companies/TSTA.json",
+        "quality": "SCHEMA_VALIDATED",
+        "release_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "schema_version": "ppe-valuation-packet-v1",
+        "sha256": "73fe603a29791e856e70383ed9ec7b2d4311612b5285dcf15d2c23ca34a58568",
+        "store": "financial"
+      },
+      {
+        "bytes": 744,
+        "etag": "fixture-1",
+        "path": "manifests/sec-facts/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "dd024205df33e12c864946f561a70cacad89676367a3906e5e9d9981e960bd85",
+        "store": "financial"
+      },
+      {
+        "bytes": 1420,
+        "etag": "fixture-1",
+        "notes": [
+          "sha256 matches release manifest pin"
+        ],
+        "path": "gold/sec-facts/releases/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/securities/TSTA.json",
+        "quality": "SCHEMA_VALIDATED",
+        "release_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "schema_version": "sec-terminal-snapshot-v1",
+        "sha256": "7c547eecfe16edf16c304daad59af72e0c05cf465ff28d4c0da3f396d682f39a",
+        "store": "financial"
+      },
+      {
+        "bytes": 5261,
+        "etag": "fixture-1",
+        "path": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/raw/sec/companyfacts/cik=0000000001/companyfacts.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "a05abc25629abc757f45c24a459e563df20a9b404efa82e977ecdf0bbf1166f8",
+        "store": "filings"
+      },
+      {
+        "bytes": 259,
+        "etag": "fixture-1",
+        "path": "control/valuation/CURRENT.json",
+        "quality": "SCHEMA_VALIDATED",
+        "release_id": "control/valuation",
+        "schema_version": "ppe-valuation-index-v1",
+        "sha256": "a0fe7a444f3c986a2d96e7efe30e7ff72ab2fcfc8f133c9a154fd19768c1b759",
+        "store": "financial"
+      },
+      {
+        "bytes": 744,
+        "etag": "fixture-1",
+        "path": "manifests/sec-facts/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "dd024205df33e12c864946f561a70cacad89676367a3906e5e9d9981e960bd85",
+        "store": "financial"
+      },
+      {
+        "bytes": 184,
+        "etag": "fixture-1",
+        "path": "datasets/sec/TSTB/versions/dddddddddddddddddddddddddddddddd/data.json",
+        "quality": "HASH_VERIFIED",
+        "release_id": "dddddddddddddddddddddddddddddddd",
+        "schema_version": "1",
+        "sha256": "3662f957acca381b89c4b53314a390a3379b730aa221740e2101a5343453833b",
+        "store": "financial"
+      },
+      {
+        "bytes": 772,
+        "etag": "fixture-1",
+        "member": "CIK0000000002.json",
+        "member_compressed_bytes": 503,
+        "member_crc32": "e8c6f4ad",
+        "notes": [
+          "ETag-pinned ranged reads; member CRC32 from the archive directory"
+        ],
+        "path": "sec/bulk/sec-nightly-20260101/companyfacts.zip",
+        "quality": "HASH_VERIFIED",
+        "ranged_bytes": 986,
+        "ranged_reads": 4,
+        "sha256": "908f748a94a6455fdf5bd0e1e118dec7115f552f107d1970711ee9d68019f370",
+        "store": "research"
+      }
+    ],
+    "schema_version": "zion-dataset-registry-inventory-v1"
+  },
+  "limitations": [
+    "serving_release_candidate: sampled manifest artifacts are not stored in R2 (2 of 3 missing)",
+    "serving_release_promoted: sampled manifest artifacts are not stored in R2 (2 of 3 missing)",
+    "Aggregate manifest row counts are not evidence that an individual observation is correct.",
+    "Storage access does not establish availability dates, freshness or redistribution rights.",
+    "Stored timestamps and ETags are not financial observation dates."
+  ],
+  "mode": "fixture",
+  "quality_summary": {
+    "companies": {
+      "TSTA": {
+        "overall": "CONFLICT",
+        "state_counts": {
+          "CONFLICT": 5,
+          "MISSING_OBSERVATION": 10,
+          "NOT_PIT_ELIGIBLE": 1,
+          "PASS_DERIVED": 3,
+          "PERIOD_MISMATCH": 1,
+          "SOURCE_UNVALIDATED": 15,
+          "SOURCE_VALIDATED": 2,
+          "UNIT_MISMATCH": 2
+        }
+      },
+      "TSTB": {
+        "overall": "SOURCE_UNVALIDATED",
+        "state_counts": {
+          "MISSING_OBSERVATION": 18,
+          "PASS_DERIVED": 1,
+          "SOURCE_UNVALIDATED": 20
+        }
+      }
+    },
+    "disclosed_states": [
+      "PASS",
+      "PASS_DERIVED",
+      "SOURCE_VALIDATED",
+      "SOURCE_PARTIALLY_VALIDATED",
+      "SOURCE_UNVALIDATED",
+      "CONFLICT",
+      "MISSING_OBSERVATION",
+      "UNIT_MISMATCH",
+      "PERIOD_MISMATCH",
+      "NOT_PIT_ELIGIBLE",
+      "NOT_CONFORMING",
+      "BLOCKED"
+    ],
+    "states_used": [
+      "CONFLICT",
+      "MISSING_OBSERVATION",
+      "NOT_PIT_ELIGIBLE",
+      "PASS_DERIVED",
+      "PERIOD_MISMATCH",
+      "SOURCE_UNVALIDATED",
+      "SOURCE_VALIDATED",
+      "UNIT_MISMATCH"
+    ]
+  },
+  "report_sha256": "845d5ba7a7cec89188ee6133f01395d43fc12e65fbc32d8759f4663db9d89325",
+  "schema_version": "zion-financial-registry-report-v1",
+  "serving_coverage": {
+    "catalog": {
+      "bytes": 643,
+      "etag": "fixture-1",
+      "path": "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json",
+      "quality": "HASH_VERIFIED",
+      "sha256": "2f896f03d25a09afd8a2194a5ddc749b18e6306ffb4d4f8afa6420e9717d1d1c",
+      "store": "financial"
+    },
+    "coverage": [
+      {
+        "basis": "Consolidated revenue.",
+        "field_id": "revenue",
+        "serving_metric": "revenue",
+        "serving_metric_issuers": 2,
+        "serving_metric_observations": 10,
+        "serving_metric_present": true,
+        "serving_metric_units": [
+          "USD"
+        ],
+        "state": "SUPPORTED"
+      },
+      {
+        "basis": "Consolidated operating income.",
+        "field_id": "operating_income_ebit",
+        "serving_metric": "operating_income",
+        "serving_metric_issuers": 2,
+        "serving_metric_observations": 10,
+        "serving_metric_present": true,
+        "serving_metric_units": [
+          "USD"
+        ],
+        "state": "SUPPORTED"
+      },
+      {
+        "basis": "Serving metric is consolidated net income, not income attributable to common shareholders.",
+        "field_id": "net_income_common",
+        "serving_metric": "net_income",
+        "serving_metric_issuers": 2,
+        "serving_metric_observations": 10,
+        "serving_metric_present": true,
+        "serving_metric_units": [
+          "USD"
+        ],
+        "state": "BASIS_DIFFERS"
+      },
+      {
+        "basis": "No depreciation/amortization metric is published in the serving metric catalog.",
+        "field_id": "depreciation_amortization",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "No capital expenditure metric is published in the serving metric catalog.",
+        "field_id": "capital_expenditure",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving metric is an instant common shares outstanding count, not diluted weighted-average shares.",
+        "field_id": "diluted_weighted_average_shares",
+        "serving_metric": "shares_outstanding",
+        "serving_metric_issuers": 2,
+        "serving_metric_observations": 4,
+        "serving_metric_present": true,
+        "serving_metric_units": [
+          "shares"
+        ],
+        "state": "BASIS_DIFFERS"
+      },
+      {
+        "basis": "Cash and cash equivalents at period end.",
+        "field_id": "cash_and_equivalents",
+        "serving_metric": "cash",
+        "serving_metric_issuers": 2,
+        "serving_metric_observations": 10,
+        "serving_metric_present": true,
+        "serving_metric_units": [
+          "USD"
+        ],
+        "state": "SUPPORTED"
+      },
+      {
+        "basis": "Serving catalog publishes no current/noncurrent debt split.",
+        "field_id": "debt_current",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving catalog publishes no current/noncurrent debt split.",
+        "field_id": "debt_noncurrent",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving catalog publishes no short-term borrowings metric.",
+        "field_id": "debt_short_term_borrowings",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving metric is a selected reported long-term debt obligation, not total interest-bearing debt and not total liabilities.",
+        "field_id": "debt_total_reported",
+        "serving_metric": "total_debt",
+        "serving_metric_issuers": 2,
+        "serving_metric_observations": 4,
+        "serving_metric_present": true,
+        "serving_metric_units": [
+          "USD"
+        ],
+        "state": "PARTIAL"
+      },
+      {
+        "basis": "Requires a current/noncurrent split that the serving layer does not publish.",
+        "field_id": "interest_bearing_debt_total",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "NOT_DERIVABLE"
+      },
+      {
+        "basis": "Requires a short-term borrowings split that the serving layer does not publish.",
+        "field_id": "debt_short_term_total",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "serving_metric_units": null,
+        "state": "NOT_DERIVABLE"
+      }
+    ],
+    "metric_count": 6,
+    "release_id": "11111111111111111111111111111111",
+    "supported_fields": [
+      "revenue",
+      "operating_income_ebit",
+      "cash_and_equivalents"
+    ],
+    "unsupported_fields": [
+      "net_income_common",
+      "depreciation_amortization",
+      "capital_expenditure",
+      "diluted_weighted_average_shares",
+      "debt_current",
+      "debt_noncurrent",
+      "debt_short_term_borrowings",
+      "debt_total_reported",
+      "interest_bearing_debt_total",
+      "debt_short_term_total"
+    ]
+  },
+  "sources": [
+    {
+      "child_prefixes": [
+        "sec/bulk/sec-nightly-20260101/"
+      ],
+      "complete": true,
+      "family_id": "sec_bulk_archive",
+      "findings": [],
+      "object_count": 0,
+      "objects": [],
+      "pages": 1,
+      "prefix": "sec/bulk/",
+      "quality": "DISCOVERED",
+      "recursive": false,
+      "store": "research"
+    },
+    {
+      "artifact_count": 3,
+      "artifact_sample": {
+        "complete": false,
+        "errors": [],
+        "missing": [
+          "gold/serving/releases/11111111111111111111111111111111/identity/resolver_index.json",
+          "gold/serving/releases/11111111111111111111111111111111/entities/entity_sec_cik_0000000001/fundamentals/annual.json"
+        ],
+        "present": [
+          {
+            "bytes": 643,
+            "path": "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json"
+          }
+        ],
+        "sampled": 3,
+        "sampled_paths": [
+          "gold/serving/releases/11111111111111111111111111111111/identity/resolver_index.json",
+          "gold/serving/releases/11111111111111111111111111111111/entities/entity_sec_cik_0000000001/fundamentals/annual.json",
+          "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json"
+        ]
+      },
+      "complete": false,
+      "family_id": "serving_release_candidate",
+      "findings": [
+        "MANIFEST_SHA256_MATCH",
+        "MANIFEST_IDENTITY_OK",
+        "MANIFEST_ARTIFACTS_NOT_STORED"
+      ],
+      "manifest": {
+        "bytes": 648,
+        "etag": "fixture-1",
+        "path": "gold/serving/releases/11111111111111111111111111111111/manifest.json",
+        "quality": "HASH_VERIFIED",
+        "release_id": "11111111111111111111111111111111",
+        "schema_version": "financial-serving-v2",
+        "sha256": "2bcfc6de0473d86279ab3045ab869de83aa49594f68a024037020de7ffab9a23",
+        "store": "financial"
+      },
+      "manifest_key": "gold/serving/releases/11111111111111111111111111111111/manifest.json",
+      "manifest_summary": {
+        "corporate_action_count": 0,
+        "entity_count": 2,
+        "fundamentals_rows": 20,
+        "prices_rows": 5,
+        "schema_version": "financial-serving-v2",
+        "serving_release_id": "11111111111111111111111111111111",
+        "temporal_schema_version": "financial-temporal-v1"
+      },
+      "pointer": {
+        "bytes": 268,
+        "etag": "fixture-1",
+        "path": "gold/serving/coverage25/CURRENT.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "2d4b97333996c286fbe7648c4111eefd197c7d7514632cb4d9f3971d96e49cf8",
+        "store": "financial"
+      },
+      "release_id": "11111111111111111111111111111111",
+      "schema_version": "financial-serving-v2"
+    },
+    {
+      "artifact_count": 3,
+      "artifact_sample": {
+        "complete": false,
+        "errors": [],
+        "missing": [
+          "gold/serving/releases/11111111111111111111111111111111/identity/resolver_index.json",
+          "gold/serving/releases/11111111111111111111111111111111/entities/entity_sec_cik_0000000001/fundamentals/annual.json"
+        ],
+        "present": [
+          {
+            "bytes": 643,
+            "path": "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json"
+          }
+        ],
+        "sampled": 3,
+        "sampled_paths": [
+          "gold/serving/releases/11111111111111111111111111111111/identity/resolver_index.json",
+          "gold/serving/releases/11111111111111111111111111111111/entities/entity_sec_cik_0000000001/fundamentals/annual.json",
+          "gold/serving/releases/11111111111111111111111111111111/catalog/metrics.json"
+        ]
+      },
+      "complete": false,
+      "family_id": "serving_release_promoted",
+      "findings": [
+        "MANIFEST_SHA256_MATCH",
+        "MANIFEST_IDENTITY_OK",
+        "MANIFEST_ARTIFACTS_NOT_STORED"
+      ],
+      "manifest": {
+        "bytes": 648,
+        "etag": "fixture-1",
+        "path": "gold/serving/releases/11111111111111111111111111111111/manifest.json",
+        "quality": "HASH_VERIFIED",
+        "release_id": "11111111111111111111111111111111",
+        "schema_version": "financial-serving-v2",
+        "sha256": "2bcfc6de0473d86279ab3045ab869de83aa49594f68a024037020de7ffab9a23",
+        "store": "financial"
+      },
+      "manifest_key": "gold/serving/releases/11111111111111111111111111111111/manifest.json",
+      "manifest_summary": {
+        "corporate_action_count": 0,
+        "entity_count": 2,
+        "fundamentals_rows": 20,
+        "prices_rows": 5,
+        "schema_version": "financial-serving-v2",
+        "serving_release_id": "11111111111111111111111111111111",
+        "temporal_schema_version": "financial-temporal-v1"
+      },
+      "pointer": {
+        "bytes": 268,
+        "etag": "fixture-1",
+        "path": "gold/serving/CURRENT.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "2d4b97333996c286fbe7648c4111eefd197c7d7514632cb4d9f3971d96e49cf8",
+        "store": "financial"
+      },
+      "release_id": "11111111111111111111111111111111",
+      "schema_version": "financial-serving-v2"
+    },
+    {
+      "companies": 1,
+      "family_id": "valuation_packets",
+      "findings": [
+        "APPROVED_PACKET_INDEX_READ"
+      ],
+      "pointer": {
+        "bytes": 259,
+        "etag": "fixture-1",
+        "path": "control/valuation/CURRENT.json",
+        "quality": "SCHEMA_VALIDATED",
+        "release_id": "control/valuation",
+        "schema_version": "ppe-valuation-index-v1",
+        "sha256": "a0fe7a444f3c986a2d96e7efe30e7ff72ab2fcfc8f133c9a154fd19768c1b759",
+        "store": "financial"
+      },
+      "schema_version": "ppe-valuation-index-v1"
+    },
+    {
+      "artifact_count": 2,
+      "as_of": "2026-02-20",
+      "family_id": "sec_facts_release",
+      "findings": [
+        "MANIFEST_LISTED_NOT_POINTERED"
+      ],
+      "manifest": {
+        "bytes": 744,
+        "etag": "fixture-1",
+        "path": "manifests/sec-facts/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.json",
+        "quality": "HASH_VERIFIED",
+        "sha256": "dd024205df33e12c864946f561a70cacad89676367a3906e5e9d9981e960bd85",
+        "store": "financial"
+      },
+      "manifest_key": "manifests/sec-facts/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.json",
+      "release_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "schema_version": "sec-terminal-snapshot-v1",
+      "source_corpus": "sec-filing-intelligence/corpus/v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "tickers": [
+        "TSTA"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "scenarios": {
+    "unchanged": "identical reports must produce no findings at all",
+    "new_period": "a newly published annual period is INFO: legitimate new filings are not a regression",
+    "restatement": "a value change carried by a later accession for the same period is a permitted restatement, not an unexplained change",
+    "field_lost": "a previously available field missing from the candidate reduces coverage (WARNING)",
+    "observation_lost": "a usable observation becoming MISSING_OBSERVATION is a WARNING",
+    "debt_concept_demoted": "moving to a lower-priority contract concept for the debt split is a WARNING",
+    "prohibited_substitution": "substituting consolidated net income for common income is a prohibited accounting substitution (FAIL)",
+    "invalid_unit_conversion": "a thousand-fold move with an unchanged unit is an unconverted scale (FAIL)",
+    "contract_unit_violation": "a unit outside the contract unit for the field is a FAIL",
+    "source_version_mismatch": "a value change under the same accession with a changed source object revision is an unresolved change (WARNING)",
+    "unexplained_value_change": "a material value change with no new filing and no source revision is a FAIL",
+    "manifest_integrity_failure": "a release that stops resolving and a manifest sample that disappears are FAILs",
+    "validation_downgrade": "a validated field becoming unvalidated is a WARNING",
+    "non_independent_validation": "validation asserted while every corroborating source is the same stored object is a FAIL",
+    "forward_availability": "an observation claimed usable after the report's own as-of instant is a FAIL",
+    "issuer_identity_change": "one ticker resolving to a different issuer CIK is contradictory identity (FAIL)",
+    "ticker_collision": "two issuer identities resolving to one ticker is a FAIL",
+    "blocked_company": "a company that loses its source facts and gains a blocker is a FAIL",
+    "as_of_regression": "a candidate whose as-of instant moved earlier can only shrink coverage (WARNING)",
+    "sanitized_pair": "two sanitized summaries compare on the public fields and record the skipped checks",
+    "leakage_attempt": "private paths, hashes, credentials and restricted store names must never reach the sanitized output",
+    "incomparable_pair": "a fixture report and a live report are not comparable without an explicit override",
+    "contract_mismatch": "two different contract schemas are not comparable without an explicit override"
+  }
+}

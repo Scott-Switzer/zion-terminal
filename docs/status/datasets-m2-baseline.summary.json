@@ -1,0 +1,1454 @@
+{
+  "as_of": "2026-10-11",
+  "companies": [
+    {
+      "blocking_issues": [],
+      "cik": "0000320193",
+      "fields": {
+        "2023-09-30": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "10959000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "29965000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "9822000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "95281000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "5985000000"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "15807000000"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "105103000000"
+          },
+          "depreciation_amortization": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "11519000000"
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "15812547000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "105103000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "96995000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "114301000000"
+          },
+          "revenue": {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "383285000000"
+          }
+        },
+        "2024-09-28": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "9447000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "29943000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "10912000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "85750000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "9967000000"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "20879000000"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "96662000000"
+          },
+          "depreciation_amortization": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "11445000000"
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "15408095000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "96662000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "93736000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "123216000000"
+          },
+          "revenue": {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "391035000000"
+          }
+        },
+        "2025-09-27": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "12715000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "35934000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "12350000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "78328000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "7979000000"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "20329000000"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "90700000000"
+          },
+          "depreciation_amortization": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "reason_codes": [
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "11698000000"
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "15004697000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [
+              "ROUNDING_DIFFERENCE_WITHIN_SLACK"
+            ],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "90678000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "112010000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "133050000000"
+          },
+          "revenue": {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "416161000000"
+          }
+        }
+      },
+      "overall": "SOURCE_PARTIALLY_VALIDATED",
+      "source_identity_states": [
+        {
+          "check": "published",
+          "state": "MATCH"
+        },
+        {
+          "check": "approved",
+          "state": "DIFFERENT_SOURCE_OBJECT"
+        }
+      ],
+      "state_counts": {
+        "PASS_DERIVED": 6,
+        "SOURCE_UNVALIDATED": 16,
+        "SOURCE_VALIDATED": 17
+      },
+      "ticker": "AAPL"
+    },
+    {
+      "blocking_issues": [],
+      "cik": "0000789019",
+      "fields": {
+        "2024-06-30": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "44477000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "18315000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "2249000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "42688000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "6693000000"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "8942000000"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "44937000000"
+          },
+          "depreciation_amortization": {
+            "concept": null,
+            "reason_codes": [
+              "NO_SOURCE_ROW_FOR_PERIOD",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "7469000000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "44937000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "88136000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "109433000000"
+          },
+          "revenue": {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "245122000000"
+          }
+        },
+        "2025-06-30": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "64551000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "30242000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "2999000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "40152000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "0"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "2999000000"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "43151000000"
+          },
+          "depreciation_amortization": {
+            "concept": null,
+            "reason_codes": [
+              "NO_SOURCE_ROW_FOR_PERIOD",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "7465000000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "43151000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "101832000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "128528000000"
+          },
+          "revenue": {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "281724000000"
+          }
+        },
+        "2026-06-30": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquirePropertyPlantAndEquipment",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "115948000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "20935000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "9227000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "31067000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": null,
+            "reason_codes": [
+              "NO_SOURCE_ROW_FOR_PERIOD"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "debt_short_term_total": {
+            "concept": null,
+            "reason_codes": [
+              "MISSING_PART:debt_short_term_borrowings"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "40294000000"
+          },
+          "depreciation_amortization": {
+            "concept": null,
+            "reason_codes": [
+              "NO_SOURCE_ROW_FOR_PERIOD",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "7453000000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "40294000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "133749000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "155237000000"
+          },
+          "revenue": {
+            "concept": "RevenueFromContractWithCustomerExcludingAssessedTax",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "331839000000"
+          }
+        }
+      },
+      "overall": "SOURCE_PARTIALLY_VALIDATED",
+      "source_identity_states": [
+        {
+          "check": "published",
+          "state": "MATCH"
+        },
+        {
+          "check": "approved",
+          "state": "DIFFERENT_SOURCE_OBJECT"
+        }
+      ],
+      "state_counts": {
+        "MISSING_OBSERVATION": 5,
+        "PASS_DERIVED": 5,
+        "SOURCE_UNVALIDATED": 15,
+        "SOURCE_VALIDATED": 14
+      },
+      "ticker": "MSFT"
+    },
+    {
+      "blocking_issues": [
+        "PUBLISHED_SEC_FACTS_NOT_IN_RELEASE"
+      ],
+      "cik": "0001045810",
+      "fields": {
+        "2024-01-28": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquireProductiveAssets",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "1069000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "7280000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "1250000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "8459000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "0"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "1250000000"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "9709000000"
+          },
+          "depreciation_amortization": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "1508000000"
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24940000000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "9709000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "29760000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "32972000000"
+          },
+          "revenue": {
+            "concept": "Revenues",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "60922000000"
+          }
+        },
+        "2025-01-26": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquireProductiveAssets",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "3236000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "8589000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "0"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "8463000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": "CommercialPaper",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "0"
+          },
+          "debt_short_term_total": {
+            "concept": "LongTermDebtCurrent+CommercialPaper",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "0"
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "8463000000"
+          },
+          "depreciation_amortization": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "1864000000"
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24804000000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "8463000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "72880000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "81453000000"
+          },
+          "revenue": {
+            "concept": "Revenues",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "130497000000"
+          }
+        },
+        "2026-01-25": {
+          "capital_expenditure": {
+            "concept": "PaymentsToAcquireProductiveAssets",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "6042000000"
+          },
+          "cash_and_equivalents": {
+            "concept": "CashAndCashEquivalentsAtCarryingValue",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "10605000000"
+          },
+          "debt_current": {
+            "concept": "LongTermDebtCurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "999000000"
+          },
+          "debt_noncurrent": {
+            "concept": "LongTermDebtNoncurrent",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "7469000000"
+          },
+          "debt_short_term_borrowings": {
+            "concept": null,
+            "reason_codes": [
+              "NO_SOURCE_ROW_FOR_PERIOD"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "debt_short_term_total": {
+            "concept": null,
+            "reason_codes": [
+              "MISSING_PART:debt_short_term_borrowings"
+            ],
+            "state": "MISSING_OBSERVATION",
+            "unit": "USD",
+            "value": null
+          },
+          "debt_total_reported": {
+            "concept": "LongTermDebt",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "SINGLE_SOURCE_OBSERVATION"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "8468000000"
+          },
+          "depreciation_amortization": {
+            "concept": "DepreciationDepletionAndAmortization",
+            "reason_codes": [
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "2843000000"
+          },
+          "diluted_weighted_average_shares": {
+            "concept": "WeightedAverageNumberOfDilutedSharesOutstanding",
+            "reason_codes": [
+              "ALTERNATIVE_TAG_NOT_CONTRACT_EQUIVALENT",
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "shares",
+            "value": "24514000000"
+          },
+          "interest_bearing_debt_total": {
+            "concept": "LongTermDebtNoncurrent+LongTermDebtCurrent",
+            "reason_codes": [],
+            "state": "PASS_DERIVED",
+            "unit": "USD",
+            "value": "8468000000"
+          },
+          "net_income_common": {
+            "concept": "NetIncomeLoss",
+            "reason_codes": [
+              "SUPERSEDED_FILINGS_IGNORED",
+              "NET_INCOME_TO_COMMON_UNADJUSTED",
+              "SECOND_SOURCE_AGREES_ON_BASIS_CHANGING_CONCEPT"
+            ],
+            "state": "SOURCE_UNVALIDATED",
+            "unit": "USD",
+            "value": "120067000000"
+          },
+          "operating_income_ebit": {
+            "concept": "OperatingIncomeLoss",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "130387000000"
+          },
+          "revenue": {
+            "concept": "Revenues",
+            "reason_codes": [
+              "SINGLE_SOURCE_OBSERVATION",
+              "SECOND_SOURCE_AGREES"
+            ],
+            "state": "SOURCE_VALIDATED",
+            "unit": "USD",
+            "value": "215938000000"
+          }
+        }
+      },
+      "overall": "SOURCE_PARTIALLY_VALIDATED",
+      "source_identity_states": [
+        {
+          "check": "approved",
+          "state": "MATCH"
+        }
+      ],
+      "state_counts": {
+        "MISSING_OBSERVATION": 2,
+        "PASS_DERIVED": 5,
+        "SOURCE_UNVALIDATED": 18,
+        "SOURCE_VALIDATED": 14
+      },
+      "ticker": "NVDA"
+    }
+  ],
+  "contract": "zion-sec-fundamentals-contract-v1",
+  "limitations": [
+    "serving_release_candidate: sampled manifest artifacts are not stored in R2 (3 of 3 missing)",
+    "Aggregate manifest row counts are not evidence that an individual observation is correct.",
+    "Storage access does not establish availability dates, freshness or redistribution rights.",
+    "Stored timestamps and ETags are not financial observation dates."
+  ],
+  "mode": "live",
+  "report_sha256": "a107fecd673573038f46544aceebdbf9b9f126a05b4dd66a11b099f59dcaf15e",
+  "schema_version": "zion-financial-registry-report-v1",
+  "serving_coverage": {
+    "coverage": [
+      {
+        "basis": "Consolidated revenue.",
+        "field_id": "revenue",
+        "serving_metric": "revenue",
+        "serving_metric_issuers": 437,
+        "serving_metric_observations": 55263,
+        "serving_metric_present": true,
+        "state": "SUPPORTED"
+      },
+      {
+        "basis": "Consolidated operating income.",
+        "field_id": "operating_income_ebit",
+        "serving_metric": "operating_income",
+        "serving_metric_issuers": 420,
+        "serving_metric_observations": 50630,
+        "serving_metric_present": true,
+        "state": "SUPPORTED"
+      },
+      {
+        "basis": "Serving metric is consolidated net income, not income attributable to common shareholders.",
+        "field_id": "net_income_common",
+        "serving_metric": "net_income",
+        "serving_metric_issuers": 495,
+        "serving_metric_observations": 94806,
+        "serving_metric_present": true,
+        "state": "BASIS_DIFFERS"
+      },
+      {
+        "basis": "No depreciation/amortization metric is published in the serving metric catalog.",
+        "field_id": "depreciation_amortization",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "No capital expenditure metric is published in the serving metric catalog.",
+        "field_id": "capital_expenditure",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving metric is an instant common shares outstanding count, not diluted weighted-average shares.",
+        "field_id": "diluted_weighted_average_shares",
+        "serving_metric": "shares_outstanding",
+        "serving_metric_issuers": 461,
+        "serving_metric_observations": 46652,
+        "serving_metric_present": true,
+        "state": "BASIS_DIFFERS"
+      },
+      {
+        "basis": "Cash and cash equivalents at period end.",
+        "field_id": "cash_and_equivalents",
+        "serving_metric": "cash",
+        "serving_metric_issuers": 477,
+        "serving_metric_observations": 59771,
+        "serving_metric_present": true,
+        "state": "SUPPORTED"
+      },
+      {
+        "basis": "Serving catalog publishes no current/noncurrent debt split.",
+        "field_id": "debt_current",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving catalog publishes no current/noncurrent debt split.",
+        "field_id": "debt_noncurrent",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving catalog publishes no short-term borrowings metric.",
+        "field_id": "debt_short_term_borrowings",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "ABSENT_FROM_SERVING_CATALOG"
+      },
+      {
+        "basis": "Serving metric is a selected reported long-term debt obligation, not total interest-bearing debt and not total liabilities.",
+        "field_id": "debt_total_reported",
+        "serving_metric": "total_debt",
+        "serving_metric_issuers": 366,
+        "serving_metric_observations": 22384,
+        "serving_metric_present": true,
+        "state": "PARTIAL"
+      },
+      {
+        "basis": "Requires a current/noncurrent split that the serving layer does not publish.",
+        "field_id": "interest_bearing_debt_total",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "NOT_DERIVABLE"
+      },
+      {
+        "basis": "Requires a short-term borrowings split that the serving layer does not publish.",
+        "field_id": "debt_short_term_total",
+        "serving_metric": null,
+        "serving_metric_issuers": null,
+        "serving_metric_observations": null,
+        "serving_metric_present": false,
+        "state": "NOT_DERIVABLE"
+      }
+    ],
+    "metric_count": 15,
+    "supported_fields": [
+      "revenue",
+      "operating_income_ebit",
+      "cash_and_equivalents"
+    ],
+    "unsupported_fields": [
+      "net_income_common",
+      "depreciation_amortization",
+      "capital_expenditure",
+      "diluted_weighted_average_shares",
+      "debt_current",
+      "debt_noncurrent",
+      "debt_short_term_borrowings",
+      "debt_total_reported",
+      "interest_bearing_debt_total",
+      "debt_short_term_total"
+    ]
+  },
+  "source_families": [
+    {
+      "artifact_sample_complete": null,
+      "family_id": "sec_bulk_archive",
+      "findings": [],
+      "state": "resolved"
+    },
+    {
+      "artifact_sample_complete": false,
+      "family_id": "serving_release_candidate",
+      "findings": [
+        "MANIFEST_SHA256_MATCH",
+        "MANIFEST_IDENTITY_OK",
+        "MANIFEST_ARTIFACTS_NOT_STORED"
+      ],
+      "state": "resolved"
+    },
+    {
+      "artifact_sample_complete": true,
+      "family_id": "serving_release_promoted",
+      "findings": [
+        "MANIFEST_SHA256_MATCH",
+        "MANIFEST_IDENTITY_OK"
+      ],
+      "state": "resolved"
+    },
+    {
+      "artifact_sample_complete": null,
+      "family_id": "valuation_packets",
+      "findings": [
+        "APPROVED_PACKET_INDEX_READ"
+      ],
+      "state": "resolved"
+    },
+    {
+      "artifact_sample_complete": null,
+      "family_id": "sec_facts_release",
+      "findings": [
+        "MANIFEST_LISTED_NOT_POINTERED"
+      ],
+      "state": "resolved"
+    }
+  ]
+}

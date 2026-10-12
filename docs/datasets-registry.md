@@ -46,6 +46,9 @@ redistribution rights.
   reconciliations, and cross-source validation.
 - `report.py` — company-by-field reconciliation, serving-coverage mapping,
   content-addressed report digest, sanitized exports.
+- `compare.py` — baseline/candidate regression comparison: stable observation
+  keys, explicit severity per finding, documented thresholds, corroboration
+  independence, and sanitized exports behind a leakage guard.
 - `cli.py` / `__main__.py` — `python -m zion_terminal.datasets`.
 
 ### Source families
@@ -64,7 +67,12 @@ PYTHONPATH=src python -m zion_terminal.datasets discover --family sec_bulk_archi
 PYTHONPATH=src python -m zion_terminal.datasets release --family serving_release_promoted --sample 3
 PYTHONPATH=src python -m zion_terminal.datasets report --tickers AAPL,MSFT,NVDA --as-of 2026-10-11
 PYTHONPATH=src python -m zion_terminal.datasets report --tickers TSTA,TSTB --fixture tests/fixtures/datasets/tree
+PYTHONPATH=src python -m zion_terminal.datasets compare --baseline B.json --candidate N.json --out artifacts/registry-m2
 ```
+
+`compare` needs no bridge: it reads two report generations and classifies every
+change (see [datasets-regression-canary.md](datasets-regression-canary.md) for
+the finding codes, thresholds, exit status and the offline/live canary split).
 
 ## The SEC annual fundamentals contract
 

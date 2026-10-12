@@ -1,0 +1,74 @@
+name: Dataset regression canary (offline)
+
+# Two halves of the canary are documented in docs/datasets-regression-canary.md.
+# This workflow is the offline half: it needs no credentials, reads only the
+# synthetic fixture tree and the committed corpora, and runs on a schedule. The
+# live half needs the authenticated loopback bridge to the private zion-datasets
+# worker and is operator-run (scripts/dataset_canary.py); the private worker is
+# deliberately not published to make unattended live screening easier.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/zion_terminal/datasets/**'
+      - 'tests/unit/test_dataset_compare*.py'
+      - 'tests/unit/test_dataset_*.py'
+      - 'tests/unit/test_sec_fundamentals_contract.py'
+      - 'tests/fixtures/datasets/**'
+      - 'scripts/dataset_canary.py'
+      - 'docs/status/datasets-m2-*'
+      - '.github/workflows/datasets-regression-canary.yml'
+  pull_request:
+    paths:
+      - 'src/zion_terminal/datasets/**'
+      - 'tests/unit/test_dataset_compare*.py'
+      - 'tests/unit/test_dataset_*.py'
+      - 'tests/unit/test_sec_fundamentals_contract.py'
+      - 'tests/fixtures/datasets/**'
+      - 'scripts/dataset_canary.py'
+      - 'docs/status/datasets-m2-*'
+      - '.github/workflows/datasets-regression-canary.yml'
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest ruff
+
+      - name: The committed comparison corpus must match its generator
+        run: |
+          python tests/fixtures/datasets/build_comparison_fixtures.py
+          git diff --exit-code tests/fixtures/datasets/comparisons
+
+      - name: Every documented scenario keeps its declared severity
+        run: |
+          PYTHONPATH=src python -m pytest \
+            tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py -q
+
+      - name: Rebuild the synthetic report and compare it against the approved baseline
+        run: |
+          PYTHONPATH=src python -m zion_terminal.datasets report \
+            --tickers TSTA,TSTB --as-of 2026-10-11 --out artifacts/canary \
+            --fixture tests/fixtures/datasets/tree
+          PYTHONPATH=src python -m zion_terminal.datasets compare \
+            --baseline tests/fixtures/datasets/baselines/fixture-report.json \
+            --candidate artifacts/canary/report.json \
+            --out artifacts/canary/compare \
+            --expect-severity PASS
+
+      - name: The comparator and the canary script are lint-clean
+        run: |
+          ruff check src/zion_terminal/datasets scripts/dataset_canary.py \
+            tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py \
+            tests/fixtures/datasets/build_comparison_fixtures.py
+          ruff format --check src/zion_terminal/datasets scripts/dataset_canary.py \
+            tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py \
+            tests/fixtures/datasets/build_comparison_fixtures.py
