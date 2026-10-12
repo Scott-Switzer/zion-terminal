@@ -38,6 +38,6 @@ jobs:
       - run: pip install pytest ruff
       # The registry and contract are validated entirely on the synthetic tree,
       # so this job needs no R2 access and no credentials.
-      - run: pytest tests/unit/test_dataset_transport.py tests/unit/test_dataset_registry.py tests/unit/test_sec_fundamentals_contract.py tests/unit/test_dataset_report.py -q
-      - run: ruff check src/zion_terminal/datasets tests/unit/test_dataset_registry.py tests/unit/test_dataset_report.py tests/unit/test_dataset_transport.py tests/unit/test_sec_fundamentals_contract.py tests/fixtures/datasets/build_fixtures.py
-      - run: ruff format --check src/zion_terminal/datasets tests/unit/test_dataset_registry.py tests/unit/test_dataset_report.py tests/unit/test_dataset_transport.py tests/unit/test_sec_fundamentals_contract.py tests/fixtures/datasets/build_fixtures.py
+      - run: pytest tests/unit/test_dataset_transport.py tests/unit/test_dataset_registry.py tests/unit/test_sec_fundamentals_contract.py tests/unit/test_dataset_report.py tests/unit/test_dataset_cli.py -q
+      - run: ruff check src/zion_terminal/datasets tests/unit/test_dataset_registry.py tests/unit/test_dataset_report.py tests/unit/test_dataset_transport.py tests/unit/test_dataset_cli.py tests/unit/test_sec_fundamentals_contract.py tests/fixtures/datasets/build_fixtures.py
+      - run: ruff format --check src/zion_terminal/datasets tests/unit/test_dataset_registry.py tests/unit/test_dataset_report.py tests/unit/test_dataset_transport.py tests/unit/test_dataset_cli.py tests/unit/test_sec_fundamentals_contract.py tests/fixtures/datasets/build_fixtures.py
