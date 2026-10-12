@@ -121,8 +121,12 @@ passed / 1 skipped.
 
 | workflow | run | head | status |
 |---|---|---|---|
-| Validate private dataset service | `RUN_DATASET_SERVICE` | `HEAD_SHA` | `STATUS_DATASET_SERVICE` |
-| Dataset regression canary (offline) | `RUN_CANARY` | `HEAD_SHA` | `STATUS_CANARY` |
+| Validate private dataset service | [38286445740](https://github.com/Scott-Switzer/zion-terminal/actions/runs/38286445740) | `1b4411d1` (code) | success |
+| Dataset regression canary (offline) | [38286444630](https://github.com/Scott-Switzer/zion-terminal/actions/runs/38286444630) | `1b4411d1` (code) | success |
+| Dataset regression canary (offline), push event | [38286436657](https://github.com/Scott-Switzer/zion-terminal/actions/runs/38286436657) | `1b4411d1` (code) | success |
+
+Both runs pass at the head that carries the code; the evidence-only commits that
+follow are documentation and re-run both workflows on their own heads.
 
 The canary workflow job performs four checks: the committed comparison corpus
 must match its generator byte-for-byte, every documented scenario must keep its
