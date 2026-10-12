@@ -34,6 +34,7 @@ from pathlib import Path
 
 from zion_terminal.datasets.compare import (
     EXIT_STATUS,
+    IncomparableReports,
     compare_reports,
     load_report,
     write_comparison,
@@ -128,9 +129,19 @@ def main(argv: list[str] | None = None) -> int:
     comparison = None
     comparison_written: dict[str, str] = {}
     if baseline_path is not None:
-        comparison = compare_reports(
-            load_report(baseline_path), load_report(candidate_dir / "report.json")
-        )
+        try:
+            comparison = compare_reports(
+                load_report(baseline_path), load_report(candidate_dir / "report.json")
+            )
+        except IncomparableReports as error:
+            # Refuse cleanly: an incomparable pair is never a pass, and it must
+            # never reach baseline advancement.
+            print(f"INCOMPARABLE_REPORTS: {error}", file=sys.stderr)
+            print(
+                "the baseline and the candidate are not comparable; no baseline was advanced",
+                file=sys.stderr,
+            )
+            return 2
         comparison_written = write_comparison(comparison, args.out / "comparison")
     severity = None if comparison is None else comparison["overall_severity"]
 
