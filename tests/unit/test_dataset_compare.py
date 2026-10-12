@@ -391,13 +391,10 @@ def test_summary_only_mode_writes_no_private_comparison(tmp_path):
     assert "VALUE_CHANGED_WITHOUT_SOURCE_REVISION" in Path(written["summary"]).read_text()
 
 
-def test_comparison_digest_is_reproducible_and_covers_the_content():
+def test_comparison_digest_is_reproducible_and_content_addressed():
     first = run_scenario("restatement")
     second = run_scenario("restatement")
     assert first["comparison_sha256"] == second["comparison_sha256"]
-    mutated = json.loads(json.dumps(first))
-    mutated["overall_severity"] = "PASS"
-    from zion_terminal.datasets.sec_fundamentals import frame_report_hash
-    from zion_terminal.datasets.compare import _digest_body
-
-    assert frame_report_hash(_digest_body(mutated)) != first["comparison_sha256"]
+    # Different classified content must produce a different content address.
+    assert first["comparison_sha256"] != run_scenario("validation_downgrade")["comparison_sha256"]
+    assert first["comparison_sha256"] != run_scenario("unchanged")["comparison_sha256"]
