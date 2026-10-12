@@ -76,3 +76,6 @@ deploy/cloudflare-query/src/vendor/
 # Compact valuation Worker build environments
 deploy/valuation/.venv-workers/
 deploy/valuation/python_modules/
+
+# Private registry evidence (contains private store paths and object hashes)
+artifacts/registry-m1/
