@@ -110,12 +110,23 @@ comparator refuses to treat the shared-source agreement as validation: a
 | dataset unit tests (transport, registry, contract, report, CLI, compare) | `pytest tests/unit/test_dataset_*.py tests/unit/test_sec_fundamentals_contract.py -q` | **118 passed** |
 | comparison library (`test_dataset_compare.py`) | `pytest tests/unit/test_dataset_compare.py -q` | **39 passed** |
 | comparison CLI (`test_dataset_compare_cli.py`) | `pytest tests/unit/test_dataset_compare_cli.py -q` | **11 passed** |
-| full Zion suite | `pytest tests -q` | **615 passed, 1 skipped** |
+| canary script safety (`test_dataset_canary_script.py`) | `pytest tests/unit/test_dataset_canary_script.py -q` | **7 passed** |
+| full Zion suite | `pytest tests -q` | **622 passed, 1 skipped** |
 | lint | `ruff check src/zion_terminal/datasets scripts/dataset_canary.py tests/unit/test_dataset_compare*.py tests/fixtures/datasets/build_comparison_fixtures.py` | clean |
 | format | `ruff format --check` over the same paths | clean |
 
 Before this milestone the dataset suite was 68 tests and the full suite was 565
 passed / 1 skipped.
+
+The canary-script tests exercise the refusal paths through the CLI surface: a
+`FAIL` comparison refuses to advance the baseline and leaves the file
+byte-identical with no history entry, a `WARNING` comparison needs
+`--allow-warning-baseline` (and then records the previous and new digests plus
+the actor, reason and severity), a first run with no baseline at all asks to
+bootstrap one, `--accept-baseline` without `--reason` is refused, and an
+incomparable baseline/candidate pair is refused cleanly with
+`INCOMPARABLE_REPORTS` instead of a traceback — with the baseline untouched in
+every refusal.
 
 ## CI
 

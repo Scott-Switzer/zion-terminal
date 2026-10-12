@@ -14,6 +14,7 @@ on:
     paths:
       - 'src/zion_terminal/datasets/**'
       - 'tests/unit/test_dataset_compare*.py'
+      - 'tests/unit/test_dataset_canary_script.py'
       - 'tests/unit/test_dataset_*.py'
       - 'tests/unit/test_sec_fundamentals_contract.py'
       - 'tests/fixtures/datasets/**'
@@ -24,6 +25,7 @@ on:
     paths:
       - 'src/zion_terminal/datasets/**'
       - 'tests/unit/test_dataset_compare*.py'
+      - 'tests/unit/test_dataset_canary_script.py'
       - 'tests/unit/test_dataset_*.py'
       - 'tests/unit/test_sec_fundamentals_contract.py'
       - 'tests/fixtures/datasets/**'
@@ -51,7 +53,8 @@ jobs:
       - name: Every documented scenario keeps its declared severity
         run: |
           PYTHONPATH=src python -m pytest \
-            tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py -q
+            tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py \
+            tests/unit/test_dataset_canary_script.py -q
 
       - name: Rebuild the synthetic report and compare it against the approved baseline
         run: |
@@ -68,7 +71,9 @@ jobs:
         run: |
           ruff check src/zion_terminal/datasets scripts/dataset_canary.py \
             tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py \
+            tests/unit/test_dataset_canary_script.py \
             tests/fixtures/datasets/build_comparison_fixtures.py
           ruff format --check src/zion_terminal/datasets scripts/dataset_canary.py \
             tests/unit/test_dataset_compare.py tests/unit/test_dataset_compare_cli.py \
+            tests/unit/test_dataset_canary_script.py \
             tests/fixtures/datasets/build_comparison_fixtures.py
