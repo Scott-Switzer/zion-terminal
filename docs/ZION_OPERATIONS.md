@@ -65,3 +65,17 @@ After rollback, rerun `/healthz`, `/v2/capabilities`, the representative REST/MC
 - Serving release mismatch: stop deployment acceptance; verify `gold/serving/coverage25/CURRENT.json` and do not mutate data.
 
 No credentials, R2 secrets, full financial payloads, or tracebacks belong in workflow logs.
+
+## October 13, 2026 deployment alignment
+
+Scheduled serving checks now pin the verified coverage25 CURRENT release
+`0a318ed6667fcf4c4d80e8d1c44def7a`; older release IDs above are historical
+acceptance/rollback evidence. The live service already had V3 and immutable
+`storage_key` artifact references from deployed source `aada866`; these modules
+are now preserved in main alongside the authenticated private API. No financial
+publication pointer was changed.
+
+The private API adds identity, normalized financials, comparable revenue growth,
+stored price and stored price history. Credentials use ZION_PRIVATE_API_TOKEN.
+See private-serving-api.md. Stored prices remain dated observations, not live
+quotes. WRDS collection and all provider acquisition remain off.
