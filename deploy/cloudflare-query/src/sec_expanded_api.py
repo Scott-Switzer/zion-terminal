@@ -241,7 +241,12 @@ async def _query(env, request, request_id):
         result = json.loads(raw)
         if result.get("release") != release:
             fail("EXPANSION_INTEGRITY_FAILURE", "cached release mismatch", 503)
-        return {**result, "request_id": request_id, "cache": "HIT"}
+        return {
+            **result,
+            "entity": {**result["entity"], "requested_symbol": symbol.upper() if symbol else None},
+            "request_id": request_id,
+            "cache": "HIT",
+        }
     shard = index["shards"].get(cik[-2:])
     entry = (await metadata(env, shard)).get(cik) if shard else None
     if entry is None:

@@ -167,3 +167,11 @@ def test_source_version_change_and_tampered_cache_are_rejected():
     env.MARKET_DATA.objects[env.MARKET_DATA.puts[0]].raw = b"{}"
     with pytest.raises(PrivateFinancialsError):
         query(env, operation="sec_financials", cik="0000001234")
+
+
+def test_cache_identity_tracks_current_request():
+    env = env_fixture()
+    query(env, operation="sec_financials", symbol="NEW")
+    result = query(env, operation="sec_financials", cik="0000001234")
+    assert result["cache"] == "HIT"
+    assert result["entity"]["requested_symbol"] is None

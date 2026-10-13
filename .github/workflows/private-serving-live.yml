@@ -14,8 +14,15 @@ jobs:
           ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/private_serving_acceptance.py --output private-serving-acceptance.json
+      - name: Verify expanded SEC serving and persistence
+        env:
+          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
+        run: python3 scripts/sec_expanded_acceptance.py --output sec-expanded-acceptance.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: private-serving-acceptance
-          path: private-serving-acceptance.json
+          path: |
+            private-serving-acceptance.json
+            sec-expanded-acceptance.json
