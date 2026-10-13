@@ -91,7 +91,7 @@ async def handle_private(env, request, *, request_id):
                 "operations": list(OPERATIONS),
                 "acquisition_enabled": False,
                 "as_of_format": "timezone-aware RFC3339 instant",
-                "pending": ["estimates", "prices", "macro", "historical_research"],
+                    "pending": ["estimates", "macro", "historical_research"],
                 "scope": "existing published US company data only",
             }, 200
         if request.method != "POST" or path != "/private/v1/query":

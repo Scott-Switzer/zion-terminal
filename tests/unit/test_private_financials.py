@@ -110,3 +110,15 @@ def test_published_sec_revenue_contract_is_an_explicit_comparison_basis():
     assert normalized[0]["accounting_basis"] is None
     assert normalized[0]["comparison_basis"] == "zion:consolidated-reported-revenue:v1"
     assert len(annual_revenue_growth(normalized)["year_over_year"]) == 5
+
+
+def test_producer_batch_ids_do_not_change_the_canonical_metric_definition():
+    rows = annual_rows()
+    for i, row in enumerate(rows):
+        row.pop("accounting_basis")
+        row.update(
+            source_id="SEC", derivation_type="reported", producer_release=f"producer-batch-{i}"
+        )
+    result = annual_revenue_growth([normalize_observation(row, release_id="r") for row in rows])
+    assert len(result["year_over_year"]) == 5
+    assert len({row["producer_release"] for row in result["inputs"]}) == 6

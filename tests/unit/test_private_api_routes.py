@@ -93,7 +93,13 @@ def test_missing_runtime_secret_is_unavailable(worker):
 def test_private_capabilities_are_honest_and_authenticated(worker):
     response = fetch(worker, Request("/private/v1/capabilities"))
     assert response.status == 200
-    assert response.value["operations"] == ["identity", "financials", "revenue_growth"]
+    assert response.value["operations"] == [
+        "identity",
+        "financials",
+        "revenue_growth",
+        "price",
+        "price_history",
+    ]
     assert response.value["acquisition_enabled"] is False
     assert "estimates" in response.value["pending"]
 

@@ -236,3 +236,74 @@ def test_decimal_formatting_does_not_create_a_false_source_conflict():
     rows.append({**rows[-1], "value_decimal": "161.051000000000000000"})
     replace_artifact(env, path, rows)
     assert call(env, operation="financials", symbol="AAPL")["data"]["observations"]
+
+
+def add_prices(env):
+    prefix = "gold/serving/releases/r1/"
+    key = "entities/a/snapshot.json"
+    snapshot = json.loads(env.MARKET_DATA.objects[prefix + key])
+    snapshot["latest_price"] = {
+        "close": "123.45",
+        "unit": "USD/share",
+        "session_date": "2025-12-31",
+        "available_at": "2025-12-31T21:00:00Z",
+        "evidence_id": "p1",
+    }
+    replace_artifact(env, key, snapshot)
+    path = "entities/a/prices/daily/2025.json"
+    rows = [
+        {
+            **snapshot["latest_price"],
+            "close": "120.00",
+            "session_date": "2025-12-30",
+            "available_at": "2025-12-30T21:00:00Z",
+        },
+        snapshot["latest_price"],
+    ]
+    raw = json.dumps(rows).encode()
+    env.MARKET_DATA.objects[prefix + path] = raw
+    manifest = json.loads(env.MARKET_DATA.objects[prefix + "manifest.json"])
+    manifest["artifacts"].append({"path": path, "sha256": hashlib.sha256(raw).hexdigest()})
+    mraw = json.dumps(manifest).encode()
+    env.MARKET_DATA.objects[prefix + "manifest.json"] = mraw
+    pointer = json.loads(env.MARKET_DATA.objects["gold/serving/CURRENT.json"])
+    pointer["manifest_sha256"] = hashlib.sha256(mraw).hexdigest()
+    env.MARKET_DATA.objects["gold/serving/CURRENT.json"] = json.dumps(pointer).encode()
+
+
+def test_price_queries_pin_release_and_disclose_actual_session():
+    env = make_env()
+    add_prices(env)
+    result = call(env, operation="price", symbol="AAPL")
+    assert result["data"]["price"]["value"] == "123.45"
+    assert result["data"]["price"]["session_date"] == "2025-12-31"
+    assert result["coverage"]["real_time"] is False
+    assert env.MARKET_DATA.keys.count("gold/serving/CURRENT.json") == 1
+    assert "gold/" not in json.dumps(result)
+
+
+def test_price_history_filters_as_of_and_does_not_fall_forward():
+    env = make_env()
+    add_prices(env)
+    result = call(
+        env, operation="price_history", symbol="AAPL", as_of="2025-12-31T00:00:00Z", limit=1
+    )
+    assert len(result["data"]["prices"]) == 1
+    assert result["data"]["prices"][0]["session_date"] == "2025-12-30"
+
+
+def test_price_limits_are_bounded():
+    with pytest.raises(PrivateFinancialsError):
+        call(make_env(), operation="price_history", symbol="AAPL", limit=501)
+
+
+def test_growth_uses_full_year_contexts_not_short_contexts_labelled_fy():
+    env = make_env()
+    path = "entities/a/fundamentals/annual.json"
+    rows = json.loads(env.MARKET_DATA.objects["gold/serving/releases/r1/" + path])
+    rows.append({**rows[-1], "period_start": "2025-10-01", "value_decimal": "40"})
+    replace_artifact(env, path, rows)
+    assert (
+        call(env, operation="revenue_growth", symbol="AAPL")["data"]["cumulative_percent"]
+        == "61.051"
+    )

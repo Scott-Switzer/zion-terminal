@@ -100,13 +100,15 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
     c["status"] = (
         "PASS"
         if c["http_status"] == 200
-        and caps.get("operations") == ["identity", "financials", "revenue_growth"]
+        and set(caps.get("operations", [])) >= {"identity", "financials", "revenue_growth"}
         else "FAIL"
     )
     authenticated = all(check["status"] == "PASS" for check in (a, b, c))
     for symbol in ("AAPL", "MSFT", "NVDA"):
         release = None
-        for operation in ("identity", "financials", "revenue_growth"):
+        operations = ["identity", "financials", "revenue_growth"]
+        operations += [op for op in ("price", "price_history") if op in caps.get("operations", [])]
+        for operation in operations:
             payload = {"symbol": symbol, "operation": operation}
             if release:
                 payload["expected_release_id"] = release
@@ -135,6 +137,18 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             data, coverage = body.get("data", {}), body.get("coverage", {})
             if not isinstance(data, dict) or not isinstance(coverage, dict):
                 continue
+            if operation in ("price", "price_history"):
+                prices = [data.get("price")] if operation == "price" else data.get("prices")
+                if not isinstance(prices, list) or any(
+                    not isinstance(row, dict)
+                    or not row.get("session_date")
+                    or not isinstance(row.get("value"), str)
+                    for row in prices
+                ):
+                    continue
+                if not prices or prices == [None]:
+                    check.update(status="PARTIAL", coverage_reason="PRICE_NOT_AVAILABLE")
+                    continue
             if operation == "financials":
                 observations = data.get("observations")
                 if not isinstance(observations, list) or any(

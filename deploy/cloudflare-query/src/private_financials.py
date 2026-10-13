@@ -94,11 +94,6 @@ def annual_revenue_growth(observations: list[dict], *, years: int = 5) -> dict:
         or any(r.get(k) != rows[0].get(k) for r in rows for k in keys)
     ):
         fail("INCOMPARABLE_OBSERVATIONS", "issuer, metric, units, basis or release differs")
-    if (
-        rows[0].get("comparison_basis_source") == "CANONICAL_METRIC_DEFINITION"
-        and len({r.get("producer_release") for r in rows}) != 1
-    ):
-        fail("INCOMPARABLE_OBSERVATIONS", "canonical producer lineage differs")
     try:
         bounds = [
             (date.fromisoformat(r["period_start"]), date.fromisoformat(r["period_end"]))

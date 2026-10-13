@@ -1,6 +1,7 @@
 """Bounded private queries over one integrity-checked, immutable release."""
 
 import re
+from datetime import date
 
 from private_financials import (
     PrivateFinancialsError,
@@ -19,7 +20,7 @@ from serving_v2 import (
 )
 from temporal_core import normalize_source_instant
 
-OPERATIONS = ("identity", "financials", "revenue_growth")
+OPERATIONS = ("identity", "financials", "revenue_growth", "price", "price_history")
 
 
 def invalid(message):
@@ -35,6 +36,7 @@ def validate_request(request: dict) -> dict:
     allowed = {"operation", "symbol", "as_of", "expected_release_id"}
     allowed |= {"metrics", "period", "lookback"} if operation == "financials" else set()
     allowed |= {"years"} if operation == "revenue_growth" else set()
+    allowed |= {"limit"} if operation == "price_history" else set()
     if set(request) - allowed:
         invalid("unknown argument")
     symbol = request.get("symbol")
@@ -71,6 +73,10 @@ def validate_request(request: dict) -> dict:
         n = request.get("years", 5)
         if type(n) is not int or not 1 <= n <= 10:
             invalid("years must be an integer from 1 to 10")
+    if operation == "price_history":
+        limit = request.get("limit", 50)
+        if type(limit) is not int or not 1 <= limit <= 500:
+            invalid("limit must be an integer from 1 to 500")
     return {**request, "symbol": symbol.upper()}
 
 
@@ -140,13 +146,70 @@ async def _query(env, request: dict, request_id: str) -> dict:
     operation = request["operation"]
     missing, observations = [], []
     data = {"identity": entity}
-    if operation != "identity":
+    if operation in ("price", "price_history"):
+        cutoff = _as_of(request.get("as_of"))
+        limit = request.get("limit", 50) if operation == "price_history" else 1
+        prices = []
+        latest_price = snapshot.get("latest_price")
+        if operation == "price" and latest_price and _available(latest_price, cutoff):
+            prices = [latest_price]
+        else:
+            prefix = f"{key}/prices/daily/"
+            paths = sorted(
+                (
+                    item["path"]
+                    for item in manifest.get("artifacts", [])
+                    if item.get("path", "").startswith(prefix)
+                ),
+                reverse=True,
+            )
+            for path in paths:
+                if request.get("as_of") and path.rsplit("/", 1)[-1][:4] > request["as_of"][:4]:
+                    continue
+                rows = await artifact(env, manifest, path)
+                prices.extend(row for row in rows if _available(row, cutoff))
+                if len(prices) >= limit:
+                    break
+        prices = sorted(prices, key=lambda r: r.get("session_date") or "")[-limit:]
+        normalized_prices = [
+            {
+                "value": str(decimal_value(row.get("close"))),
+                "unit": row.get("unit"),
+                "session_date": row.get("session_date"),
+                "available_at": row.get("available_at"),
+                "volume": row.get("volume"),
+                "evidence_id": row.get("evidence_id"),
+                "serving_release_id": release_id,
+            }
+            for row in prices
+        ]
+        data = (
+            {"price": normalized_prices[-1] if normalized_prices else None}
+            if operation == "price"
+            else {"prices": normalized_prices}
+        )
+        if not prices:
+            missing.append("PRICE_NOT_AVAILABLE")
+    if operation in ("financials", "revenue_growth"):
         period = request.get("period", "annual")
         rows = await artifact(env, manifest, f"{key}/fundamentals/{period}.json")
         if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
             raise PrivateFinancialsError("DATA_UNAVAILABLE", "invalid financial observations", 503)
         metrics = request.get("metrics", ["revenue"])
         eligible = [r for r in rows if r.get("metric_id") in metrics]
+        if operation == "revenue_growth":
+            full_year = []
+            for row in eligible:
+                try:
+                    days = (
+                        date.fromisoformat(row["period_end"])
+                        - date.fromisoformat(row["period_start"])
+                    ).days + 1
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if 330 <= days <= 380:
+                    full_year.append(row)
+            eligible = full_year
         cutoff = _as_of(request.get("as_of"))
         revisions, latest = {}, {}
         for row in eligible:
@@ -212,6 +275,11 @@ async def _query(env, request: dict, request_id: str) -> dict:
             "missing_reasons": missing,
             "as_of": request.get("as_of"),
             "independent_validation": "NOT_ESTABLISHED",
+            **(
+                {"real_time": False, "price_freshness": "see session_date and available_at"}
+                if operation in ("price", "price_history")
+                else {}
+            ),
         },
         "evidence": [
             {

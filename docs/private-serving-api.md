@@ -46,8 +46,9 @@ Where explicit accounting basis is absent, published reported SEC revenue with
 producer lineage can use the existing FUNDAMENTAL_METRICS consolidated-company
 revenue definition as `comparison_basis=zion:consolidated-reported-revenue:v1`.
 This is labelled CANONICAL_METRIC_DEFINITION; raw accounting basis stays unknown.
-It does not infer GAAP/IFRS or an XBRL tag, and growth requires the same producer
-lineage. Other unknown bases return COMPARABILITY_NOT_ESTABLISHED.
+It does not infer GAAP/IFRS or an XBRL tag. Each producer identity is retained;
+producer batch IDs can differ while the metric definition and pinned serving
+release remain identical. Other unknown bases return COMPARABILITY_NOT_ESTABLISHED.
 Equivalent exact decimal representations compare numerically, preserving original
 source text; genuinely different same-revision values remain conflicts.
 
@@ -75,3 +76,12 @@ sanitized status, coverage reasons and sequential request timings. Exit 0 means
 PASS; 1 means coverage PARTIAL; 2 means FAIL/configuration error. It does not
 print financial records, authorization headers or exception messages.
 Do not run it against an unapproved deployment or place a token in shell history.
+
+## Stored prices
+
+`price` returns the stored latest eligible price; `price_history` accepts `limit`
+from 1–500 (default 50). Both use the same pinned release and dated identity.
+Responses retain session_date, available_at, unit and evidence. Coverage explicitly
+states real_time=false: these endpoints do not claim live quotes or collect data.
+Revenue growth filters full fiscal-year contexts (330–380 days) before selecting
+consecutive comparable periods; an FY label alone is not a full-year duration.
