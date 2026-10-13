@@ -1,0 +1,21 @@
+name: Private serving live acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify deployed private API
+        env:
+          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
+        run: python3 scripts/private_serving_acceptance.py --output private-serving-acceptance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: private-serving-acceptance
+          path: private-serving-acceptance.json
