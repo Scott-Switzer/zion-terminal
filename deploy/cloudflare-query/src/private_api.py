@@ -5,6 +5,7 @@ import re
 from private_financials import (
     PrivateFinancialsError,
     annual_revenue_growth,
+    decimal_value,
     normalize_observation,
 )
 from serving_v2 import (
@@ -161,9 +162,11 @@ async def _query(env, request: dict, request_id: str) -> dict:
                 else None
             )
             revision_key = (*period_key, instant)
-            value_key = tuple(
-                row.get(k)
-                for k in ("value_decimal", "value", "unit", "accounting_basis", "entity_id")
+            value_key = (
+                decimal_value(row.get("value_decimal", row.get("value"))),
+                row.get("unit"),
+                row.get("accounting_basis"),
+                row.get("entity_id"),
             )
             if revision_key in revisions and revisions[revision_key] != value_key:
                 raise PrivateFinancialsError(

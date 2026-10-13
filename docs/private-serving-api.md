@@ -1,6 +1,6 @@
 # Private existing-data serving API
 
-Implementation branch only: not deployed or live-accepted. This first slice reads
+Deployed to the existing thin serving Worker; live acceptance is recorded separately. This first slice reads
 existing US-company financial artifacts; it does not collect WRDS or call providers.
 The frozen public tool registry and contract fingerprint are unchanged.
 
@@ -42,9 +42,14 @@ Decimal. It requires six comparable years for five annual rates, with identical
 issuer, units, accounting basis and release, full fiscal years and positive revenue.
 52/53-week years are supported; missing years, ambiguous revisions, missing basis,
 nonpositive revenue and changed units fail explicitly. CAGR is not emitted.
-The current stored release may lack accounting-basis metadata: financials remain
-available but growth then returns COMPARABILITY_NOT_ESTABLISHED. This is an explicit
-coverage gap, not permission to infer a basis or manufacture a calculation.
+Where explicit accounting basis is absent, published reported SEC revenue with
+producer lineage can use the existing FUNDAMENTAL_METRICS consolidated-company
+revenue definition as `comparison_basis=zion:consolidated-reported-revenue:v1`.
+This is labelled CANONICAL_METRIC_DEFINITION; raw accounting basis stays unknown.
+It does not infer GAAP/IFRS or an XBRL tag, and growth requires the same producer
+lineage. Other unknown bases return COMPARABILITY_NOT_ESTABLISHED.
+Equivalent exact decimal representations compare numerically, preserving original
+source text; genuinely different same-revision values remain conflicts.
 
 Identity and financial temporal filters use the existing release and temporal
 implementation. Historical identity without a supported dated resolver fails

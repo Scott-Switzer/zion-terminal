@@ -97,3 +97,16 @@ def test_normalization_preserves_missing_metadata_and_rejects_float():
     row["value_decimal"] = 1.1
     with pytest.raises(PrivateFinancialsError):
         normalize_observation(row, release_id="r")
+
+
+def test_published_sec_revenue_contract_is_an_explicit_comparison_basis():
+    rows = annual_rows()
+    for row in rows:
+        row.pop("accounting_basis")
+        row.update(
+            source_id="SEC", derivation_type="reported", producer_release="verified-producer"
+        )
+    normalized = [normalize_observation(row, release_id="r") for row in rows]
+    assert normalized[0]["accounting_basis"] is None
+    assert normalized[0]["comparison_basis"] == "zion:consolidated-reported-revenue:v1"
+    assert len(annual_revenue_growth(normalized)["year_over_year"]) == 5

@@ -34,6 +34,20 @@ def normalize_observation(row: dict, *, release_id: str) -> dict:
     if value is not None:
         decimal_value(value)
         value = str(value)
+    basis = row.get("accounting_basis")
+    basis_source = "EXPLICIT_SOURCE_BASIS" if basis else None
+    # FUNDAMENTAL_METRICS.md defines published revenue as consolidated company
+    # revenue. This identifies the canonical metric, not an inferred XBRL tag or
+    # accounting framework. Require the published SEC producer lineage.
+    if (
+        not basis
+        and row.get("metric_id") == "revenue"
+        and row.get("source_id") == "SEC"
+        and row.get("derivation_type") == "reported"
+        and row.get("producer_release")
+    ):
+        basis = "zion:consolidated-reported-revenue:v1"
+        basis_source = "CANONICAL_METRIC_DEFINITION"
     return {
         "entity_id": row.get("entity_id"),
         "instrument_id": row.get("instrument_id"),
@@ -41,6 +55,10 @@ def normalize_observation(row: dict, *, release_id: str) -> dict:
         "value": value,
         "unit": row.get("unit"),
         "accounting_basis": row.get("accounting_basis"),
+        "comparison_basis": basis,
+        "comparison_basis_source": basis_source,
+        "source_id": row.get("source_id"),
+        "derivation_type": row.get("derivation_type"),
         "period_type": row.get("period_type"),
         "period_start": row.get("period_start"),
         "period_end": row.get("period_end"),
@@ -65,9 +83,9 @@ def annual_revenue_growth(observations: list[dict], *, years: int = 5) -> dict:
     if len(rows) < years + 1:
         fail("INCOMPLETE_HISTORY", "growth requires consecutive annual observations")
     rows = rows[-(years + 1) :]
-    if any(not r.get("accounting_basis") for r in rows):
+    if any(not r.get("comparison_basis") for r in rows):
         fail("COMPARABILITY_NOT_ESTABLISHED", "accounting basis is not established")
-    keys = ("entity_id", "metric", "unit", "accounting_basis", "serving_release_id")
+    keys = ("entity_id", "metric", "unit", "comparison_basis", "serving_release_id")
     if any(not rows[0].get(k) for k in keys):
         fail("COMPARABILITY_NOT_ESTABLISHED", "required comparability metadata is missing")
     if (
@@ -76,6 +94,11 @@ def annual_revenue_growth(observations: list[dict], *, years: int = 5) -> dict:
         or any(r.get(k) != rows[0].get(k) for r in rows for k in keys)
     ):
         fail("INCOMPARABLE_OBSERVATIONS", "issuer, metric, units, basis or release differs")
+    if (
+        rows[0].get("comparison_basis_source") == "CANONICAL_METRIC_DEFINITION"
+        and len({r.get("producer_release") for r in rows}) != 1
+    ):
+        fail("INCOMPARABLE_OBSERVATIONS", "canonical producer lineage differs")
     try:
         bounds = [
             (date.fromisoformat(r["period_start"]), date.fromisoformat(r["period_end"]))

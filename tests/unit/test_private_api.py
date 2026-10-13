@@ -227,3 +227,12 @@ def test_revision_order_uses_instants_not_lexical_offsets():
     result = call(env, operation="financials", symbol="AAPL")
     assert result["data"]["observations"][-1]["value"] == "200"
     assert result["data"]["observations"][-1]["available_at"] == "2026-02-01T09:00:00Z"
+
+
+def test_decimal_formatting_does_not_create_a_false_source_conflict():
+    env = make_env()
+    path = "entities/a/fundamentals/annual.json"
+    rows = json.loads(env.MARKET_DATA.objects["gold/serving/releases/r1/" + path])
+    rows.append({**rows[-1], "value_decimal": "161.051000000000000000"})
+    replace_artifact(env, path, rows)
+    assert call(env, operation="financials", symbol="AAPL")["data"]["observations"]
