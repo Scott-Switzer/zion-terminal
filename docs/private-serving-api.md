@@ -54,3 +54,19 @@ sanitized errors. No blanket full-statement, freshness or real-time claim is mad
 Estimates, prices, macro, historical research, free-provider gap filling and derived
 packet publication are subsequent slices. Licensed private validation does not
 turn source records into publicly distributable data.
+
+## Acceptance client
+
+Set `ZION_PRIVATE_BASE_URL` to the credential-free HTTPS origin and supply
+`ZION_PRIVATE_API_TOKEN` through your existing secret mechanism. Then run:
+
+```sh
+python scripts/private_serving_acceptance.py --output /tmp/zion-private-acceptance.json
+```
+
+The client refuses redirects, probes absent/wrong authentication, pins each
+company's release across identity/financials/growth calls and writes only
+sanitized status, coverage reasons and sequential request timings. Exit 0 means
+PASS; 1 means coverage PARTIAL; 2 means FAIL/configuration error. It does not
+print financial records, authorization headers or exception messages.
+Do not run it against an unapproved deployment or place a token in shell history.
