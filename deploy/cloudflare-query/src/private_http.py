@@ -91,8 +91,15 @@ async def handle_private(env, request, *, request_id):
                 "operations": list(OPERATIONS),
                 "acquisition_enabled": False,
                 "as_of_format": "timezone-aware RFC3339 instant",
-                    "pending": ["estimates", "macro", "historical_research"],
-                "scope": "existing published US company data only",
+                "pending": ["estimates", "macro", "historical_research"],
+                "scope": "full private financial storage plus explicit normalized query operations",
+                "datasets": {
+                    "base_path": "/private/v1/datasets",
+                    "stores": ["financial", "research", "filings", "lakehouse"],
+                    "access": "READ_ONLY_SOURCE_BYTES",
+                    "discovery": "PAGINATED_ALL_OBJECTS",
+                    "normalization": "SOURCE_SPECIFIC_NOT_UNIVERSAL",
+                },
             }, 200
         if request.method != "POST" or path != "/private/v1/query":
             error("NOT_FOUND", "private route not found", 404)

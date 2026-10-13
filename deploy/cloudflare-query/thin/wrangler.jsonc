@@ -42,5 +42,11 @@
     "logs": {
       "head_sampling_rate": 1
     }
-  }
+  },
+  "services": [
+    {
+      "binding": "PRIVATE_DATASETS",
+      "service": "zion-datasets"
+    }
+  ]
 }

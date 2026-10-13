@@ -109,6 +109,10 @@ class Default(WorkerEntrypoint):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
+        if path == '/private/v1/datasets' or path.startswith('/private/v1/datasets/'):
+            from private_dataset_proxy import handle
+
+            return await handle(self.env, request)
         if path.startswith('/private/'):
             from private_http import handle_private
 

@@ -31,6 +31,9 @@ jobs:
           tests/unit/test_private_financials.py
           tests/unit/test_private_api.py
           tests/unit/test_private_api_routes.py
+          tests/unit/test_private_dataset_proxy.py
+          tests/unit/test_hosted_datasets_client.py
+          tests/unit/test_collection_serving_acceptance.py
           tests/unit/test_private_serving_acceptance.py
           tests/unit/test_tool_contract_v2.py
           tests/unit/test_serving_v2.py
@@ -44,7 +47,7 @@ jobs:
           tests/unit/test_sec_expanded_acceptance.py
       - name: Changed-module lint and syntax
         run: |
-          ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py deploy/cloudflare-query/src/sec_expanded*.py tests/unit/test_sec_expanded*.py scripts/publish_sec_expanded_index.py scripts/sec_expanded_acceptance.py
+          ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py deploy/cloudflare-query/src/sec_expanded*.py tests/unit/test_sec_expanded*.py scripts/publish_sec_expanded_index.py scripts/sec_expanded_acceptance.py scripts/collection_serving_acceptance.py scripts/datasets_client.py tests/unit/test_hosted_datasets_client.py tests/unit/test_collection_serving_acceptance.py
           python -m py_compile deploy/cloudflare-query/src/private_*.py deploy/cloudflare-query/src/thin_worker.py scripts/private_serving_acceptance.py
       - name: Frozen contract unchanged
         run: |
