@@ -5,10 +5,11 @@ import json
 import re
 import uuid
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 from workers import Response, WorkerEntrypoint
 
+from data_api import dispatch as dispatch_data_api, select_screen_rows, evidence_rows
 from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION
 from serving_v2 import (
     ServingV2Error,
@@ -35,6 +36,13 @@ from contract_v2 import (
     success as contract_success,
     validate_object,
 )
+from contract_v3 import (
+    CONTRACT_VERSION as V3_CONTRACT_VERSION,
+    TOOLS as V3_TOOLS,
+    contract_sha256 as v3_contract_sha256,
+    success as v3_contract_success,
+)
+from synthetic_v3 import SyntheticReleaseAdapter, SyntheticReleaseError
 
 REAL_WORLD = {"world_type": "real", "world_id": "us-public-markets"}
 _SCREEN_CACHE: dict[str, dict] = {}
@@ -115,15 +123,32 @@ class Default(WorkerEntrypoint):
             return self._response(self._capabilities_v1())
         if request.method == "GET" and path == "/v2/capabilities":
             return self._response(await self._capabilities_v2())
+        if request.method == "GET" and path == "/v3/capabilities":
+            return self._response(await self._capabilities_v3())
         if request.method == "POST" and path == "/mcp":
             return await self._mcp(request, rid)
         try:
+            if path.startswith("/v1/market/") or path == "/v1/securities" or path.startswith("/v1/securities/") or path in {"/v1/calculate", "/v1/bulk/query", "/v1/metrics", "/v1/coverage", "/v1/archive/securities"} or path.startswith("/v1/archive/prices/") or path.startswith("/v1/evidence/") or path in {"/v1/search", "/v1/screen", "/v1/compare"} or any(path.startswith("/v1/" + domain + "/") for domain in ("prices", "fundamentals", "revisions", "entities", "filings")):
+                parameters = parse_qs(urlparse(request.url).query, strict_parsing=False)
+                if any(len(values) != 1 for values in parameters.values()):
+                    raise ContractError("INVALID_ARGUMENT", "duplicate query parameters are not supported")
+                parameters = {key: values[0] for key, values in parameters.items()}
+                payload = await request.json() if request.method == "POST" else None
+                if payload is not None and (not isinstance(payload, dict) or len(json.dumps(payload)) > 32000):
+                    raise ContractError("INVALID_ARGUMENT", "bounded JSON object required")
+                if path in {"/v1/screen", "/v1/compare"}:
+                    if request.method != "POST" or not isinstance(payload, dict):
+                        raise ContractError("INVALID_ARGUMENT", "POST JSON arguments required")
+                    return self._response(add_telemetry(await self._tool_v2(path.rsplit("/", 1)[-1], {"world": REAL_WORLD, "arguments": payload}, rid)))
+                return self._response(add_telemetry(await dispatch_data_api(self.env, request.method, path, parameters, payload, rid)))
             if request.method != "POST":
                 return self._error(rid, "NOT_FOUND", "route not found", 404)
             body = await request.json()
             if not isinstance(body, dict) or len(json.dumps(body)) > 32000:
                 return self._error(rid, "INVALID_REQUEST", "bounded JSON object required", 400)
-            if path.startswith("/v2/tools/"):
+            if path.startswith("/v3/tools/"):
+                result = await self._tool_v3(path.rsplit("/", 1)[-1], body, rid)
+            elif path.startswith("/v2/tools/"):
                 result = await self._tool_v2(path.rsplit("/", 1)[-1], body, rid)
             elif path == "/v1/query":
                 result = await self._query(body, rid)
@@ -135,7 +160,9 @@ class Default(WorkerEntrypoint):
         except ContractError as error:
             return self._error(rid, error.code, error.message, error.status, error.retryable)
         except ServingV2Error as error:
-            return self._error(rid, error.code, error.message, 503 if error.retryable else 404, error.retryable)
+            return self._error(rid, error.code, error.message, 503 if error.retryable else 400 if error.code == "INVALID_REQUEST" else 404, error.retryable)
+        except SyntheticReleaseError as error:
+            return self._error(rid, error.code, error.message, error.status, error.retryable)
         except LookupError as error:
             return self._error(rid, str(error), str(error).replace("_", " ").lower(), 404)
         except ValueError as error:
@@ -203,12 +230,13 @@ class Default(WorkerEntrypoint):
             return {"tool": name, "world": result["world"], "data": {"evidence": result["observations"]}, "evidence": result["observations"], "quality": {"status": "VERIFIED"}, "release": result["release"]}
         if name == "compare":
             metric = body.get("metric", "operating_margin")
+            _, manifest = await load_release(self.env)
             series = {}
             release = {}
             for item in body.get("entities", []):
-                result = await fundamentals(self.env, str(item).upper(), [metric], period=body.get("period"), lookback=min(int(body.get("lookback", 1)), 40), as_of=body.get("as_of"), request_id=rid)
+                result = await fundamentals(self.env, str(item).upper(), [metric], period=body.get("period"), lookback=min(int(body.get("lookback", 1)), 40), as_of=body.get("as_of"), request_id=rid, manifest=manifest)
                 series[str(item).upper()] = result["observations"]
-                release[str(item).upper()] = result["release"]
+                release = result["release"]
             return {"tool": name, "world": world, "data": {"entities": body.get("entities", []), "metric": metric, "series": series}, "evidence": [row for rows in series.values() for row in rows], "quality": {"status": "VERIFIED"}, "release": release}
         if name == "calculate":
             values = body.get("values", [])
@@ -223,6 +251,101 @@ class Default(WorkerEntrypoint):
     def _capabilities_v1(self) -> dict:
         legacy = ("get_fundamentals", "get_price", "get_price_history", "get_evidence", "compare", "resolve_security", "get_corporate_actions")
         return {"schema_version": "1", "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256, "tool_contract_version": CONTRACT_VERSION, "tool_contract_sha256": contract_sha256(), "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worlds": ["real"], "metrics": ["revenue", "operating_margin", "last_price"], "tools": {name: {"supported_worlds": TOOLS[name]["supported_worlds"]} for name in legacy}}
+
+    async def _capabilities_v3(self) -> dict:
+        worlds = [{"world_type": "real", "world_id": "us-public-markets"}]
+        try:
+            world_id = getattr(self.env, "SYNTHETIC_WORLD_ID", "test-world-001")
+            pointer_key = getattr(self.env, "SYNTHETIC_CURRENT_KEY", f"control/synthetic-worlds/{world_id}/CURRENT.json")
+            pointer_obj = await self._synthetic_adapter().read_pointer(world_id)
+            worlds.append({"world_type": "synthetic", "world_id": world_id, "version": pointer_obj.get("version"), "release_id": pointer_obj.get("release_id")})
+        except Exception:
+            pass
+        return {"schema_version": "zion-tool-capabilities-v3", "service_version": getattr(self.env, "SERVICE_VERSION", "thin-staging"), "git_sha": getattr(self.env, "GIT_SHA", "unknown"), "worker_version_id": self._version_id(), "tool_contract_version": V3_CONTRACT_VERSION, "tool_contract_sha256": v3_contract_sha256(), "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256, "worlds": worlds, "tools": [{"name": name, "title": definition["title"], "description": definition["description"], "input_schema": definition["input_schema"], "output_schema": definition["output_schema"], "read_only": True, "deterministic": True, "supported_worlds": definition["supported_worlds"]} for name, definition in V3_TOOLS.items()]}
+
+    def _synthetic_adapter(self) -> SyntheticReleaseAdapter:
+        return SyntheticReleaseAdapter(self.env)
+
+    def _version_id(self) -> str | None:
+        metadata = getattr(self.env, "CF_VERSION_METADATA", None)
+        if metadata is None:
+            return None
+        value = getattr(metadata, "id", None)
+        return str(value) if value else None
+
+    async def _tool_v3(self, name: str, body: dict, rid: str) -> dict:
+        definition = V3_TOOLS.get(name)
+        if definition is None:
+            raise ContractError("TOOL_NOT_FOUND", "tool is not registered", status=404)
+        world = body.get("world")
+        arguments = body.get("arguments")
+        if not isinstance(world, dict) or not isinstance(arguments, dict):
+            raise ContractError("INVALID_REQUEST", "world and arguments are required")
+        validate_object(world, {"type": "object", "required": ["world_type", "world_id"], "properties": {"world_type": {"type": "string"}, "world_id": {"type": "string"}, "version": {"type": "string"}}, "additionalProperties": False})
+        if world.get("world_type") not in {"real", "synthetic"}:
+            raise ContractError("WORLD_NOT_FOUND", "world is not available", status=404)
+        validate_object(arguments, definition["input_schema"])
+        args = dict(arguments)
+        if body.get("as_of") is not None:
+            args["as_of"] = body["as_of"]
+        pinned = body.get("serving_release_id") or body.get("synthetic_release_id")
+        if world["world_type"] == "real":
+            # Keep V3 envelope fields at the V2 envelope boundary. In particular,
+            # V2 validates tool arguments before applying its temporal envelope.
+            v2_body = {"world": world, "arguments": dict(arguments)}
+            if body.get("as_of") is not None:
+                v2_body["as_of"] = body["as_of"]
+            if body.get("serving_release_id") is not None:
+                v2_body["serving_release_id"] = body["serving_release_id"]
+            result = await self._tool_v2(name, v2_body, rid)
+            release = dict(result.get("release") or {})
+            expected_release = body.get("serving_release_id")
+            observed_release = release.get("serving_release_id")
+            if expected_release is not None:
+                if observed_release not in {None, expected_release}:
+                    raise ContractError("RELEASE_MISMATCH", "V2 result release differs from V3 request pin", status=502)
+                release["serving_release_id"] = expected_release
+            return v3_contract_success(name, result.get("data", {}), world=world, evidence=result.get("evidence", []), quality={"status": result.get("quality", {}).get("status", "VERIFIED"), "warnings": [], "source_limitations": []}, provenance={"request_id": rid, "compatibility": "zion-tool-contract-v2"}, release=release, request_id=rid)
+        release = await self._synthetic_adapter().load(world, pinned_release_id=pinned)
+        if name == "calculate":
+            if any(isinstance(value, float) for value in args.get("values", [])):
+                raise ContractError("INVALID_ARGUMENT", "calculator values must be JSON integers or decimal strings")
+            data = calculate_exact(args["operation"], args["values"])
+            return v3_contract_success(name, data, world=release.world, evidence=[], quality={"status": "CALCULATED", "warnings": [], "source_limitations": []}, provenance={"deterministic": True}, release=release.release, request_id=rid)
+        if name in {"resolve_entity", "resolve_security"}:
+            entity = release.entity(args.get("symbol") or args.get("entity_id") or args.get("cik"))
+            data = {"entity_id": entity.get("entity_id"), "symbol": entity.get("symbol"), "name": entity.get("display_name"), "match_type": "symbol", "confidence": 1.0}
+            if name == "resolve_security":
+                data["listing_id"] = f"{entity.get('entity_id')}:listing:{entity.get('symbol')}"
+            return v3_contract_success(name, data, world=release.world, evidence=[], quality={"status": "VERIFIED", "warnings": [], "source_limitations": []}, provenance={"producer": release.manifest.get("producer")}, release=release.release, request_id=rid)
+        if name == "get_fundamentals":
+            rows = release.fundamentals(args); data = {"observations": rows}; evidence = rows
+        elif name == "get_price":
+            row = release.latest_price(args); data = row; evidence = [row]
+        elif name == "get_price_history":
+            rows = release.price_history(args); data = {"prices": rows}; evidence = rows
+        elif name == "get_corporate_actions":
+            rows = release.corporate_actions(args); data = {"actions": rows}; evidence = rows
+        elif name == "get_revision_history":
+            rows = release.revisions(args); data = {"revisions": rows}; evidence = rows
+        elif name == "get_evidence":
+            evidence_id = args.get("evidence_id") or args.get("observation_id") or args.get("action_id")
+            if not evidence_id: raise ContractError("INVALID_ARGUMENT", "evidence_id is required")
+            rows = release.evidence(evidence_id); data = {"evidence": rows}; evidence = rows
+        elif name == "compare":
+            entities = args.get("entities", [])
+            if len(set(entities)) != len(entities): raise ContractError("INVALID_ARGUMENT", "compare entities must be unique")
+            series = []
+            for identifier in entities:
+                entity = release.entity(identifier)
+                rows = release.financial_rows(entity, [args["metric"]], period=args.get("period"), as_of=args.get("as_of"))
+                series.append({"requested_identifier": identifier, "entity_id": entity.get("entity_id"), "observations": rows[-min(int(args.get("lookback", 40)), 40):]})
+            data = {"metric": args["metric"], "series": series}; evidence = [row for item in series for row in item["observations"]]
+        elif name == "screen":
+            rows = release.screen(args); data = {"results": rows}; evidence = []
+        else:
+            raise ContractError("TOOL_NOT_SUPPORTED_FOR_WORLD", "tool is not supported for synthetic world", status=422)
+        return v3_contract_success(name, data, world=release.world, evidence=evidence, quality={"status": "VERIFIED", "warnings": [], "source_limitations": []}, provenance={"producer": release.manifest.get("producer"), "public_only": True}, release=release.release, request_id=rid)
 
     async def _capabilities_v2(self) -> dict:
         try:
@@ -301,6 +424,9 @@ class Default(WorkerEntrypoint):
 
     async def _evidence_v2(self, evidence_id: str, world: dict, rid: str) -> dict:
         _, manifest = await load_release(self.env)
+        if any(entry['path'].startswith('evidence/index/') for entry in manifest['artifacts']):
+            matches = await evidence_rows(self.env, manifest, evidence_id)
+            return {"tool": "get_evidence", "world": world, "data": {"evidence": matches}, "evidence": matches, "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
         index = await artifact(self.env, manifest, "identity/resolver_index.json")
         for entry in index.get("symbols", {}).values():
             path = entry.get("artifact_path")
@@ -320,7 +446,7 @@ class Default(WorkerEntrypoint):
         # unique screens do not pay the uncached CURRENT tail repeatedly.
         # The normal financial tools retain their configured CURRENT semantics.
         _, manifest = await load_release(self.env, pointer_ttl_ms=5000)
-        cache_key = json.dumps({"release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
+        cache_key = json.dumps({"unit_policy": "usd-preferred-homogeneous-units-v1", "release": manifest["serving_release_id"], "world": world, "args": args}, sort_keys=True, separators=(",", ":"))
         cached = _SCREEN_CACHE.get(cache_key)
         if cached is not None:
             return cached
@@ -340,34 +466,14 @@ class Default(WorkerEntrypoint):
         filters = args.get("filters", [])
         fields_requested = {item.get("field") for item in filters}
         fields_requested.update(item.get("field") for item in args.get("sort", []))
-        supported = set(screen.get("fields", [])) & {"revenue", "operating_margin", "net_income", "last_price"}
+        supported = set(screen.get("fields", []))
         for field in fields_requested:
             if field not in supported:
                 raise ContractError("METRIC_NOT_AVAILABLE", f"screen field is not materialized: {field}", status=422)
 
-        evaluated = []
-        for record in screen.get("rows", [])[:100]:
-            values = record.get("values", {})
-            fields = {field: (values.get(field) or {}).get("value") for field in fields_requested}
-            evaluated.append((record.get("symbol"), fields, record.get("evidence_ids", [])))
-        rows = []
-        evidence_rows = []
-        for symbol, fields, row_evidence in evaluated:
-            def matches(item):
-                value = fields.get(item.get("field")); op = item.get("operator")
-                if value is None: return False
-                try:
-                    left, right = Decimal(str(value)), item.get("value")
-                    if op == "between": return left >= Decimal(str(item["values"][0])) and left <= Decimal(str(item["values"][1]))
-                    right = Decimal(str(right))
-                    return {"eq": left == right, "ne": left != right, "gt": left > right, "gte": left >= right, "lt": left < right, "lte": left <= right}[op]
-                except (KeyError, ValueError, InvalidOperation): return False
-            if all(matches(item) for item in filters):
-                rows.append({"symbol": symbol, "values": fields, "evidence": row_evidence})
-                evidence_rows.extend(row_evidence)
-        for item in reversed(args.get("sort", [])):
-            rows.sort(key=lambda row: (row["values"].get(item["field"]) is None, row["values"].get(item["field"])), reverse=item.get("direction", "desc") == "desc")
-        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)]}, "evidence": evidence_rows[:args.get("limit", 100) * 4], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
+        rows = select_screen_rows(screen.get("rows", []), filters, args.get("sort", []), args.get("limit", 100))
+        evidence_rows = [evidence for row in rows for evidence in row["evidence"]]
+        result = {"tool": "screen", "world": world, "data": {"results": rows[:args.get("limit", 100)], "unit_policy": "USD preferred for monetary comparisons; otherwise one homogeneous unit; incompatible or unknown units excluded; no FX conversion"}, "evidence": evidence_rows[:args.get("limit", 100) * max(4, len(supported))], "quality": {"status": "VERIFIED"}, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}}
         if len(_SCREEN_CACHE) >= 16:
             _SCREEN_CACHE.pop(next(iter(_SCREEN_CACHE)))
         _SCREEN_CACHE[cache_key] = result

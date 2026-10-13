@@ -9,11 +9,11 @@ import hashlib
 import json
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from time import perf_counter
+from time import perf_counter, time
 from decimal import Decimal
 from typing import Any
 
-from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION, TemporalError, normalize_source_instant, parse_instant
+from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION, TemporalError, normalize_source_instant, normalize_legacy_date_only, parse_instant
 
 CURRENT_KEY = "gold/serving/CURRENT.json"
 SCHEMA_VERSION = "financial-serving-v2"
@@ -173,14 +173,16 @@ class CurrentPointerCache:
         # A short TTL screen override also uses the shared edge cache. This
         # prevents a new isolate from paying the CURRENT R2 tail while keeping
         # promotion staleness hard-bounded by the same TTL. TTL=0 never uses it.
-        cache_url = "https://serving-v2.internal/current/" + "/".join(identity)
+        cache_url = "https://serving-v2.internal/current-ms-v2/" + "/".join(identity)
         if ttl > 0:
             try:
                 from js import Request, caches  # type: ignore
                 hit = await caches.default.match(Request.new(cache_url))
-                if hit is not None:
+                stamp = hit.headers.get("X-Zion-Fetched-At-Ms") if hit is not None else None
+                edge_age_ms = time() * 1000 - float(stamp) if stamp is not None else None
+                if hit is not None and edge_age_ms is not None and 0 <= edge_age_ms < ttl:
                     pointer = self._parse((await hit.text()).encode())
-                    now_fetched = clock()
+                    now_fetched = clock() - edge_age_ms / 1000
                     self._entries[identity] = {"pointer": pointer, "fetched_at": now_fetched}
                     if stats is not None:
                         stats["current_cache_hit"] += 1
@@ -218,7 +220,8 @@ class CurrentPointerCache:
             try:
                 from js import Request, Response, caches  # type: ignore
                 response = Response.new(json.dumps(pointer, separators=(",", ":")))
-                response.headers.set("Cache-Control", f"public, max-age={ttl}")
+                response.headers.set("Cache-Control", f"public, max-age={(ttl + 999) // 1000}")
+                response.headers.set("X-Zion-Fetched-At-Ms", str(time() * 1000))
                 await caches.default.put(Request.new(cache_url), response)
             except Exception:
                 if stats is not None:
@@ -239,6 +242,18 @@ def enabled(env: Any) -> bool:
 
 def entity_key(symbol: str) -> str:
     return f"real_equity_{symbol.upper()}"
+
+
+# Coverage releases published before the identity index use SEC-CIK entity
+# paths. Keep this bounded compatibility map local to the serving adapter;
+# it does not alter the frozen contract or the release contents.
+_LEGACY_CIK_BY_SYMBOL = {
+    "AAPL": "0000320193",
+    "MSFT": "0000789019",
+    "NVDA": "0001045810",
+    "JPM": "0000019617",
+    "TSLA": "0001318605",
+}
 
 
 def _identity_covers(entry: dict[str, Any], as_of: Any) -> bool:
@@ -267,7 +282,16 @@ async def resolve_security(env: Any, manifest: dict[str, Any], symbol: str, as_o
     if resolver_entry is None:
         # Compatibility releases predate identity artifacts. Preserve their
         # immutable path semantics while making the fallback explicit.
-        resolver_entry = {"entity": None, "instrument": None, "listing": None, "artifact_path": f"entities/{entity_key(symbol)}", "symbol": symbol.upper()}
+        normalized_symbol = symbol.upper().strip()
+        legacy_cik = _LEGACY_CIK_BY_SYMBOL.get(normalized_symbol)
+        candidates = [
+            (f"entities/entity_sec_cik_{legacy_cik}", f"real:entity:{legacy_cik}", "legacy-sec-cik-path") if legacy_cik else None,
+            (f"entities/{entity_key(normalized_symbol)}", None, "legacy-symbol-path"),
+        ]
+        artifact_paths = {item.get("path") for item in manifest.get("artifacts", [])}
+        selected = next((item for item in candidates if item and f"{item[0]}/snapshot.json" in artifact_paths), None)
+        artifact_path, entity_id, compatibility = selected or candidates[-1]
+        resolver_entry = {"entity": entity_id, "instrument": None, "listing": None, "artifact_path": artifact_path, "symbol": normalized_symbol, "compatibility": compatibility}
     return {"query": {"symbol": symbol, "as_of": as_of}, "identity": resolver_entry, "serving_release_id": manifest["serving_release_id"], "temporal_contract_sha256": TEMPORAL_CONTRACT_SHA256}
 
 
@@ -286,6 +310,13 @@ def _as_of(value: Any) -> datetime | None:
         raise ServingV2Error("INVALID_REQUEST", str(exc)) from exc
 
 
+def _availability_instant(row: dict[str, Any]):
+    value = row.get("available_at")
+    if isinstance(value, str) and len(value) == 10 and (row.get("source_id") in {"SEC", "SEC_OR_ISSUER"} or row.get("availability_policy") == "DATE_ONLY_NEXT_DAY_ET_V1"):
+        return normalize_legacy_date_only(value)
+    return normalize_source_instant(value, field="available_at")
+
+
 def _available(row: dict[str, Any], as_of: datetime | None) -> bool:
     if as_of is None:
         return True
@@ -293,7 +324,7 @@ def _available(row: dict[str, Any], as_of: datetime | None) -> bool:
     if not isinstance(value, str):
         return False
     try:
-        parsed = normalize_source_instant(value, field="available_at").as_datetime
+        parsed = _availability_instant(row).as_datetime
         return parsed <= as_of
     except TemporalError:
         return False
@@ -317,6 +348,7 @@ def _serve_row(row: dict[str, Any], *, release_id: str, artifact_path: str, sour
         "period_type": row.get("period_type"),
         "period_start": row.get("period_start"),
         "available_at": row.get("available_at"),
+        "availability_policy": _availability_instant(row).normalization_policy if row.get("available_at") else None,
         "ingested_at": row.get("ingested_at"),
         "source_record": row.get("source_record_id"),
         "source_revision_id": row.get("source_revision_id"),
@@ -335,7 +367,11 @@ def _select_revisions(rows: list[dict[str, Any]], as_of: datetime | None) -> lis
     for row in eligible:
         identity = (row.get("metric_id"), row.get("period_type"), row.get("period_start"), row.get("period_end"))
         prior = selected.get(identity)
-        if prior is None or (row.get("available_at", ""), row.get("form", "")) > (prior.get("available_at", ""), prior.get("form", "")):
+        def rank(record):
+            try: available = _availability_instant(record).epoch_ns
+            except TemporalError: available = -1
+            return (available, record.get("form") or "", record.get("observation_id") or "")
+        if prior is None or rank(row) > rank(prior):
             selected[identity] = row
     return sorted(selected.values(), key=lambda row: (row.get("period_end") or "", row.get("metric_id") or ""))
 
@@ -431,7 +467,10 @@ async def artifact(env: Any, manifest: dict[str, Any], relative: str) -> Any:
     entry = next((item for item in manifest.get("artifacts", []) if item.get("path") == relative), None)
     if entry is None:
         raise ServingV2Error("SERVING_ARTIFACT_NOT_FOUND", f"artifact is not in the manifest: {relative}")
-    raw = await _cached_text(env, prefix + relative, release_id=release_id, ttl=31536000)
+    storage_key = entry.get("storage_key", prefix + relative)
+    if not isinstance(storage_key, str) or not storage_key.startswith("gold/serving/releases/") or any(part in ("", ".", "..") for part in storage_key.split("/")) or not storage_key.endswith(".json"):
+        raise ServingV2Error("SERVING_MANIFEST_CORRUPT", "artifact reference must name an immutable serving JSON object")
+    raw = await _cached_text(env, storage_key, release_id=release_id, ttl=31536000)
     hash_started = perf_counter()
     if hashlib.sha256(raw).hexdigest() != entry.get("sha256"):
         _mark("hash_validation", perf_counter() - hash_started)
@@ -447,8 +486,9 @@ async def artifact(env: Any, manifest: dict[str, Any], relative: str) -> Any:
     return value
 
 
-async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: str | None = None, instrument_id: str | None = None, start: str | None = None, end: str | None = None, as_of: Any = None, action_types: list[str] | None = None, request_id: str = "") -> dict[str, Any]:
-    _, manifest = await load_release(env)
+async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: str | None = None, instrument_id: str | None = None, start: str | None = None, end: str | None = None, as_of: Any = None, action_types: list[str] | None = None, request_id: str = "", manifest: dict[str, Any] | None = None) -> dict[str, Any]:
+    if manifest is None:
+        _, manifest = await load_release(env)
     rows = await artifact(env, manifest, "corporate-actions/actions.json")
     target = {value for value in (entity_id, instrument_id) if value}
     resolved = None
@@ -465,7 +505,7 @@ async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: s
         event_date = row.get("effective_date") or row.get("announcement_at") or ""
         if start and event_date[:10] < start: continue
         if end and event_date[:10] > end: continue
-        if as_of and normalize_source_instant(row["available_at"], field="available_at").epoch_ns > normalize_source_instant(as_of, field="as_of").epoch_ns:
+        if as_of and not _available(row, _as_of(as_of)):
             continue
         row = dict(row)
         if as_of and row.get("effective_date") and str(as_of)[:10] < row["effective_date"]:
@@ -474,8 +514,9 @@ async def corporate_actions(env: Any, *, symbol: str | None = None, entity_id: s
     return {"world": {"world_type": "real", "world_id": "us-public-markets", "version": manifest["serving_release_id"]}, "data": {"actions": sorted(selected, key=lambda row: (row.get("effective_date") or "", row["action_id"]))}, "evidence": selected, "release": {"serving_release_id": manifest["serving_release_id"], "temporal_schema_version": TEMPORAL_SCHEMA_VERSION, "temporal_contract_hash": TEMPORAL_CONTRACT_SHA256}, "request_id": request_id}
 
 
-async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str | None = None, lookback: int = 40, as_of: Any = None, request_id: str = "") -> dict[str, Any]:
-    _, manifest = await load_release(env)
+async def fundamentals(env: Any, symbol: str, metrics: list[str], *, period: str | None = None, lookback: int = 40, as_of: Any = None, request_id: str = "", manifest: dict[str, Any] | None = None) -> dict[str, Any]:
+    if manifest is None:
+        _, manifest = await load_release(env)
     resolved = await resolve_security(env, manifest, symbol, as_of)
     key = resolved["identity"]["artifact_path"]
     snapshot = await artifact(env, manifest, f"{key}/snapshot.json")
@@ -505,19 +546,20 @@ async def price_history(env: Any, symbol: str, *, limit: int = 500, start_date: 
     prefix = f"{key}/prices/daily/"
     years = sorted({item["path"].split("/")[-1].removesuffix(".json") for item in manifest.get("artifacts", []) if item.get("path", "").startswith(prefix)})
     rows: list[dict[str, Any]] = []
+    cutoff = _as_of(as_of)
     for year in reversed(years):
         if end_date and year > end_date[:4]:
             continue
         if start_date and year < start_date[:4]:
             break
         try:
-            rows.extend(await artifact(env, manifest, f"{key}/prices/daily/{year}.json"))
+            year_rows = await artifact(env, manifest, f"{key}/prices/daily/{year}.json")
+            rows.extend(row for row in year_rows if _available(row, cutoff) and (not start_date or row.get("session_date", "") >= start_date) and (not end_date or row.get("session_date", "") <= end_date))
         except ServingV2Error as exc:
             if exc.code != "SERVING_ARTIFACT_NOT_FOUND":
                 raise
         if not start_date and not end_date and len(rows) >= limit:
             break
-    rows = [row for row in rows if _available(row, _as_of(as_of)) and (not start_date or row.get("session_date", "") >= start_date) and (not end_date or row.get("session_date", "") <= end_date)]
     rows = sorted(rows, key=lambda row: row["session_date"])[-min(limit, 500):]
     for row in rows:
         row["provenance"] = {"serving_release_id": manifest["serving_release_id"], "source_snapshot_id": manifest["source"]["prices"]["snapshot_id"], "artifact": f"{key}/prices/daily/{row['session_date'][:4]}.json"}
