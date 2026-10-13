@@ -50,7 +50,7 @@ async def metadata(env, reference, maximum=2 * 1048576):
     if cache_key in _METADATA_CACHE:
         return _METADATA_CACHE[cache_key]
     obj = await env.MARKET_DATA.get(key)
-    if obj is None or obj.size > maximum:
+    if not obj or obj.size > maximum:
         fail("EXPANSION_INTEGRITY_FAILURE", "source index is unavailable or oversized", 503)
     raw = (await obj.text()).encode()
     if len(raw) > maximum or hashlib.sha256(raw).hexdigest() != digest:
@@ -73,7 +73,7 @@ async def source_member(env, source, entry, cik):
     if entry["uncompressed_bytes"] > MAX_MEMBER or entry["compressed_bytes"] > MAX_COMPRESSED:
         fail("SOURCE_MEMBER_TOO_LARGE", "issuer exceeds bounded serving limits")
     head = await env.SEC_ARCHIVE.head(ARCHIVE_KEY)
-    if head is None or head.size != source["bytes"] or head.etag.strip('"') != source["etag"]:
+    if not head or head.size != source["bytes"] or head.etag.strip('"') != source["etag"]:
         fail("SOURCE_VERSION_CHANGED", "stored source no longer matches the indexed version", 503)
 
     async def read(offset, length):
@@ -88,7 +88,7 @@ async def source_member(env, source, entry, cik):
                 }
             ),
         )
-        if obj is None or obj.etag.strip('"') != source["etag"]:
+        if not obj or obj.etag.strip('"') != source["etag"]:
             fail("SOURCE_VERSION_CHANGED", "source version changed during read", 503)
         value = await obj.arrayBuffer()
         raw = bytes(value.to_py()) if hasattr(value, "to_py") else bytes(value)
@@ -117,7 +117,11 @@ async def query_expanded(env, request: dict, *, request_id: str) -> dict:
         return await _query(env, request, request_id)
     except PrivateFinancialsError:
         raise
-    except Exception:
+    except Exception as exc:
+        import traceback
+
+        frames = traceback.extract_tb(exc.__traceback__)
+        print("sec_expanded_failure", type(exc).__name__, [(f.name, f.lineno) for f in frames])
         fail("EXPANDED_DATA_UNAVAILABLE", "expanded source data is unavailable", 503)
 
 
@@ -227,7 +231,7 @@ async def _query(env, request, request_id):
     cache_digest = hashlib.sha256(json.dumps(query_key, sort_keys=True).encode()).hexdigest()
     cache_key = f"gold/sec-expanded/results/{index['release_id']}/{cik}/{cache_digest}.json"
     cached = await env.MARKET_DATA.get(cache_key)
-    if cached is not None:
+    if cached:
         if cached.size > 1048576:
             fail("EXPANSION_INTEGRITY_FAILURE", "cached query exceeds budget", 503)
         raw = (await cached.text()).encode()

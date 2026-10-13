@@ -175,3 +175,19 @@ def test_cache_identity_tracks_current_request():
     result = query(env, operation="sec_financials", cik="0000001234")
     assert result["cache"] == "HIT"
     assert result["entity"]["requested_symbol"] is None
+
+
+def test_javascript_null_cache_miss_is_not_a_cached_object():
+    class JsNull:
+        def __bool__(self):
+            return False
+
+    env = env_fixture()
+    original = env.MARKET_DATA.get
+
+    async def get(key, options=None):
+        result = await original(key, options)
+        return JsNull() if result is None else result
+
+    env.MARKET_DATA.get = get
+    assert query(env, operation="sec_financials", symbol="NEW")["cache"] == "MISS"
