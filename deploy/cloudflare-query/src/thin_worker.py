@@ -101,6 +101,14 @@ class Default(WorkerEntrypoint):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
+        if path.startswith('/private/'):
+            from private_http import handle_private
+
+            value, status = await handle_private(self.env, request, request_id=rid)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
         if request.method == "GET" and path in {"/healthz", "/readyz"}:
             return self._response({"status": "ok", "service": "zion-financial-serving-v2-thin", "runtime": "cloudflare-python-worker"})
         if request.method == "GET" and path == "/v1/capabilities":
