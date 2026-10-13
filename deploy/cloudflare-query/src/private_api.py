@@ -12,11 +12,11 @@ from serving_v2 import (
     _as_of,
     _available,
     _identity_covers,
-    _select_revisions,
     artifact,
     load_release,
     resolve_security,
 )
+from temporal_core import normalize_source_instant
 
 OPERATIONS = ("identity", "financials", "revenue_growth")
 
@@ -112,7 +112,11 @@ async def _query(env, request: dict, request_id: str) -> dict:
                 "ENTITY_NOT_AVAILABLE_AT_DATE", "dated identity is not published", 422
             ) from None
         entry = index.get("symbols", {}).get(request["symbol"])
-        if not entry or not _identity_covers(entry, request["as_of"]):
+        if (
+            not entry
+            or not entry.get("valid_from")
+            or not _identity_covers(entry, request["as_of"])
+        ):
             raise PrivateFinancialsError(
                 "ENTITY_NOT_AVAILABLE_AT_DATE",
                 "company identity is not valid at the requested date",
@@ -143,21 +147,20 @@ async def _query(env, request: dict, request_id: str) -> dict:
         metrics = request.get("metrics", ["revenue"])
         eligible = [r for r in rows if r.get("metric_id") in metrics]
         cutoff = _as_of(request.get("as_of"))
-        revisions = {}
+        revisions, latest = {}, {}
         for row in eligible:
             if not _available(row, cutoff):
                 continue
-            revision_key = tuple(
-                row.get(k)
-                for k in (
-                    "metric_id",
-                    "period_type",
-                    "period_start",
-                    "period_end",
-                    "available_at",
-                    "form",
-                )
+            period_key = tuple(
+                row.get(k) for k in ("metric_id", "period_type", "period_start", "period_end")
             )
+            available = row.get("available_at")
+            instant = (
+                normalize_source_instant(available, field="available_at").epoch_ns
+                if available
+                else None
+            )
+            revision_key = (*period_key, instant)
             value_key = tuple(
                 row.get(k)
                 for k in ("value_decimal", "value", "unit", "accounting_basis", "entity_id")
@@ -167,7 +170,19 @@ async def _query(env, request: dict, request_id: str) -> dict:
                     "AMBIGUOUS_OBSERVATION", "conflicting observations require resolution"
                 )
             revisions[revision_key] = value_key
-        selected = _select_revisions(eligible, cutoff)
+            if period_key in latest:
+                previous_instant, _ = latest[period_key]
+                if instant is None or previous_instant is None:
+                    raise PrivateFinancialsError(
+                        "AMBIGUOUS_OBSERVATION", "revision availability is not established"
+                    )
+                if instant <= previous_instant:
+                    continue
+            latest[period_key] = (instant, row)
+        selected = sorted(
+            (row for _, row in latest.values()),
+            key=lambda row: (row.get("period_end") or "", row.get("metric_id") or ""),
+        )
         limit = request.get("lookback", 40)
         for metric in metrics:
             native = [r for r in selected if r.get("metric_id") == metric]

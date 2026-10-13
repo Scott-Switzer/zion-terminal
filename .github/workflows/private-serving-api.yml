@@ -1,0 +1,43 @@
+name: Private existing-data API
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/cloudflare-query/src/**'
+      - 'scripts/private_serving_acceptance.py'
+      - 'tests/unit/test_private*.py'
+      - '.github/workflows/private-serving-api.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  existing-data-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test tools only
+        run: python -m pip install 'pytest>=8,<10' 'ruff>=0.3,<1'
+      - name: Synthetic existing-data and frozen contract tests
+        run: >-
+          python -m pytest -q
+          tests/unit/test_private_financials.py
+          tests/unit/test_private_api.py
+          tests/unit/test_private_api_routes.py
+          tests/unit/test_private_serving_acceptance.py
+          tests/unit/test_tool_contract_v2.py
+          tests/unit/test_serving_v2.py
+      - name: Changed-module lint and syntax
+        run: |
+          ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py
+          python -m py_compile deploy/cloudflare-query/src/private_*.py deploy/cloudflare-query/src/thin_worker.py scripts/private_serving_acceptance.py
+      - name: Frozen contract unchanged
+        run: |
+          python scripts/generate_tool_contract.py
+          git diff --exit-code -- contracts/zion-tool-contract-v2.json contracts/zion-tool-contract-v2.sha256
+          git diff --check

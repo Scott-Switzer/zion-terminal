@@ -22,14 +22,25 @@ def transport(*, mismatch=False, missing=False, auth_broken=False):
             }
         return 200, {
             "schema_version": "zion-private-query-v1",
+            "entity": {"entity_id": "issuer", "symbol": payload["symbol"]},
             "release": {
                 "serving_release_id": "r2"
                 if mismatch and payload["operation"] == "financials"
                 else "r1"
             },
             "data": {
-                "observations": [{"evidence_id": "e", "available_at": "2025-01-01"}],
-                "year_over_year": [{}] * 5,
+                "observations": [
+                    {
+                        "metric": "revenue",
+                        "value": "100",
+                        "unit": "USD",
+                        "period_type": "annual",
+                        "period_end": "2024-12-31",
+                        "evidence_id": "e",
+                        "available_at": "2025-01-01",
+                    }
+                ],
+                "year_over_year": [{"percent": "10"}] * 5,
             },
             "coverage": {"missing_reasons": []},
         }
@@ -90,3 +101,22 @@ def test_transport_exception_text_never_leaks():
     )
     assert report["status"] == "FAIL"
     assert "secret-test-token" not in json.dumps(report)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [{"release": None}, {"entity": {}}, {"data": {"observations": [{}], "year_over_year": None}}],
+)
+def test_malformed_success_is_not_acceptance(bad):
+    underlying = transport()
+
+    def request(*args):
+        status, body = underlying(*args)
+        if args[1] == "POST" and status == 200:
+            body.update(bad)
+        return status, body
+
+    report = acceptance.run_acceptance(
+        "https://example.test", "secret-test-token", request_fn=request
+    )
+    assert report["status"] == "FAIL"

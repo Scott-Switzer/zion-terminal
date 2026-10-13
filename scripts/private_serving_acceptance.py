@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import secrets
 import time
 import urllib.error
@@ -108,7 +109,16 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
                 continue
             if check["http_status"] != 200 or body.get("schema_version") != "zion-private-query-v1":
                 continue
-            actual = body.get("release", {}).get("serving_release_id")
+            release_block, entity = body.get("release"), body.get("entity")
+            if (
+                not isinstance(release_block, dict)
+                or not isinstance(entity, dict)
+                or not isinstance(entity.get("entity_id"), str)
+                or not entity["entity_id"]
+                or entity.get("symbol") != symbol
+            ):
+                continue
+            actual = release_block.get("serving_release_id")
             if not isinstance(actual, str) or not actual or (release and actual != release):
                 continue
             # Record no raw upstream fields, values, IDs, messages or response headers.
@@ -116,6 +126,28 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             data, coverage = body.get("data", {}), body.get("coverage", {})
             if not isinstance(data, dict) or not isinstance(coverage, dict):
                 continue
+            if operation == "financials":
+                observations = data.get("observations")
+                if not isinstance(observations, list) or any(
+                    not isinstance(row, dict)
+                    or row.get("metric") != "revenue"
+                    or row.get("period_type") != "annual"
+                    or not row.get("unit")
+                    or not row.get("period_end")
+                    or not isinstance(row.get("value"), str)
+                    or not re.fullmatch(r"-?\d{1,80}(?:\.\d{1,40})?", row["value"])
+                    for row in observations
+                ):
+                    continue
+            if operation == "revenue_growth":
+                rates = data.get("year_over_year")
+                if not isinstance(rates, list) or any(
+                    not isinstance(row, dict)
+                    or not isinstance(row.get("percent"), str)
+                    or not re.fullmatch(r"-?\d+(?:\.\d+)?", row["percent"])
+                    for row in rates
+                ):
+                    continue
             if operation == "financials" and (
                 not data.get("observations") or coverage.get("missing_reasons")
             ):

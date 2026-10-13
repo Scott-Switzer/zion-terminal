@@ -52,7 +52,13 @@ def make_env():
     prefix = "gold/serving/releases/r1/"
     artifacts = {
         "identity/resolver_index.json": {
-            "symbols": {"AAPL": {"artifact_path": "entities/a", "symbol": "AAPL"}}
+            "symbols": {
+                "AAPL": {
+                    "artifact_path": "entities/a",
+                    "symbol": "AAPL",
+                    "valid_from": "2000-01-01T00:00:00Z",
+                }
+            }
         },
         "entities/a/snapshot.json": {"entity_id": "issuer", "symbol": "AAPL"},
         "entities/a/fundamentals/annual.json": rows,
@@ -196,3 +202,28 @@ def test_conflicting_same_revision_never_selects_arbitrarily():
     with pytest.raises(PrivateFinancialsError) as e:
         call(env, operation="financials", symbol="AAPL")
     assert e.value.code == "AMBIGUOUS_OBSERVATION"
+
+
+def test_undated_identity_is_not_valid_for_any_historical_date():
+    env = make_env()
+    replace_artifact(
+        env,
+        "identity/resolver_index.json",
+        {"symbols": {"AAPL": {"artifact_path": "entities/a", "symbol": "AAPL"}}},
+    )
+    with pytest.raises(PrivateFinancialsError) as e:
+        call(env, operation="identity", symbol="AAPL", as_of="1900-01-01T00:00:00Z")
+    assert e.value.code == "ENTITY_NOT_AVAILABLE_AT_DATE"
+
+
+def test_revision_order_uses_instants_not_lexical_offsets():
+    env = make_env()
+    path = "entities/a/fundamentals/annual.json"
+    rows = json.loads(env.MARKET_DATA.objects["gold/serving/releases/r1/" + path])
+    original = rows[-1]
+    rows[-1] = {**original, "value_decimal": "100", "available_at": "2026-02-01T10:00:00+02:00"}
+    rows.append({**original, "value_decimal": "200", "available_at": "2026-02-01T09:00:00Z"})
+    replace_artifact(env, path, rows)
+    result = call(env, operation="financials", symbol="AAPL")
+    assert result["data"]["observations"][-1]["value"] == "200"
+    assert result["data"]["observations"][-1]["available_at"] == "2026-02-01T09:00:00Z"
