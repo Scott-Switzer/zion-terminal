@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zion:fundamental-observation:v1",
+  "title": "Source-preserving fundamental observation v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source_observation_id",
+    "entity_id",
+    "metric_id",
+    "mapping_version",
+    "source_concept",
+    "native_unit",
+    "unit",
+    "currency",
+    "basis",
+    "period_type",
+    "period_start",
+    "period_end",
+    "available_at",
+    "availability_policy",
+    "value_decimal",
+    "reporting_status",
+    "layer",
+    "source_sha256",
+    "source_context_id",
+    "source_record_id",
+    "entitlement_policy_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "fundamental-observation-v1"
+    },
+    "source_observation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "metric_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "mapping_version": {
+      "enum": [
+        "zion-financial-mapping-v1",
+        null
+      ]
+    },
+    "source_concept": {
+      "type": "string",
+      "minLength": 1
+    },
+    "native_unit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "currency": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Z]{3}$"
+    },
+    "basis": {
+      "type": "string",
+      "minLength": 1
+    },
+    "period_type": {
+      "enum": [
+        "INSTANT",
+        "DURATION"
+      ]
+    },
+    "period_start": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "available_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "availability_policy": {
+      "enum": [
+        "EXACT_SOURCE_ACCEPTANCE",
+        "DATE_ONLY_NEXT_DAY_ET_V1"
+      ]
+    },
+    "value_decimal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^-?[0-9]+(?:\\.[0-9]+)?$"
+    },
+    "reporting_status": {
+      "enum": [
+        "SOURCE_REPORTED_VALUE",
+        "SOURCE_REPORTED_NULL"
+      ]
+    },
+    "layer": {
+      "enum": [
+        "RAW",
+        "NORMALIZED_RESEARCH"
+      ]
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_context_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entitlement_policy_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false,
+  "description": "No absent source records are created. Source null requires evidence of an actual source-null record. Native units must match in v1; no FX, scaling, annualization, sector subtotal substitution or automatic canonical promotion.",
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "layer": {
+            "const": "NORMALIZED_RESEARCH"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "entity_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "metric_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mapping_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  ]
+}

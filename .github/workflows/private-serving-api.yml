@@ -6,6 +6,10 @@ on:
       - 'deploy/cloudflare-query/src/**'
       - 'scripts/private_serving_acceptance.py'
       - 'tests/unit/test_private*.py'
+      - 'tests/unit/test_financial_foundation.py'
+      - 'src/zion_terminal/datasets/financial_foundation.py'
+      - 'contracts/financial*'
+      - 'contracts/fundamental*'
       - 'tests/unit/test_sec_expanded*.py'
       - 'scripts/publish_sec_expanded_index.py'
       - '.github/workflows/private-serving-api.yml'
@@ -28,6 +32,7 @@ jobs:
       - name: Synthetic existing-data and frozen contract tests
         run: >-
           python -m pytest -q
+          tests/unit/test_financial_foundation.py
           tests/unit/test_private_financials.py
           tests/unit/test_private_api.py
           tests/unit/test_private_api_routes.py

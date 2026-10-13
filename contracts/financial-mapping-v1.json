@@ -1,0 +1,33 @@
+{
+  "schema_version": "zion-financial-mapping-v1",
+  "mappings": [
+    {
+      "mapping_id": "sec-customer-contract-revenue-ex-tax-v1",
+      "source_namespace": "SEC_COMPANYFACTS",
+      "source_concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      "source_unit": "USD",
+      "metric_id": "customer_contract_revenue_excluding_assessed_tax",
+      "basis": "NATIVE_US_GAAP_CONCEPT_EXACT",
+      "transform": "EXACT_VALUE_AND_CONTEXT_COPY",
+      "unit_conversion": "FORBIDDEN",
+      "general_total_revenue_equivalence": "NOT_ESTABLISHED",
+      "quality": "SOURCE_UNVALIDATED",
+      "canonical_promotion": false
+    }
+  ],
+  "security_link_authorization": "ONLY_SOURCE_EXPLICIT_TEMPORAL_LINKS;NO_TICKER_HEURISTICS",
+  "derived_contract": {
+    "layer": "DERIVED",
+    "requires": [
+      "formula_id",
+      "formula_version",
+      "ordered_source_observation_ids",
+      "as_of",
+      "unit",
+      "rounding_policy",
+      "exact_arithmetic_policy"
+    ],
+    "absent_input_behavior": "UNAVAILABLE;NEVER_ZERO"
+  },
+  "conflict_policy": "RETAIN_REVISIONS;FILTER_AVAILABILITY_BEFORE_SELECTING;AMBIGUOUS_SOURCE_CONFLICT_FAILS_CLOSED"
+}

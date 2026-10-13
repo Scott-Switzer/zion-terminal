@@ -43,6 +43,8 @@ async def handle(env, request):
         if url.query:
             target += "?" + url.query
         forwarded = {}
+        if url.path == PREFIX + "/financial-query":
+            forwarded["x-zion-principal"] = "private-owner"
         etag = request.headers.get("if-match")
         if etag:
             forwarded["if-match"] = etag

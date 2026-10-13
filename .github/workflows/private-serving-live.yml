@@ -29,6 +29,11 @@ jobs:
           ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/native_query_acceptance.py --output native-query-acceptance.json
+      - name: Verify restricted public financial SQL pilot
+        env:
+          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
+        run: python3 scripts/financial_query_acceptance.py --output financial-query-acceptance.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -38,3 +43,4 @@ jobs:
             sec-expanded-acceptance.json
             collection-serving-acceptance.json
             native-query-acceptance.json
+            financial-query-acceptance.json

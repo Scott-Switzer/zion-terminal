@@ -88,3 +88,20 @@ def test_streams_native_bytes_and_strips_credentials(proxy):
 def test_rejects_unknown_paths_and_writes_without_binding(proxy, method, path, status):
     env = SimpleNamespace(ZION_PRIVATE_API_TOKEN="test-token")
     assert asyncio.run(proxy.handle(env, request(method=method, path=path))).status == status
+
+
+def test_sql_principal_is_server_set_and_not_forwarded_from_caller(proxy):
+    calls = []
+
+    async def fetch(req):
+        calls.append(req)
+        return SimpleNamespace(body=b"{}", status=200, headers={"content-type": "application/json"})
+
+    env = SimpleNamespace(
+        ZION_PRIVATE_API_TOKEN="test-token", PRIVATE_DATASETS=SimpleNamespace(fetch=fetch)
+    )
+    req = request(path="/private/v1/datasets/financial-query?template=sec_concept_history_v1")
+    req.headers["x-zion-principal"] = "forged-role"
+    asyncio.run(proxy.handle(env, req))
+    assert calls[0].options["headers"]["x-zion-principal"] == "private-owner"
+    assert "authorization" not in calls[0].options["headers"]

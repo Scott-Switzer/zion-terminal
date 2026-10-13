@@ -1,0 +1,336 @@
+{
+  "schema_version": "unified-financial-query-acceptance-v1",
+  "pilot_success": true,
+  "estate_expansion_ready": false,
+  "gates": {
+    "four_store_metadata_census": {
+      "status": "PASS",
+      "evidence": "other-stores-metadata-summary.json"
+    },
+    "historical_350_error_classification": {
+      "status": "PASS",
+      "evidence": "inventory-reconciliation.json; oversize-manifest-validation.json"
+    },
+    "registered_manifests_integrity": {
+      "status": "PASS",
+      "evidence": "805 exact hashes"
+    },
+    "all_registered_references_resolved": {
+      "status": "FAIL",
+      "reason": "One legacy path reference unresolved; 41484 present size matches"
+    },
+    "all_archives_analytically_queryable": {
+      "status": "FAIL",
+      "reason": "No exhaustive footer/codec/row census; object inventory is not queryability"
+    },
+    "all_store_catalog_registration_reconciled": {
+      "status": "FAIL",
+      "reason": "Financial and lakehouse catalogs enumerated; research and filings catalogs unverified; physical file membership not fully joined"
+    },
+    "basin_cross_table_sql": {
+      "status": "PASS",
+      "evidence": "basin-pilot-evidence.json"
+    },
+    "private_service_independent_source_match": {
+      "status": "PASS",
+      "evidence": "private-query-acceptance.json"
+    },
+    "exact_precision_nulls_and_historical_availability": {
+      "status": "PASS",
+      "evidence": "private-query-acceptance.json; 13 adapter unit tests"
+    },
+    "source_version_change_live": {
+      "status": "PASS",
+      "evidence": "live-source-version-gate.json"
+    },
+    "unauthorized_inputs_and_licensed_access_denied": {
+      "status": "PASS",
+      "evidence": "live private checks plus restricted public entrypoint unit test"
+    },
+    "query_budgets_and_no_silent_truncation": {
+      "status": "PASS",
+      "evidence": "live overflow 413; synthetic size/deadline tests; engine cancellation unverified"
+    },
+    "narrow_read_only_runtime_credential": {
+      "status": "FAIL",
+      "reason": "Existing operator token can write pilot catalog; narrow scope not verified; licensed SQL stays disabled"
+    },
+    "mapping_specs_and_source_preservation": {
+      "status": "PASS",
+      "evidence": "versioned contracts; four semantic helper tests; full canonical validation remains future work"
+    },
+    "canonical_financial_certification": {
+      "status": "FAIL",
+      "reason": "Pilot source observations remain unvalidated; historical security mappings not established"
+    },
+    "production_publication_pointers_unchanged": {
+      "status": "PASS",
+      "evidence": "publication-pointer-gates.json"
+    },
+    "existing_private_routes_regression": {
+      "status": "PASS",
+      "evidence": {
+        "private_serving_acceptance": {
+          "status": "PASS",
+          "checks": 18
+        },
+        "sec_expanded_acceptance": {
+          "status": "PASS",
+          "checks": 20
+        },
+        "collection_serving_acceptance": {
+          "status": "PASS",
+          "checks": 18
+        },
+        "native_query_acceptance": {
+          "status": "PASS",
+          "checks": 23
+        }
+      }
+    },
+    "custom_domain_current_reachability": {
+      "status": "FAIL",
+      "reason": "Local TLS negotiation failed on api-thin-staging.scotttunnel.xyz; live tests use the existing authenticated workers.dev origin. Custom-domain route configuration unchanged; external reachability unverified."
+    },
+    "no_new_provider_or_wrds_collection": {
+      "status": "PASS",
+      "evidence": "Existing stored public SEC members; metadata-only audit; no acquisition jobs"
+    },
+    "no_licensed_migration_or_llm_disclosure": {
+      "status": "PASS",
+      "evidence": "Public SEC and owned synthetic pilot only; regressions emit counts, never licensed rows"
+    }
+  },
+  "object_count": 468645,
+  "object_bytes": 221751206363,
+  "stores": [
+    {
+      "bucket": "financial-system-datasets",
+      "objects": 157386,
+      "bytes": 50145636004,
+      "queryability": "FOOTER_AND_FULL_ROW_DECODING_NOT_CENSUSED"
+    },
+    {
+      "bucket": "financial-data-wrds-lakehouse",
+      "objects": 19738,
+      "bytes": 6490023420,
+      "queryability": "FOOTER_AND_FULL_ROW_DECODING_NOT_CENSUSED"
+    },
+    {
+      "bucket": "ppe-sec-intelligence-prod",
+      "objects": 57,
+      "bytes": 103768346,
+      "queryability": "FOOTER_AND_FULL_ROW_DECODING_NOT_CENSUSED"
+    },
+    {
+      "bucket": "financial-data-wrds-private",
+      "objects": 291464,
+      "bytes": 165011778593,
+      "queryability": "FOOTER_AND_FULL_ROW_DECODING_NOT_CENSUSED"
+    }
+  ],
+  "catalogs": [
+    {
+      "bucket": "financial-system-datasets",
+      "status": "PASS_METADATA_CATALOG_ENUMERATION_ONLY",
+      "registered_tables": 14
+    },
+    {
+      "bucket": "financial-data-wrds-lakehouse",
+      "status": "PASS_METADATA_CATALOG_ENUMERATION_ONLY",
+      "registered_tables": 76
+    },
+    {
+      "bucket": "financial-data-wrds-private",
+      "status": "FAIL_CATALOG_NOT_VERIFIED",
+      "registered_tables": 0
+    },
+    {
+      "bucket": "ppe-sec-intelligence-prod",
+      "status": "FAIL_CATALOG_NOT_VERIFIED",
+      "registered_tables": 0
+    }
+  ],
+  "historical_errors": {
+    "RELEASE_HAS_OBJECTS_WITHOUT_EXPECTED_MANIFEST": 340,
+    "MANIFEST_EXCEEDED_OLD_1MIB_METADATA_LIMIT": 10
+  },
+  "live_benchmark": {
+    "status": "PASS",
+    "checks": [
+      {
+        "name": "unauthorized",
+        "http_status": 401,
+        "status": "PASS",
+        "latency_ms": 669.387
+      },
+      {
+        "name": "cross_table_public_financial",
+        "http_status": 200,
+        "status": "PASS",
+        "latency_ms": 3661.902
+      },
+      {
+        "name": "independent_source_join",
+        "status": "PASS",
+        "rows": 4
+      },
+      {
+        "name": "cache_repeat",
+        "http_status": 200,
+        "status": "PASS",
+        "latency_ms": 2882.822
+      },
+      {
+        "name": "cache_hit",
+        "status": "PASS"
+      },
+      {
+        "name": "precision_null",
+        "http_status": 200,
+        "status": "PASS",
+        "latency_ms": 1605.027
+      },
+      {
+        "name": "exact_precision_and_null",
+        "status": "PASS"
+      },
+      {
+        "name": "decimal_arithmetic",
+        "http_status": 200,
+        "status": "PASS",
+        "latency_ms": 3972.236
+      },
+      {
+        "name": "exact_decimal_arithmetic",
+        "status": "PASS"
+      },
+      {
+        "name": "explain",
+        "http_status": 200,
+        "status": "PASS",
+        "latency_ms": 3233.083
+      },
+      {
+        "name": "historical_cutoff",
+        "http_status": 200,
+        "status": "PASS",
+        "latency_ms": 3368.776
+      },
+      {
+        "name": "historical_source_revision_match",
+        "status": "PASS"
+      },
+      {
+        "name": "sql_rejected",
+        "http_status": 400,
+        "status": "PASS",
+        "latency_ms": 376.531
+      },
+      {
+        "name": "dataset_rejected",
+        "http_status": 403,
+        "status": "PASS",
+        "latency_ms": 280.744
+      },
+      {
+        "name": "unknown_cik",
+        "http_status": 403,
+        "status": "PASS",
+        "latency_ms": 718.841
+      },
+      {
+        "name": "incorrect_identifier",
+        "http_status": 400,
+        "status": "PASS",
+        "latency_ms": 1491.456
+      },
+      {
+        "name": "historical_link_missing",
+        "http_status": 422,
+        "status": "PASS",
+        "latency_ms": 930.471
+      },
+      {
+        "name": "llm_recipient_denied",
+        "http_status": 403,
+        "status": "PASS",
+        "latency_ms": 1447.603
+      },
+      {
+        "name": "overflow_not_truncated",
+        "http_status": 413,
+        "status": "PASS",
+        "latency_ms": 2337.147
+      }
+    ],
+    "licensed_rows_exposed": 0,
+    "query_metrics": {
+      "bytes_scanned": "23590",
+      "cache_hits": "11",
+      "files_scanned": "12",
+      "r2_requests_count": "13"
+    },
+    "result_rows": 4,
+    "result_sha256": "3bd7620a8f8dbd72093cd384fddbab4ad03b28869c0e2791ab21f68ac8b5f595"
+  },
+  "direct_basin_latency_ms": 980.68,
+  "pilot_source_bytes": 13791,
+  "duckdb": {
+    "status": "PASS",
+    "engine": "DUCKDB_IN_MEMORY_VALIDATOR_NOT_DEPLOYED_FALLBACK",
+    "source": "PUBLIC_SEC_PLUS_OWNED_CANARY_ONLY",
+    "rows": 4,
+    "null_coverage_rows": 1,
+    "query_latency_ms": 3.016,
+    "decimal_arithmetic_match": true,
+    "threads": 1,
+    "memory_limit": "64MB",
+    "external_access": false,
+    "licensed_rows_read": 0
+  },
+  "pointers": [
+    {
+      "pointer": "financial-system-datasets/gold/serving/coverage25/CURRENT.json",
+      "before_sha256": "36faa34388079cfe793f29bd852bda898614cb0853bfe85ded99d9bdb31c45c4",
+      "after_sha256": "36faa34388079cfe793f29bd852bda898614cb0853bfe85ded99d9bdb31c45c4",
+      "status": "PASS"
+    },
+    {
+      "pointer": "financial-system-datasets/control/market-terminal/CURRENT.json",
+      "before_sha256": "66ed1272bb48849eedc588df4c9da6139821ea01e241b100ef6408ed0cd6158f",
+      "after_sha256": "66ed1272bb48849eedc588df4c9da6139821ea01e241b100ef6408ed0cd6158f",
+      "status": "PASS"
+    },
+    {
+      "pointer": "financial-data-wrds-private/control/full-financial-v1/wrds/CURRENT.json",
+      "before_sha256": "d657defde5a455f51298a18f16c14557186cff0dd35363e6cdc7326cd9a241c6",
+      "after_sha256": "d657defde5a455f51298a18f16c14557186cff0dd35363e6cdc7326cd9a241c6",
+      "status": "PASS"
+    }
+  ],
+  "evidence_digests": {
+    "basin-explain-evidence.json": "2206338115dba621c7f3084099cc243d9903475aca947ecaf4fc17fb7256562d",
+    "live-source-version-gate.json": "e373972c3c7559ff9d7e8e8ff9a5028726f0465f4348f3e7702cf6886b8020a0",
+    "oversize-manifest-validation.json": "60dc919fecddbce9413029c79a13b0244a56892c1817953ff5e6ffe5af1cac44",
+    "decimal-arithmetic-gate.json": "873ebdb634f82d1ecb9a0ea2b565cc2005d108ba406cacbfa2e64e142faa6a36",
+    "financial-data-wrds-lakehouse-metadata-summary.json": "a7918e9ee0f3dd40c7bed641965af984c613b69255861b70e219fe224de0c7ed",
+    "duckdb-verification.json": "82cd8d623cddf9d56ef28075176d0d9281b1e2b1561ddd29bb56781075cd4674",
+    "sec_expanded_acceptance.json": "4701064fcdea3cdd63ed8f80c8c8a32f96b5803ad470ac290688c0a866b0bbcc",
+    "basin-pilot-policy.json": "a7c9ee3242c9d269ccdc3ce216d4e8fe71daecd063bf7428667b2a4e4435b089",
+    "publication-pointer-gates.json": "48b32f3e21d2af6844e6510c855c3599e4816bc18b7d2ffaf13ea75cc47a361f",
+    "basin-policy-publication.json": "c7c9369751a58eb5c9e7c3d35f2a5ce297354e27f79e90801641eb80dd17e7bd",
+    "financial-system-datasets-metadata-summary.json": "aded89c2a401f0000b869816d60907d2467488146be34d2931912edcba52897d",
+    "ppe-sec-intelligence-prod-metadata-summary.json": "2983602bea535e79e22a608d9181ec0917f8c59806cd3d616ad6b332a6d489b8",
+    "basin-pilot-evidence.json": "a53dad34213d2f8b1995bf4feb2cd6532806707e4695d345596b4cff44c7d190",
+    "catalog-registration-census.json": "b52dfb9ab8ad91ca0230d3c9745546d04c311c614cad25c5e6992f2eb2ab75c9",
+    "inventory-summary.json": "780b4f4eba06542fd570f706c336454c08c5f70b1170877960bf099a89f401c9",
+    "private-query-acceptance.json": "e747e5bcb546c3b1b466139914ccfe7b024e71a111c90917210e3b008e7cb5d1",
+    "collection_serving_acceptance.json": "e350e5199b5a7cd321fea9a5b9e3ad71877123192cebd564304c33e644f9bae1",
+    "financial-data-wrds-private-metadata-summary.json": "c9bd328d7c4bb3f9965d4e8d17d409999f6e5ed0271b7a4f0a300acbc1d646b4",
+    "other-stores-metadata-summary.json": "131ac885124ea307b9b673ce168c1343fb4baf953ed7ff25898e8bda50187e2b",
+    "catalog-metadata-variants.json": "a5d6d025f0fe32a2e16693fe1a8d75ea8b83f8fa54fee1e738b5468e07ef9e21",
+    "native_query_acceptance.json": "440fb53379120a11d51ccf35a05ab06b2bb3802ad696bf61b2f23bca11c5d588",
+    "private_serving_acceptance.json": "e18dcb10c2717251e79ec9d6247086ef8209ed423e74e0f8d5a49fff81b41cab"
+  }
+}

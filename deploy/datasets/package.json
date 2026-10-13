@@ -12,7 +12,8 @@
   "dependencies": {
     "fflate": "0.8.3",
     "fzstd": "0.1.1",
-    "hyparquet": "1.31.4"
+    "hyparquet": "1.31.4",
+    "lossless-json": "4.3.1"
   },
   "private": true
 }

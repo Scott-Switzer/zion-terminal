@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:zion:financial-identity-link:v1",
+  "title": "Source-backed financial identifier link v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "namespace",
+    "identifier",
+    "entity_id",
+    "entity_kind",
+    "valid_from",
+    "valid_to",
+    "valid_to_kind",
+    "known_at",
+    "known_at_source",
+    "source_sha256",
+    "source_record_id",
+    "entitlement_policy_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "financial-identity-link-v1"
+    },
+    "namespace": {
+      "enum": [
+        "SEC_CIK",
+        "CRSP_PERMNO",
+        "COMPUSTAT_GVKEY",
+        "ISIN",
+        "CUSIP",
+        "TICKER"
+      ]
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "entity_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entity_kind": {
+      "enum": [
+        "ISSUER",
+        "SECURITY",
+        "LISTING"
+      ]
+    },
+    "valid_from": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "valid_to": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    },
+    "valid_to_kind": {
+      "enum": [
+        "SOURCE_EXPLICIT",
+        "SOURCE_OPEN_END",
+        "UNKNOWN"
+      ]
+    },
+    "known_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "known_at_source": {
+      "enum": [
+        "SOURCE_PUBLICATION",
+        "SOURCE_REPORTED_ACCEPTANCE"
+      ]
+    },
+    "source_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_record_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entitlement_policy_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "description": "Half-open validity [from,to), plus independently source-supported knowledge time. Unknown validity is not unbounded validity. Storage times cannot qualify links. CIK anchors alone do not map securities or tickers. Source conflicts fail closed."
+}
