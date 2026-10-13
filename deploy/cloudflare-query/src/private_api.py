@@ -20,7 +20,15 @@ from serving_v2 import (
 )
 from temporal_core import normalize_source_instant
 
-OPERATIONS = ("identity", "financials", "revenue_growth", "price", "price_history")
+OPERATIONS = (
+    "identity",
+    "financials",
+    "revenue_growth",
+    "price",
+    "price_history",
+    "sec_coverage",
+    "sec_financials",
+)
 
 
 def invalid(message):
@@ -81,6 +89,10 @@ def validate_request(request: dict) -> dict:
 
 
 async def query_existing(env, request: dict, *, request_id: str) -> dict:
+    if isinstance(request, dict) and request.get("operation") in ("sec_coverage", "sec_financials"):
+        from sec_expanded_api import query_expanded
+
+        return await query_expanded(env, request, request_id=request_id)
     request = validate_request(request)
     try:
         return await _query(env, request, request_id)

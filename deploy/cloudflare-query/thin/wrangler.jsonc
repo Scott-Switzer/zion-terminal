@@ -3,12 +3,27 @@
   "name": "zion-financial-serving-v2-thin-staging",
   "main": "../src/thin_worker.py",
   "compatibility_date": "2026-09-15",
-  "compatibility_flags": ["python_workers", "disable_python_external_sdk"],
+  "compatibility_flags": [
+    "python_workers",
+    "disable_python_external_sdk"
+  ],
   "workers_dev": true,
-  "version_metadata": {"binding": "CF_VERSION_METADATA"},
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
   "r2_buckets": [
-    {"binding": "MARKET_DATA", "bucket_name": "financial-system-datasets"},
-    {"binding": "SEC_CORPUS", "bucket_name": "ppe-sec-intelligence-prod"}
+    {
+      "binding": "MARKET_DATA",
+      "bucket_name": "financial-system-datasets"
+    },
+    {
+      "binding": "SEC_CORPUS",
+      "bucket_name": "ppe-sec-intelligence-prod"
+    },
+    {
+      "binding": "SEC_ARCHIVE",
+      "bucket_name": "financial-data-wrds-private"
+    }
   ],
   "vars": {
     "SERVING_V2_ENABLED": "true",
@@ -18,7 +33,14 @@
     "SERVICE_VERSION": "3.1.0-zion-financial-data-api-v1",
     "SYNTHETIC_WORLD_ID": "system-acceptance-v2",
     "SYNTHETIC_WORLD_IDS": "system-acceptance-v2",
-    "SYNTHETIC_CURRENT_KEY": "control/synthetic-worlds/system-acceptance-v2/CURRENT.json"
+    "SYNTHETIC_CURRENT_KEY": "control/synthetic-worlds/system-acceptance-v2/CURRENT.json",
+    "SEC_EXPANDED_INDEX_KEY": "gold/sec-expanded/releases/66c116df4860e40b560c3f38cdafba37acae6ae77a7387fc144bb829f3257da0/manifest.json",
+    "SEC_EXPANDED_INDEX_SHA256": "d7d93516a7a2cc18859b749fbb3a5719bc92406452ede3505bfde6536fa3f556"
   },
-  "observability": {"enabled": true, "logs": {"head_sampling_rate": 1}}
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  }
 }

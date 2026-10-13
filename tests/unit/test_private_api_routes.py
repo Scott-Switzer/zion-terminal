@@ -99,6 +99,8 @@ def test_private_capabilities_are_honest_and_authenticated(worker):
         "revenue_growth",
         "price",
         "price_history",
+        "sec_coverage",
+        "sec_financials",
     ]
     assert response.value["acquisition_enabled"] is False
     assert "estimates" in response.value["pending"]

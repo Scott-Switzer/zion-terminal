@@ -6,6 +6,8 @@ on:
       - 'deploy/cloudflare-query/src/**'
       - 'scripts/private_serving_acceptance.py'
       - 'tests/unit/test_private*.py'
+      - 'tests/unit/test_sec_expanded*.py'
+      - 'scripts/publish_sec_expanded_index.py'
       - '.github/workflows/private-serving-api.yml'
   workflow_dispatch:
 
@@ -36,9 +38,12 @@ jobs:
           tests/unit/test_temporal_core.py
           tests/unit/test_market_data_api.py
           tests/unit/test_thin_compare.py
+          tests/unit/test_sec_expanded.py
+          tests/unit/test_sec_expanded_api.py
+          tests/unit/test_sec_expanded_index.py
       - name: Changed-module lint and syntax
         run: |
-          ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py
+          ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py deploy/cloudflare-query/src/sec_expanded*.py tests/unit/test_sec_expanded*.py scripts/publish_sec_expanded_index.py
           python -m py_compile deploy/cloudflare-query/src/private_*.py deploy/cloudflare-query/src/thin_worker.py scripts/private_serving_acceptance.py
       - name: Frozen contract unchanged
         run: |
