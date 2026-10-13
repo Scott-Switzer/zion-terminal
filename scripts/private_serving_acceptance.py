@@ -31,7 +31,11 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def request_http(base, method, path, payload, token):
-    headers = {"content-type": "application/json", "accept": "application/json"}
+    headers = {
+        "content-type": "application/json",
+        "accept": "application/json",
+        "user-agent": "zion-private-serving-acceptance/1",
+    }
     if token:
         headers["authorization"] = "Bearer " + token
     data = None if payload is None else json.dumps(payload).encode()
@@ -78,6 +82,11 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             "latency_ms": round((time.perf_counter() - started) * 1000, 2),
             "status": "FAIL",
         }
+        if status == 403:
+            check["response_keys"] = sorted(k for k in body if isinstance(k, str))[:8]
+            message = body.get("error")
+            if message in ("forbidden", "Forbidden", "Unauthorized", "access denied"):
+                check["access_error"] = message
         checks.append(check)
         return check, body
 
