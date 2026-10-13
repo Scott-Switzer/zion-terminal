@@ -23,7 +23,9 @@ use in calculations. Private provider restrictions remain in force.
 
 The Worker has no public route, workers.dev endpoint, or preview URL. Its default
 entrypoint must only be bound to trusted private research consumers. It exposes
-read-only GET/HEAD operations, no mutation or provider execution.
+read-only GET/HEAD operations and no provider execution. Native queries persist
+only derived query-cache envelopes in the financial store; source objects and
+publication pointers are never rewritten. See `native-collection-queries.md`.
 
 The named `Catalog` entrypoint has **one** route, `GET /v1/datasets/status`. It
 returns fixed source labels and storage connectivity only. It never returns object

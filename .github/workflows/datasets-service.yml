@@ -26,6 +26,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm ci --prefix deploy/datasets
       - run: node --test tests/datasets/*.test.mjs
       - run: node --check deploy/datasets/src/worker.mjs
   registry:

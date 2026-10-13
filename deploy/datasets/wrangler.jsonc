@@ -6,10 +6,29 @@
   "workers_dev": false,
   "preview_urls": false,
   "r2_buckets": [
-    {"binding": "FINANCIAL_DATA", "bucket_name": "financial-system-datasets"},
-    {"binding": "RESEARCH_DATA", "bucket_name": "financial-data-wrds-private"},
-    {"binding": "SEC_CORPUS", "bucket_name": "ppe-sec-intelligence-prod"},
-    {"binding": "RESEARCH_LAKEHOUSE", "bucket_name": "financial-data-wrds-lakehouse"}
+    {
+      "binding": "FINANCIAL_DATA",
+      "bucket_name": "financial-system-datasets"
+    },
+    {
+      "binding": "RESEARCH_DATA",
+      "bucket_name": "financial-data-wrds-private"
+    },
+    {
+      "binding": "SEC_CORPUS",
+      "bucket_name": "ppe-sec-intelligence-prod"
+    },
+    {
+      "binding": "RESEARCH_LAKEHOUSE",
+      "bucket_name": "financial-data-wrds-lakehouse"
+    }
   ],
-  "observability": {"enabled": true, "head_sampling_rate": 0.05}
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.05
+  },
+  "vars": {
+    "COLLECTION_CATALOG_KEY": "gold/collection-catalog/releases/ae29d97f14d6052fb4da7fd963a32e4816437e58c20060ce6416ecb769a42c1a/manifest.json",
+    "COLLECTION_CATALOG_SHA256": "5dc9df9730425b93525b33a738275cfcafbe91f3e1364c7f5622f3146bdaf73c"
+  }
 }

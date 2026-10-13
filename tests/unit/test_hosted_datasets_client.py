@@ -45,3 +45,50 @@ def test_hosted_client_authenticates_only_fixed_https_origin(monkeypatch, capsys
     assert calls[0].full_url == "https://example.test/private/v1/datasets"
     assert calls[0].get_header("Authorization") == "Bearer secret"
     assert "secret" not in capsys.readouterr().out
+
+
+def test_native_rows_require_explicit_private_output(monkeypatch):
+    monkeypatch.setenv("ZION_PRIVATE_BASE_URL", "https://example.test")
+    monkeypatch.setenv("ZION_PRIVATE_API_TOKEN", "secret")
+    monkeypatch.setattr(
+        sys, "argv", ["client", "rows", "research", "--hosted", "--path", "table.parquet"]
+    )
+    with pytest.raises(SystemExit):
+        module.main()
+
+
+def test_native_rows_are_saved_privately_without_stdout_values(monkeypatch, capsys, tmp_path):
+    calls = []
+
+    class Opener:
+        def open(self, req, timeout):
+            calls.append(req)
+            return io.BytesIO(b'{"data":{"rows":[{"value":"private-financial-value"}]}}')
+
+    monkeypatch.setattr(module, "build_opener", lambda handler: Opener())
+    monkeypatch.setenv("ZION_PRIVATE_BASE_URL", "https://example.test")
+    monkeypatch.setenv("ZION_PRIVATE_API_TOKEN", "secret")
+    output = tmp_path / "rows.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "client",
+            "rows",
+            "research",
+            "--hosted",
+            "--path",
+            "table.parquet",
+            "--columns",
+            "value",
+            "--row-offset",
+            "1000",
+            "--output",
+            str(output),
+        ],
+    )
+    module.main()
+    assert "private-financial-value" in output.read_text()
+    assert output.stat().st_mode & 0o777 == 0o600
+    assert "private-financial-value" not in capsys.readouterr().out
+    assert "offset=1000" in calls[0].full_url

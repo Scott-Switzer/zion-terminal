@@ -57,7 +57,7 @@ compatible table-query consumers; direct ranges are not an Iceberg SQL snapshot.
 
 Do not collapse source-specific identifiers, units, revisions, price adjustments
 or availability semantics. Licensed/private sources remain private, and their
-availability does not authorize public redistribution. The next integration
-milestone is a dataset/schema catalog plus cloud execution for native table
-queries and validated cross-source financial mappings. The API must continue to
-state which layer each result represents.
+availability does not authorize public redistribution. The dataset/schema catalog and cloud native Parquet query milestone is now
+implemented; see `native-collection-queries.md`. Cross-file query execution and
+validated cross-source financial mappings remain separate work. The API states
+which layer each result represents.

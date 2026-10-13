@@ -1,3 +1,5 @@
+import { handleNative } from './native.mjs';
+import { handleCatalog } from './catalog.mjs';
 // Storage access is not financial normalization or permission to redistribute.
 export const STORES = Object.freeze({
   financial: { binding: 'FINANCIAL_DATA', label: 'Financial market and SEC datasets', usage: 'Source data, normalized datasets, and published releases' },
@@ -75,6 +77,8 @@ export async function handle(request, env, publicCatalog = false) {
       if (request.method !== 'GET' || u.pathname !== '/v1/datasets/status' || u.search) throw new Failure('Not found.', 404);
       return json(await catalog(env, true));
     }
+    if (u.pathname === '/v1/datasets/catalog' || u.pathname.startsWith('/v1/datasets/catalog/')) return handleCatalog(request, env);
+    if (/^\/v1\/datasets\/[a-z]+\/(schema|rows)$/.test(u.pathname)) return handleNative(request, env);
     if (request.method === 'GET' && ['/v1/datasets', '/healthz'].includes(u.pathname)) {
       parameters(u, []);
       return json(await catalog(env, u.pathname === '/healthz'));

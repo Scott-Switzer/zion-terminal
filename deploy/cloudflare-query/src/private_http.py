@@ -96,7 +96,9 @@ async def handle_private(env, request, *, request_id):
                 "datasets": {
                     "base_path": "/private/v1/datasets",
                     "stores": ["financial", "research", "filings", "lakehouse"],
-                    "access": "READ_ONLY_SOURCE_BYTES",
+                    "access": "READ_ONLY_SOURCE_BYTES_AND_NATIVE_PARQUET_ROWS",
+                    "catalog_path": "/private/v1/datasets/catalog",
+                    "native_table_operations": ["schema", "rows"],
                     "discovery": "PAGINATED_ALL_OBJECTS",
                     "normalization": "SOURCE_SPECIFIC_NOT_UNIVERSAL",
                 },

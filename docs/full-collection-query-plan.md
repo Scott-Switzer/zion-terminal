@@ -1,0 +1,11 @@
+# Native collection query milestone
+
+Approved objective: dataset/schema catalog and native table queries using existing cloud data. No WRDS collector, provider acquisition, bulk local scans, PRs or new cloud resources. Preserve public contracts and existing releases.
+
+Design: publish a new immutable, hash-pinned catalog from the existing verified WRDS inventory (805 releases/803 named datasets plus one unidentified legacy entry, 41,485 object references) and existing cross-domain coverage manifest. Schemas here are source-declared, not independently validated. Expose paginated catalog search/detail behind the existing authenticated dataset gateway. Expose actual Parquet footer schema and column-projected physical row pages through the existing private dataset Worker. Native source fields are not canonical financial metrics. Rows remain private and source-specific. All data decoding runs in Cloudflare. Every R2 range pins the HEAD ETag; continuation pins source version and request projection. Reads, decoded columns and responses have explicit budgets with errors, never silent truncation. Decimal and int64 precision must be preserved, and source timestamps retain native precision. No arbitrary SQL or URLs. Cache compact verified-result envelopes in existing R2, keeping acquisition disabled.
+
+Ruling: use existing Cloudflare runtime rather than Cloud Run. The only currently accessible Google project has Cloud Run disabled; no existing configured service was found. Pure-JavaScript Parquet range decoding avoids provisioning an unverified replacement and keeps compute off the Mac.
+
+Sequence: (1) red/green native schema and row-page tests including source version changes, byte/decode budgets and exact decimals; (2) catalog builder/publisher plus schema provenance; (3) service routes and source-pinned persistence; (4) offline tests, one independent review, direct commit/push, deploy exact commit, authenticated real-data checks for multiple sources and existing API regression checks.
+
+Limits: per-object native row paging does not constitute cross-file SQL or an Iceberg transaction snapshot. Catalog publication preserves missing manifests and inventory errors; no coverage promotion. Oversized row groups return an explicit budget error requiring a larger cloud-query runtime. All original source bytes remain accessible through ranges.
