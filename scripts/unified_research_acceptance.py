@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import time
 from collections import Counter
 from fractions import Fraction
 from pathlib import Path
@@ -24,6 +25,20 @@ def independent(row):
     raise ValueError("UNSUPPORTED_INDEPENDENT_FORMULA")
 
 
+def propagated_request(path, params=None, *, auth=True, fetch=request, pause=time.sleep):
+    for attempt in range(30):
+        body, measure = fetch(path, params, auth=auth)
+        error = body.get("error", {})
+        legacy = (
+            measure["http_status"] == 404
+            and error.get("code") == "NOT_FOUND"
+            and error.get("message") == "private route not found"
+        )
+        if not legacy or attempt == 29:
+            return body, dict(measure, legacy_route_propagation_retries=attempt)
+        pause(2)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cohort", type=Path, required=True)
@@ -38,7 +53,7 @@ def main():
     counts = Counter()
 
     def call(name, route, params=None, auth=True):
-        body, measure = request("/private/v1/" + route, params, auth=auth)
+        body, measure = propagated_request("/private/v1/" + route, params, auth=auth)
         target = args.output / (name + ".json")
         target.write_text(json.dumps(body, separators=(",", ":")) + "\n")
         target.chmod(0o600)

@@ -30,3 +30,37 @@ spec.loader.exec_module(m)
 def test_independent_exact_negative_and_nonterminating_calculations(metric, inputs, expected):
     row = {"metric": metric, "inputs": {k: {"value_decimal": v} for k, v in inputs.items()}}
     assert m.independent(row) == expected
+
+
+def test_only_identifiable_legacy_route_propagation_404_is_retried():
+    responses = iter(
+        [
+            (
+                {"error": {"code": "NOT_FOUND", "message": "private route not found"}},
+                {"http_status": 404},
+            ),
+            ({"observations": []}, {"http_status": 200}),
+        ]
+    )
+    pauses = []
+    body, measurement = m.propagated_request(
+        "/private/v1/research-overview", fetch=lambda *a, **k: next(responses), pause=pauses.append
+    )
+    assert (
+        measurement["http_status"] == 200 and measurement["legacy_route_propagation_retries"] == 1
+    )
+    assert pauses == [2]
+
+
+def test_real_source_404_is_never_hidden_by_propagation_retry():
+    body, measurement = m.propagated_request(
+        "/private/v1/research-overview",
+        fetch=lambda *a, **k: (
+            {"error": {"code": "CIK_NOT_IN_SOURCE_ARCHIVE"}},
+            {"http_status": 404},
+        ),
+        pause=lambda _: (_ for _ in ()).throw(AssertionError("must not sleep")),
+    )
+    assert (
+        measurement["http_status"] == 404 and measurement["legacy_route_propagation_retries"] == 0
+    )
