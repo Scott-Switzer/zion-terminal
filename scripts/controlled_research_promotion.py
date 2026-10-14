@@ -29,7 +29,7 @@ def single_active_version(deployments):
     return version
 
 
-def wait_for_version(read_version, expected, *, attempts=8, pause=time.sleep):
+def wait_for_version(read_version, expected, *, attempts=30, pause=time.sleep):
     for attempt in range(attempts):
         if read_version() == expected:
             return

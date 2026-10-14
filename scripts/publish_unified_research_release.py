@@ -133,6 +133,29 @@ def local_verified(path, reference):
     return raw
 
 
+def indexed_financial_entry(cik, entry, shard_ref, financial_root):
+    """Preserve every verified source field; add only explicit source-shard provenance."""
+    if (
+        not re.fullmatch(r"\d{10}", cik)
+        or shard_ref != financial_root["shards"].get(cik[-2:])
+        or "source_shard_ref" in entry
+    ):
+        raise ValueError("FINANCIAL_INDEX_SOURCE_REFERENCE_MISMATCH")
+    materialized = entry.get("materialized", {})
+    source_release = materialized.get("source_release_id")
+    if (
+        source_release not in financial_root["source_releases"]
+        or materialized.get("key")
+        != "gold/sec-engine/releases/" + source_release + "/companies/" + cik + ".json"
+        or not re.fullmatch(r"[a-f0-9]{64}", materialized.get("sha256", ""))
+        or not re.fullmatch(r"[a-f0-9]{64}", materialized.get("member_sha256", ""))
+        or not isinstance(materialized.get("bytes"), int)
+        or materialized["bytes"] <= 0
+    ):
+        raise ValueError("FINANCIAL_INDEX_MATERIALIZATION_NOT_APPROVED")
+    return dict(entry, source_shard_ref=dict(shard_ref))
+
+
 def point_join_gate(identity, market_data, companion_data, resolver, minimum):
     joined, gaps = {}, []
     candidates = sorted(
@@ -213,6 +236,7 @@ def publish(
     companions = {}
     companion_data = {}
     shards = {}
+    financial_entries = {}
     for record in summary["companies"]:
         cik = record["cik"]
         if (
@@ -233,6 +257,9 @@ def publish(
                 read_verified(s3, financial_root["shards"][suffix], 2 * 1024**2)
             )
         item = shards[suffix][cik]
+        financial_entries[cik] = indexed_financial_entry(
+            cik, item, financial_root["shards"][suffix], financial_root
+        )
         if item["materialized"]["member_sha256"] != data["member_sha256"]:
             raise ValueError("CERTIFICATION_MEMBER_DRIFT")
         actual_source_release = item["materialized"].get("source_release_id")
@@ -337,6 +364,7 @@ def publish(
         schema_version="unified-research-release-v1",
         financial_release_id=FINANCIAL_RELEASE,
         financial_manifest_ref=financial["root"],
+        financial_entries=financial_entries,
         owner_projection_release_id=owner["release_id"],
         original_owner_manifest_sha256=sha(owner_raw),
         inputs={k: dict(sha256=sha(v), bytes=len(v)) for k, v in sorted(files.items())},
@@ -398,6 +426,7 @@ def publish(
         root=root_ref,
         financial_release_id=FINANCIAL_RELEASE,
         certifications=len(companions),
+        indexed_financial_entries=len(financial_entries),
         demonstrated_point_joins=len(joined_points),
         minimum_point_joins=minimum_point_joins,
         market_symbols=len(owner["symbols"]),

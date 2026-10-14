@@ -150,3 +150,38 @@ def test_ambiguous_identity_cannot_count_toward_join_gate():
             resolver,
             1,
         )
+
+
+def test_index_preserves_exact_source_entry_and_shard_pin():
+    cik = "0000000001"
+    release = "a" * 64
+    ref = dict(
+        key="gold/sec-engine/releases/" + release + "/catalog-01.json", sha256="b" * 64, bytes=100
+    )
+    root = dict(shards={"01": ref}, source_releases=[release])
+    source = dict(
+        label="Source label",
+        archive_entry={"crc": 123},
+        policy={"family": "source-family"},
+        materialized=dict(
+            key="gold/sec-engine/releases/" + release + "/companies/" + cik + ".json",
+            sha256="c" * 64,
+            member_sha256="d" * 64,
+            bytes=1000,
+            source_release_id=release,
+        ),
+    )
+    indexed = m.indexed_financial_entry(cik, source, ref, root)
+    assert {k: v for k, v in indexed.items() if k != "source_shard_ref"} == source
+    assert indexed["source_shard_ref"] == ref and "source_shard_ref" not in source
+    with pytest.raises(ValueError):
+        m.indexed_financial_entry(cik, source, dict(ref, sha256="e" * 64), root)
+    with pytest.raises(ValueError):
+        m.indexed_financial_entry(cik, dict(source, source_shard_ref=ref), ref, root)
+    with pytest.raises(ValueError):
+        m.indexed_financial_entry(
+            cik,
+            dict(source, materialized=dict(source["materialized"], source_release_id="f" * 64)),
+            ref,
+            root,
+        )

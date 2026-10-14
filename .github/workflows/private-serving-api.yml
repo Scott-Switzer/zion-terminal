@@ -12,6 +12,8 @@ on:
       - 'tests/unit/test_security_identity.py'
       - 'scripts/*unified*.py'
       - 'scripts/controlled_research_promotion.py'
+      - 'scripts/audit_live_financial_certification.py'
+      - 'tests/unit/test_live_financial_certification_audit.py'
       - 'tests/unit/test_financial_foundation.py'
       - 'tests/unit/test_sec_history*.py'
       - 'tests/unit/test_sec_engine*.py'
@@ -53,6 +55,7 @@ jobs:
           tests/unit/test_private_research_workflow.py
           tests/unit/test_unified_research_api.py
           tests/unit/test_unified_research_acceptance.py
+          tests/unit/test_live_financial_certification_audit.py
           tests/unit/test_financial_certification.py
           tests/unit/test_valuation_engine*.py
           tests/unit/test_security_identity.py

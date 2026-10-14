@@ -25,9 +25,9 @@ Outstanding-share anchors preserve their original class dimensions and context d
 
 ## Matched performance benchmark design
 
-Do not compare an old financial-history request with a new overview or valuation formula request as an optimization claim: those return different work and definitions. Use the same unchanged `/private/v1/financial-history` route before and after deployment, the same fixed 20 CIKs, metrics `revenue,operating_income,net_income`, annual frequency, date_from `2015-01-01`, identical date_to/as_of/release and limit. The normalized query parameters and ordered cohort must be hashed into both receipts.
+Do not compare an old financial-history request with a new overview or valuation formula request as an optimization claim: those return different work and definitions. Use the same unchanged `/private/v1/financial-history` route before and after deployment, the same fixed 20 CIKs, metrics `revenue,net_income,operating_cash_flow`, annual frequency, date_from `2015-01-01`, identical date_to/as_of/release and limit. The normalized query parameters and ordered cohort must be hashed into both receipts.
 
-Run a first observed pass, followed by three repeated passes at concurrency three. Record monotonic request durations, HTTP status, response bytes, cache state, source_payload_bytes, archive_bytes_read_interactively, source/release/registry hashes and exact metric/period/source/value projection parity. Do not call the first pass cold unless every relevant cache reports MISS. Report cache HIT and MISS latency distributions separately, and observed-first separately from repeated warm passes. Use the same percentile method on both runs. The BEFORE benchmark below has now executed; AFTER waits for the new deployment.
+Run a first observed pass, followed by three repeated passes at concurrency three. Record monotonic request durations, HTTP status, response bytes, cache state, source_payload_bytes, archive_bytes_read_interactively, source/release/registry hashes and exact metric/period/source/value projection parity. Do not call the first pass cold unless every relevant cache reports MISS. Report cache HIT and MISS latency distributions separately, and observed-first separately from repeated warm passes. Use the same percentile method on both runs. Both BEFORE and AFTER benchmarks below have executed with the identical fixed query/cohort shape.
 
 Current response metadata exposes source-payload size and archive interactive bytes; it does **not** expose an actual R2 GET/read count. Keep read counts null/uninstrumented unless the parent adds measured telemetry. Do not infer read counts from payload sizes or cache labels: the existing API rehashes source payloads before cached result use. A release mismatch, changed cohort/query, pagination truncation or projection mismatch invalidates the matched comparison.
 
@@ -46,4 +46,19 @@ Actual request shape: 20 fixed companion CIKs; annual `revenue,net_income,operat
 | First observed | 20 MISS | 1873.052 | 4568.614 | 3,282,421 |
 | Repeat | 20 HIT | 1057.753 | 4221.019 | 3,282,401 |
 
-Percentiles use nearest rank. These are observed API query-cache misses/hits; they do not prove absence of upstream infrastructure caches. There were no provider or SQL requests, and only the existing API query-cache writes occurred. Actual R2 read counts remain null because the API does not expose them. The post-deployment run must reuse the exact shape/cohort digest and verify baseline projection parity before any latency comparison is valid.
+Percentiles use nearest rank. These are observed API query-cache misses/hits; they do not prove absence of upstream infrastructure caches. There were no provider or SQL requests, and only the existing API query-cache writes occurred. Actual R2 read counts remain null because the API does not expose them. The post-deployment run reused the exact shape/cohort digest and passed baseline projection parity.
+
+## Executed matched AFTER comparison
+
+The parent confirmed normal activation of Worker candidate `257e840e-6ca6-4232-8f45-0401e9caa36e`, built from commit `cef6928`, before the AFTER run. Protected evidence is `matched-benchmark/after/receipt.json` and `matched-benchmark/comparison.json` under the same artifact directory. The script enforced the same B39 financial release, fixed original 20 CIKs and query parameters; research demo expansion did not change this cohort.
+
+All 40 AFTER requests were HTTP200 and complete. All 40 duplicate-preserving exact financial projections matched the corresponding BEFORE responses. Repeated response sizes were identical at 3,282,401 bytes. No provider or SQL requests occurred. R2 GET counts remain uninstrumented/null.
+
+| Deployment/pass | Cache observations | p50 ms | p95 ms | Response bytes |
+| --- | --- | --- | --- | --- |
+| Before, first observed | 20 MISS | 1873.052 | 4568.614 | 3,282,421 |
+| Before, repeat | 20 HIT | 1057.753 | 4221.019 | 3,282,401 |
+| After, first observed | 20 HIT | 2488.481 | 5662.922 | 3,282,401 |
+| After, repeat | 20 HIT | 2123.598 | 3693.724 | 3,282,401 |
+
+**Observed performance is mixed.** Comparing repeat HIT passes, p50 increased 100.77% and p95 decreased 12.49%; there is no supported overall speedup claim. First-observed MISS-before versus HIT-after is not a matched cache-state comparison. This is one 20-company sample with two passes, without controlled network/Worker load; the parent was also running live demo acceptance during the AFTER measurement. The results establish preserved financial behavior and measured latency under those conditions, not a causal optimization benefit. No additional benchmark reruns were made to select a more favorable sample.

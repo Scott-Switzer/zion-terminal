@@ -502,3 +502,48 @@ def test_two_covered_symbols_for_one_issuer_remain_ambiguous(fixture, monkeypatc
     monkeypatch.setattr(api, "artifact", with_class)
     result, status = query("prices", {"cik": "0000104169", "date_to": "2019-12-04"})
     assert status == 422 and result["error"]["code"] == "DATED_IDENTITY_NOT_ESTABLISHED"
+
+
+def test_indexed_financial_entry_binds_original_shard_member_and_source_release():
+    api = module()
+    cik = "0000001800"
+    shard = {"key": "original/shard00.json", "sha256": "a" * 64, "bytes": 100}
+    entry = {
+        "materialized": {"member_sha256": "b" * 64, "source_release_id": "c" * 64},
+        "source_shard_ref": shard,
+        "maximum_as_of": "2026-09-24T00:00:00Z",
+    }
+    root = {
+        "financial_entries": {cik: entry},
+        "financial_manifest_ref": {"sha256": "d" * 64},
+        "certifications": {cik: {"member_sha256": "b" * 64, "registry_sha256": "e" * 64}},
+    }
+    manifest = {"shards": {"00": shard}, "source_releases": ["c" * 64], "registry_sha256": "e" * 64}
+    assert api.indexed_entry(root, manifest, cik) == {
+        k: v for k, v in entry.items() if k != "source_shard_ref"
+    }
+    assert api.indexed_entry(root, manifest, "0000000001") is None
+    manifest["shards"] = {"00": dict(shard, sha256="f" * 64)}
+    with pytest.raises(Exception, match="FINANCIAL_INDEX_SOURCE_MISMATCH"):
+        api.indexed_entry(root, manifest, cik)
+
+
+def test_indexed_financial_entry_rejects_member_substitution():
+    api = module()
+    root = {
+        "financial_manifest_ref": {"sha256": "a" * 64},
+        "financial_entries": {
+            "0000001800": {
+                "source_shard_ref": {"sha256": "b" * 64},
+                "materialized": {"member_sha256": "wrong", "source_release_id": "c" * 64},
+            }
+        },
+        "certifications": {"0000001800": {"member_sha256": "right", "registry_sha256": "d" * 64}},
+    }
+    manifest = {
+        "shards": {"00": {"sha256": "b" * 64}},
+        "source_releases": ["c" * 64],
+        "registry_sha256": "d" * 64,
+    }
+    with pytest.raises(Exception, match="FINANCIAL_INDEX_SOURCE_MISMATCH"):
+        api.indexed_entry(root, manifest, "0000001800")

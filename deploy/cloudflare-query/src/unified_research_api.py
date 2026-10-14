@@ -158,9 +158,37 @@ def sources(data, ids):
     return result
 
 
+def indexed_entry(root, manifest, cik):
+    entries = root.get("financial_entries", {})
+    if not isinstance(entries, dict) or len(entries) > 40:
+        fail("FINANCIAL_INDEX_INVALID", 503)
+    if cik not in entries:
+        return None
+    item = entries[cik]
+    reference = item.get("materialized", {})
+    certification = root.get("certifications", {}).get(cik, {})
+    if (
+        not root.get("financial_manifest_ref")
+        or item.get("source_shard_ref") != manifest.get("shards", {}).get(cik[-2:])
+        or item.get("quarantine")
+        or not reference
+        or reference.get("member_sha256") != certification.get("member_sha256")
+        or certification.get("registry_sha256") != manifest.get("registry_sha256")
+        or reference.get("source_release_id") not in manifest.get("source_releases", [])
+    ):
+        fail("FINANCIAL_INDEX_SOURCE_MISMATCH", 409)
+    return {k: v for k, v in item.items() if k != "source_shard_ref"}
+
+
 async def financial(env, root, m, cik, p):
-    e = await sec.entry(env, m, cik)
+    e = indexed_entry(root, m, cik)
+    if e is None:
+        e = await sec.entry(env, m, cik)
     data = await sec.company(env, m, cik, e)
+    if e.get("materialized", {}).get("member_sha256") and (
+        data.get("member_sha256") != e["materialized"]["member_sha256"]
+    ):
+        fail("FINANCIAL_INDEX_MEMBER_MISMATCH", 409)
     scope = dict(m)
     for key in ("maximum_as_of", "date_to"):
         if e.get(key):
