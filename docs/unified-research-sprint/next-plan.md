@@ -8,3 +8,5 @@
 6. Resolve narrow Basin and custom TLS administrator actions in operations.md independently. Leave unsealed archives quarantined and licensed consumers disabled until source-specific evidence exists.
 
 This sequence prioritizes missing evidence and cross-domain functionality over another broad SEC issuer expansion.
+
+The demonstrated combined query is close to its 32 MiB source-read budget. The selected twenty-company cohort fits a measured plan; larger or different cohorts can explicitly fail budget checks. Partitioned metric projections or a verified narrowly scoped SQL runtime should precede larger combined queries. Missing GE/GS/MS historical revenue mappings require source-definition evidence; do not weaken registry rules just to raise match counts. Keep the corrected observation-versus-gap count semantics and source-bound certification runtime refinements in every future release audit.

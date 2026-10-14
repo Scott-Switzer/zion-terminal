@@ -596,3 +596,63 @@ def test_valuation_chart_missing_period_remains_explicit_gap():
     assert "2023-12-31  MISSING" in chart and "SOURCE_MISSING" in chart and "·" in chart
     with pytest.raises(Exception, match="ONE_METRIC"):
         cli.render_valuation_chart({"observations": rows + [dict(rows[0], metric="net_margin")]})
+
+
+def test_unified_market_screen_table_keeps_fraction_price_and_cutoff_provenance():
+    data = {
+        "release_id": "SEC",
+        "research_release_id": "RESEARCH",
+        "market_release_id": "MARKET",
+        "as_of": None,
+        "matches": [
+            {
+                "cik": "0000000001",
+                "symbol": "SYNTH",
+                "financial_as_of": "2019-11-01T00:00:00Z",
+                "identity_known_at": None,
+                "price_date": "2019-11-01",
+                "fundamental": {
+                    "metric": "revenue_growth",
+                    "period_start": "2018-01-01",
+                    "period_end": "2018-12-31",
+                    "numerator": "1",
+                    "denominator": "3",
+                    "value_decimal": None,
+                    "unit": "ratio",
+                    "formula_id": "revenue_growth",
+                    "formula_version": "v1",
+                    "quality": "VERIFIED",
+                },
+                "price": {
+                    "session_date": "2019-11-01",
+                    "value_decimal": "9007199254740993.0001",
+                    "unit": "USD",
+                    "currency": "USD",
+                    "available_at": None,
+                    "quality": "RETROSPECTIVE_PIT_NOT_ESTABLISHED",
+                },
+            }
+        ],
+        "coverage_gaps": [],
+    }
+    text = cli.render_table(data, "market-screen")
+    for token in (
+        "1/3",
+        "9007199254740993.0001",
+        "2019-11-01T00:00:00Z",
+        "2019-11-01",
+        "2018-12-31",
+        "MARKET",
+        "SEC",
+        "revenue_growth",
+        "RETROSPECTIVE",
+    ):
+        assert token in text
+    legacy = cli.render_table(
+        {
+            "release_id": "SEC",
+            "matches": [{"cik": "0000000001", "metric": "revenue", "observation": row("3")}],
+        },
+        "screen",
+    )
+    assert "revenue" in legacy and "3" in legacy

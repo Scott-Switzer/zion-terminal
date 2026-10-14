@@ -1,59 +1,88 @@
 {
   "schema_version": "unified-research-acceptance-v1",
-  "status": "IN_PROGRESS",
+  "status": "PARTIAL_SUCCESS",
+  "worker_source_commit": "1af8cd0",
+  "worker_version_id": "be4243ee-f3d5-4920-89bd-ad2e06f16ae1",
+  "research_release_id": "358ea45de35af6003347dc163fe31eebd09988d1b3715c3386e5ab8c0dfee72e",
+  "financial_release_id": "b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb",
   "gates": [
     {
       "id": 1,
-      "name": "Metric/period certification",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "name": "Metric-level and period-level certification",
+      "status": "PASS",
+      "evidence": "31 live companies; 2,388 source-bound independently checked observations, 179 accounting-certified metric/period observations, 1,535 explicit gap records, 2,463 resolved source IDs. Three conservative substatus refinements reproduced from exact current source payloads and pinned certifier; initial strict FAIL retained. This is selected evidence, not full certification.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/live-certification-audit-final/aggregate.json"
     },
     {
       "id": 2,
       "name": "Historical security identity",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "status": "PASS",
+      "evidence": "21 strict dated SEC identity/price joins; exact observed dates only. Final 20-company bounded cohort covers several sectors. Multiple covered classes remain ambiguous; continuous ticker intervals and delisting histories are not inferred.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/demo-cohort-bounded-observed.json"
     },
     {
       "id": 3,
       "name": "Authorized prices and corporate actions",
       "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "evidence": "Owner-only Alpaca historical prices are integrated for 21 supported point joins. Corporate actions are not integrated: use rights and dated identity/adjustment validity on existing Massive/WRDS collections remain unverified; no licensed migration is enabled. Price-publication times remain unknown.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/historical-identity-price-membership-final.json"
     },
     {
       "id": 4,
-      "name": "Three independently verified end-to-end calculations",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "name": "Three substantive calculations independently verified end to end",
+      "status": "PASS",
+      "evidence": "249 live calculations across 20 companies: 58 revenue growth, 56 operating margin, 70 net margin, 65 free cash flow. 498 inputs match independently calculated raw SEC proofs; 20 price tokens equal original recovered decimal projections. Unsupported market cap and EV components remain unavailable.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/live-lineage-audit-final.json"
     },
     {
       "id": 5,
-      "name": "Combined fundamentals/market screen",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "name": "Combined fundamentals and market screen",
+      "status": "PASS",
+      "evidence": "20 explicitly requested companies; 17 verified revenue-growth/price matches. GE/GS/MS have unavailable required revenue inputs; additional price-date gaps are explicit. Measured 33,016,204 bytes, 64 source objects, 30 request-local hits, within 32 MiB. No silent truncation or invented matches.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/live-demo-coverage/combined-screen.json"
     },
     {
       "id": 6,
-      "name": "Terminal research/provenance/export",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "name": "Existing terminal workflow",
+      "status": "PASS",
+      "evidence": "20 companies complete search, overview, annual history, exact-point price chart, valuation, provenance and protected export. 126 workflow checks include the recorded screen renderer replay; an additional real two-company screen verifies the fixed renderer. HD has six live valuation-chart periods; WMT has 252 retrospective provider-symbol price-chart sessions.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/terminal-live-demo-final/summary.json"
     },
     {
       "id": 7,
       "name": "Historical release reproducibility",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "status": "PASS",
+      "evidence": "Two approved old SEC releases reproduce exact selected financial-history hashes on final Worker; all three protected production CURRENT pointers remain byte-identical. Original immutable source references are preserved. This is bounded historical verification, not an estate-wide file census.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/final-preservation-verification.json"
     },
     {
       "id": 8,
-      "name": "Verified deployment and benchmarks",
-      "status": "FAIL",
-      "evidence": "Live sprint validation pending."
+      "name": "Verified deployment and numerical benchmarks",
+      "status": "PASS",
+      "evidence": "Active Worker be4243ee-f3d5-4920-89bd-ad2e06f16ae1, source 1af8cd0, research 358ea45..., SEC B39 unchanged. Final matched 40/40 financial projections equal baseline. Repeated HIT p50 1057.753\u2192679.356 ms and p95 4221.019\u21921806.804 ms; measured improvements are observational, not causal guarantees. Billing evidence unavailable.",
+      "protected_receipt": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/matched-benchmark-final/after/receipt.json"
     }
   ],
+  "remaining_gates": {
+    "corporate_actions": "FAIL",
+    "market_point_in_time_availability": "FAIL",
+    "continuous_security_lifecycle_history": "FAIL",
+    "market_cap_and_complete_EV_inputs": "FAIL",
+    "narrow_Basin_runtime_credentials": "FAIL",
+    "custom_hostname_TLS": "FAIL",
+    "full_universe_accounting_certification": "FAIL",
+    "actual_billing_measurement": "UNAVAILABLE"
+  },
+  "security_incident": {
+    "classification": "UNKNOWN_POTENTIALLY_LICENSED_DERIVED",
+    "status": "RECORDED",
+    "detail": "A prior overly broad local search exposed derived fields of unconfirmed provenance to tool context. No raw licensed payload was opened. See security-review.md; zero potentially licensed exposure is not claimed."
+  },
   "prohibitions": {
     "licensed_wrds_enabled": false,
     "production_current_changes": false,
+    "new_wrds_downloads": false,
     "full_financial_certification_claimed": false
-  }
+  },
+  "terminal_source_sha256": "c33c4f782463adb54f31760094eb0907c091c62054cc2da94b2c7d90b6ad3f71"
 }

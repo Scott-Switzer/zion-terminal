@@ -434,14 +434,33 @@ def render_table(value, action):
                     identity.get("status", "SEE_PROVENANCE"),
                 )
             for match in page.get("matches", []):
-                row = match["observation"]
+                row = match.get("observation", match.get("fundamental", {}))
+                note = (
+                    (
+                        "financial_as_of="
+                        + str(match.get("financial_as_of", "NOT_RETURNED"))
+                        + "; identity_known_at="
+                        + str(match.get("identity_known_at"))
+                    )
+                    if "fundamental" in match
+                    else "OBSERVED"
+                )
                 add(
                     match["cik"],
-                    match.get("metric", page.get("metric", "NOT_RETURNED")),
+                    row.get("metric", match.get("metric", page.get("metric", "NOT_RETURNED"))),
                     row,
                     exact(row),
-                    "OBSERVED",
+                    str(row.get("quality", "OBSERVED")) + "; " + note,
                 )
+                if "price" in match:
+                    price = match["price"]
+                    add(
+                        match["cik"],
+                        "close:" + str(match.get("symbol", "NOT_RETURNED")),
+                        {**price, "period_end": price.get("session_date", match.get("price_date"))},
+                        exact(price),
+                        str(price.get("quality", "NOT_RETURNED")) + "; " + note,
+                    )
             for company in page.get("companies", []):
                 if company.get("http_status", 200) >= 400:
                     error = (

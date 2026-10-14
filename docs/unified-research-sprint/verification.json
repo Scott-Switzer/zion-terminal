@@ -1,0 +1,52 @@
+{
+  "local_unit_tests": {
+    "passed": 969,
+    "skipped": 3,
+    "warnings": 2
+  },
+  "native_operator_tests": {
+    "passed": 22
+  },
+  "lint": "PASS",
+  "frozen_v2_contract": "UNCHANGED",
+  "deployed_worker_source_unchanged_since": "1af8cd0",
+  "worker_version_id": "be4243ee-f3d5-4920-89bd-ad2e06f16ae1",
+  "protected_evidence": [
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/promotion/coverage-activation.json",
+      "sha256": "71313bac06f0c8a95fddc56bc9cfef6099067558c053ef2393999b9418bbf7fd"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/live-demo-coverage/receipt.json",
+      "sha256": "d9536d119b7ea0ff338486b2e7a59efe588294bcb9bef2f64d35ed51416b35d7"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/live-certification-audit-final/aggregate.json",
+      "sha256": "594976baf714110c3541642a9ef68daf64856ce89941335ffa127a26008b233f"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/terminal-live-demo-final/summary.json",
+      "sha256": "cf47e40dfe8ed30ed84731e5d97be559eabb6d500d2f38e25b1c8081a2e54688"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/matched-benchmark-final/after/receipt.json",
+      "sha256": "1ff78a0e8dfe10b69089f7a22c027808b8216e793adc6e90e9541089b4ac7bb9"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/matched-benchmark-final/comparison.json",
+      "sha256": "f818dc2a699ce36ff7f72a166626fd3328f03f66e4af60f4a0c1643162c37b0b"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/live-lineage-audit-final.json",
+      "sha256": "19e3dcb7ea0884b2b28795396f7ef68e5b108d61696fff37399e2930a5d6f2b7"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/final-preservation-verification.json",
+      "sha256": "43f5fc8a550d97f8ef8e64ce0cb1510fce763dec4f1a4566df58a570de030429"
+    },
+    {
+      "path": "/Users/scottthomasswitzer/Documents/Secret/artifacts/unified-research-sprint/publication-corrected-summary/publication.json",
+      "sha256": "1bb0b64d45d1aeb5285d594c869cf98fa312a3af73652ef2dcced7ffde2a2602"
+    }
+  ]
+}

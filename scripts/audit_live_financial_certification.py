@@ -36,8 +36,9 @@ def row_sources(row):
     )
 
 
-def validate_company(body, companion, research_release, financial_release):
+def validate_company(body, companion, research_release, financial_release, expected_current=None):
     errors = []
+    refinements = []
     for key, expected in [
         ("research_release_id", research_release),
         ("release_id", financial_release),
@@ -52,7 +53,12 @@ def validate_company(body, companion, research_release, financial_release):
         or body.get("coverage_complete_in_this_response") is not True
     ):
         errors.append("PAGINATION_NOT_COMPLETE")
-    expected_rows = {row_key(r): r for r in companion["certification"]["observations"]}
+    baseline_rows = {row_key(r): r for r in companion["certification"]["observations"]}
+    expected_rows = (
+        {row_key(r): r for r in expected_current["observations"]}
+        if expected_current
+        else baseline_rows
+    )
     actual_rows = {row_key(r): r for r in observations}
     if len(actual_rows) != len(observations) or set(actual_rows) != set(expected_rows):
         errors.append("LIVE_ROW_COVERAGE_MISMATCH")
@@ -63,16 +69,68 @@ def validate_company(body, companion, research_release, financial_release):
     for key, row in actual_rows.items():
         statuses[row.get("status", "MISSING")] += 1
         prior = expected_rows.get(key)
-        if prior and any(
+        mismatch = prior and any(
             row.get(field) != prior.get(field)
-            for field in (
-                "value_decimal",
-                "status",
-                "verified_statuses",
-                "independent_status",
-                "accounting_status",
+            for field in ("value_decimal", "status", "verified_statuses", "independent_status")
+        )
+        if prior and row.get("accounting_status") != prior.get("accounting_status"):
+            mismatch = True
+        baseline = baseline_rows.get(key)
+        if (
+            expected_current
+            and baseline
+            and (
+                any(
+                    row.get(field) != baseline.get(field)
+                    for field in (
+                        "value_decimal",
+                        "status",
+                        "verified_statuses",
+                        "independent_status",
+                    )
+                )
+                or row_sources(row) != row_sources(baseline)
             )
         ):
+            mismatch = True
+        if (
+            expected_current
+            and baseline
+            and row.get("accounting_status") != baseline.get("accounting_status")
+        ):
+            safe_verified_refinement = (
+                baseline.get("accounting_status") == "NOT_ESTABLISHED"
+                and row.get("accounting_status") == "UNAVAILABLE"
+                and row.get("reasons")
+                == prior.get("reasons")
+                == ["ACCOUNTING_INPUT_FILING_OR_SCOPE_MISMATCH"]
+                and "ACCOUNTING_CERTIFIED" not in row.get("verified_statuses", [])
+                and not row.get("accounting_evidence")
+                and all(
+                    row.get(field) == baseline.get(field)
+                    for field in (
+                        "value_decimal",
+                        "status",
+                        "verified_statuses",
+                        "independent_status",
+                    )
+                )
+                and row_sources(row) == row_sources(baseline)
+                and not mismatch
+            )
+            if safe_verified_refinement:
+                refinements.append(
+                    dict(
+                        metric=row["metric"],
+                        period_end=row["period_end"],
+                        baseline_accounting_status="NOT_ESTABLISHED",
+                        current_offline_and_live_accounting_status="UNAVAILABLE",
+                        reason="ACCOUNTING_INPUT_FILING_OR_SCOPE_MISMATCH",
+                    )
+                )
+            else:
+                mismatch = True
+        if mismatch:
             errors.append("LIVE_CERTIFICATE_VALUE_OR_STATUS_MISMATCH")
         ids = set(row.get("source_ids", []))
         referenced.update(ids)
@@ -122,10 +180,14 @@ def validate_company(body, companion, research_release, financial_release):
         as_of=companion["as_of"],
         pagination_complete=body.get("coverage_complete_in_this_response") is True,
         coverage_gaps=len(body.get("coverage_gaps", [])),
+        expected_coverage_gaps=len(companion["certification"]["coverage_gaps"]),
+        fail_closed_accounting_refinements=refinements,
     )
 
 
-def audit(publication_dir, certification_dir, output, request):
+def audit(
+    publication_dir, certification_dir, output, request, expected_current_certifications=None
+):
     publication = json.loads((publication_dir / "publication.json").read_bytes())
     root_raw = (publication_dir / "manifest.json").read_bytes()
     if (
@@ -191,11 +253,24 @@ def audit(publication_dir, certification_dir, output, request):
                 source_ids=0,
                 measurement=measurement,
             )
-        result = validate_company(body, companion, root["release_id"], root["financial_release_id"])
+        expected_current = (expected_current_certifications or {}).get(cik)
+        if expected_current:
+            binding = expected_current.get("source_bound_recomputation", {})
+            if (
+                binding.get("materialized_ref") != root["financial_entries"][cik]["materialized"]
+                or binding.get("companion_sha256") != ref["sha256"]
+                or binding.get("helper_sha256")
+                != root["implementation_refs"]["financial_certification.py"]["sha256"]
+                or binding.get("member_sha256") != companion["member_sha256"]
+            ):
+                raise ValueError("CURRENT_OFFLINE_EXPECTATION_NOT_SOURCE_BOUND")
+        result = validate_company(
+            body, companion, root["release_id"], root["financial_release_id"], expected_current
+        )
         result["measurement"] = measurement
         return result
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=2) as pool:
         companies = list(pool.map(one, sorted(root["certifications"])))
     after, after_measure = request("/v3/capabilities")
     totals = Counter()
@@ -213,6 +288,12 @@ def audit(publication_dir, certification_dir, output, request):
         errors.append("AGGREGATE_ROW_COUNT_MISMATCH")
     if totals != expected_statuses:
         errors.append("AGGREGATE_CERTIFICATION_STATUS_MISMATCH")
+    live_gaps = sum(r.get("coverage_gaps", 0) for r in companies)
+    expected_gaps = sum(r.get("expected_coverage_gaps", 0) for r in companies)
+    if live_gaps != expected_gaps or expected_gaps != summary.get(
+        "coverage_gap_count", expected_gaps
+    ):
+        errors.append("COVERAGE_GAP_COUNT_MISMATCH")
     declared_rows = summary["union_current_series_observations"]
     declared_accounting = summary["union_accounting_certified_observations"]
     if (
@@ -236,6 +317,11 @@ def audit(publication_dir, certification_dir, output, request):
         expected_accounting_certified=expected_statuses["ACCOUNTING_CERTIFIED"],
         declared_summary_observations=declared_rows,
         declared_summary_accounting_certified=declared_accounting,
+        coverage_gap_count=live_gaps,
+        expected_coverage_gap_count=expected_gaps,
+        fail_closed_accounting_refinements=sum(
+            len(r.get("fail_closed_accounting_refinements", [])) for r in companies
+        ),
         resolved_source_id_references=sum(r["source_ids"] for r in companies),
         latency_p50_ms=statistics.median(latencies),
         latency_p95_ms=latencies[int(0.95 * (len(latencies) - 1))],
@@ -258,11 +344,22 @@ if __name__ == "__main__":
     p.add_argument("--publication-dir", type=Path, required=True)
     p.add_argument("--certification-dir", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
+    p.add_argument("--current-recomputation-dir", type=Path)
     args = p.parse_args()
     from sec_engine_acceptance import request
 
     try:
-        report = audit(args.publication_dir, args.certification_dir, args.output, request)
+        expected_current = (
+            {
+                p.stem: json.loads(p.read_bytes())
+                for p in args.current_recomputation_dir.glob("[0-9]*.json")
+            }
+            if args.current_recomputation_dir
+            else None
+        )
+        report = audit(
+            args.publication_dir, args.certification_dir, args.output, request, expected_current
+        )
         print(json.dumps({k: v for k, v in report.items() if k != "companies"}))
         raise SystemExit(0 if report["status"] == "PASS" else 1)
     except Exception as exc:

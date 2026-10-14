@@ -40,7 +40,7 @@ def sample():
         cik="0000000001",
         as_of="2026-09-24T00:00:00Z",
         member_sha256="member",
-        certification={"observations": [row]},
+        certification={"observations": [row], "coverage_gaps": []},
     )
     body = dict(
         research_release_id="research",
@@ -87,3 +87,57 @@ def test_after_cutoff_or_wrong_member_fails():
     result = m.validate_company(body, companion, "research", "financial")
     assert "LIVE_SOURCE_AFTER_CUTOFF" in result["errors"]
     assert "LIVE_SOURCE_MEMBER_OR_IDENTITY_MISMATCH" in result["errors"]
+
+
+def test_unverified_accounting_refinement_fails_but_source_recomputed_expected_matches():
+    body, companion = sample()
+    row = body["observations"][0]
+    row["accounting_status"] = "UNAVAILABLE"
+    row["reasons"] = ["ACCOUNTING_INPUT_FILING_OR_SCOPE_MISMATCH"]
+    assert m.validate_company(body, companion, "research", "financial")["status"] == "FAIL"
+    expected = {"observations": [dict(row)]}
+    result = m.validate_company(body, companion, "research", "financial", expected)
+    assert result["status"] == "PASS"
+    assert len(result["fail_closed_accounting_refinements"]) == 1
+    row["accounting_status"] = "PASS"
+    assert (
+        m.validate_company(body, companion, "research", "financial", expected)["status"] == "FAIL"
+    )
+
+
+def test_source_recomputed_override_cannot_upgrade_value_or_certification():
+    body, companion = sample()
+    row = body["observations"][0]
+    row["accounting_status"] = "UNAVAILABLE"
+    row["reasons"] = ["ACCOUNTING_INPUT_FILING_OR_SCOPE_MISMATCH"]
+    row["value_decimal"] = "2.02"
+    expected = {"observations": [dict(row)]}
+    assert (
+        m.validate_company(body, companion, "research", "financial", expected)["status"] == "FAIL"
+    )
+
+
+def test_recomputed_override_cannot_replace_source_ids_or_upgrade_main_status():
+    body, companion = sample()
+    row = body["observations"][0]
+    row["source_evidence"] = [dict(row["source_evidence"][0], source_id="other")]
+    row["source_ids"] = ["other"]
+    body["source_records"] = {
+        "other": dict(body["source_records"]["sid"], source_observation_id="other")
+    }
+    assert (
+        m.validate_company(body, companion, "research", "financial", {"observations": [dict(row)]})[
+            "status"
+        ]
+        == "FAIL"
+    )
+    body, companion = sample()
+    row = body["observations"][0]
+    row["status"] = "ACCOUNTING_CERTIFIED"
+    row["verified_statuses"] = row["verified_statuses"] + ["ACCOUNTING_CERTIFIED"]
+    assert (
+        m.validate_company(body, companion, "research", "financial", {"observations": [dict(row)]})[
+            "status"
+        ]
+        == "FAIL"
+    )

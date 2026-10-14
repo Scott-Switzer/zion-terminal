@@ -1,0 +1,57 @@
+{
+  "schema_version": "unified-research-benchmark-v1",
+  "worker_version_id": "be4243ee-f3d5-4920-89bd-ad2e06f16ae1",
+  "worker_source_commit": "1af8cd0",
+  "research_release_id": "358ea45de35af6003347dc163fe31eebd09988d1b3715c3386e5ab8c0dfee72e",
+  "source_release_unchanged": true,
+  "new_routes": {
+    "overview": {
+      "requests": 20,
+      "p50_ms": 972.813,
+      "p95_ms": 2223.732,
+      "response_bytes": 310341,
+      "source_bytes_read": 38553515,
+      "source_objects_read": 100,
+      "request_local_cache_hits": 0,
+      "legacy_route_propagation_retries": 0
+    },
+    "prices": {
+      "requests": 20,
+      "p50_ms": 676.547,
+      "p95_ms": 2643.688,
+      "response_bytes": 42488,
+      "source_bytes_read": 18601684,
+      "source_objects_read": 100,
+      "request_local_cache_hits": 0,
+      "legacy_route_propagation_retries": 0
+    },
+    "valuation": {
+      "requests": 20,
+      "p50_ms": 1101.002,
+      "p95_ms": 1418.676,
+      "response_bytes": 1098191,
+      "source_bytes_read": 38553515,
+      "source_objects_read": 100,
+      "request_local_cache_hits": 0,
+      "legacy_route_propagation_retries": 0
+    }
+  },
+  "billing_observed": false,
+  "combined_screen": {
+    "name": "combined-screen",
+    "http_status": 200,
+    "latency_ms": 11268.505,
+    "response_bytes": 100848,
+    "transport_attempts": 1,
+    "legacy_route_propagation_retries": 0,
+    "response_sha256": "1fcf938a5087d71f68c7815d95fefac0a630b59de9d9cdd0017807c5fdd2a848",
+    "maximum_source_bytes": 33554432,
+    "maximum_response_bytes": 2097152,
+    "source_bytes_read": 33016204,
+    "source_objects_read": 64,
+    "request_local_cache_hits": 30,
+    "requested_companies": 20,
+    "matched_companies": 17,
+    "unsupported_fundamental_companies": 3
+  }
+}
