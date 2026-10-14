@@ -237,10 +237,17 @@ def main():
             ("certification", "research-certification", {"cik": "0000320193", "limit": 2}),
             ("private_market_history", "research-prices", {"symbol": "WMT", "limit": 2}),
         ):
-            body, measure = request(
-                "/private/v1/" + route,
-                dict(params, expected_release_id=root["financial_release_id"]),
-            )
+            for attempt in range(5):
+                body, measure = request(
+                    "/private/v1/" + route,
+                    dict(params, expected_release_id=root["financial_release_id"]),
+                )
+                if measure["http_status"] != 404:
+                    break
+                diagnostic = args.output.with_suffix(f".{name}-404-{attempt}.json")
+                diagnostic.write_text(json.dumps(body))
+                diagnostic.chmod(0o600)
+                time.sleep(2)
             if (
                 measure["http_status"] != 200
                 or body.get("provenance", {}).get(
