@@ -1,0 +1,108 @@
+{
+  "schema_version": "sec-engine-scale-gates-v1",
+  "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+  "bounded_research_delivery": true,
+  "full_archive_certified": false,
+  "gates": {
+    "source_catalog_dynamic": {
+      "status": "PASS",
+      "evidence": "20,396 source CIK names; hash-pinned ZIP directory/shards; no five-company architectural allowlist"
+    },
+    "at_least_50_companies_evaluated": {
+      "status": "PASS",
+      "evidence": "500 processed;441 usable;59 explicit quarantines"
+    },
+    "independent_source_arithmetic": {
+      "status": "PASS",
+      "evidence": "233318 exact Python/DuckDB matches;500,965 normalized revisions"
+    },
+    "diverse_statement_families_and_calendars": {
+      "status": "PASS",
+      "evidence": "Financial-statement evidence quarantines industrial definitions; generic fiscal calendar proof and original regression tests"
+    },
+    "long_history_no_truncation": {
+      "status": "PASS",
+      "evidence": "Annual/quarterly/TTM; signed explicit pagination; three complete long-history comparisons"
+    },
+    "historical_revision_availability": {
+      "status": "PASS",
+      "evidence": "Historical live cutoff plus revision/null/duplicate/precision tests; prior release sources retained"
+    },
+    "partitioned_basin_public_tables": {
+      "status": "PASS",
+      "evidence": "CIK bucket16 + period-year truncation;500,965 revisions +441 issuers;all-company join counts and exact bounded queries"
+    },
+    "efficient_basin_partition_pruning": {
+      "status": "FAIL",
+      "evidence": "Single-company workload still scanned207files; native materialized private serving remains deliberate choice"
+    },
+    "private_discovery_history_batch_screen_terminal": {
+      "status": "PASS",
+      "evidence": "125 live companies;3-company batch; terminal exact-growth screen then67 financial observations"
+    },
+    "async_materialization_outside_initial_cohort": {
+      "status": "PASS",
+      "evidence": "Kimberly-Clark processed by generic queue;32 annual observations; no company handler"
+    },
+    "incremental_candidate_publication": {
+      "status": "PASS",
+      "evidence": "One official SEC companyfacts fetch;3 immutable R2 candidate objects readback verified; prior pointers unchanged"
+    },
+    "incremental_automatic_serving_promotion": {
+      "status": "FAIL",
+      "evidence": "Candidate overlays not served; requires compatible catalog conversion, independent changed-source reconciliation, individual/inherited freshness, separate promotion gate"
+    },
+    "read_only_basin_credential": {
+      "status": "FAIL",
+      "evidence": "Existing token provisioning403/9109; no privileged retry in this expansion; no broad token installed in SEC history route"
+    },
+    "custom_domain_tls": {
+      "status": "FAIL",
+      "evidence": "Prior pre-HTTP TLS failure; certificate/settings reads403; routing unchanged; use verified private workers.dev origin"
+    },
+    "complete_archive_financial_certification": {
+      "status": "FAIL",
+      "evidence": "Only500 evaluated;3 identity mismatches;56 unmapped;13 temporal rows excluded; prior340unsealed releases/legacy ambiguity remain quarantined"
+    },
+    "licensed_source_enablement": {
+      "status": "PASS",
+      "evidence": "No WRDS download/migration or new licensed consumer; public SEC only"
+    },
+    "production_current_pointers": {
+      "status": "PASS",
+      "evidence": "No CURRENT writes; final postdeployment hashes in protected deployment receipt"
+    },
+    "existing_routes_regression": {
+      "status": "PASS",
+      "evidence": {
+        "private_serving_acceptance": 18,
+        "sec_expanded_acceptance": 20,
+        "collection_serving_acceptance": 18,
+        "native_query_acceptance": 23,
+        "financial_query_acceptance": 17,
+        "sec_engine_smoke": 10
+      }
+    }
+  },
+  "evidence_directory": "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-engine-scale",
+  "evidence_sha256": {
+    "materialization.json": "c5be586591c55f89cd8f8cb083a8d0dd22ea1f3201d031c9c2de9aa0453c0399",
+    "independent-reconciliation.json": "2d7b806a5af336c7737f105c83dbf47fc653d438edbf297aff817f6f85fd7ed5",
+    "basin-partition-evaluation.json": "56952a4b76584e7a2c9da469c6686ed835b38649c1b03763af962015be78ef88",
+    "publication.json": "ee03e17605e18251442d05dba74e75ed643451d64fe1d83953079f761f3a65be",
+    "live-acceptance.json": "7df3b777178cfafa02c1b2fafa0733f86d5dc435e0342c7e47e1e2d25ba78844",
+    "research-demo.json": "1cfa1794fd73d4ca1d98bf7b52b63a360b8e003c8e4173b8accf61a49db6710d",
+    "incremental-live-attempt.json": "63eed91ed123ed3c100ef171761f95f3eb6f4d4fbb840de1d6f4004d79b72bb4",
+    "runtime-resource-diagnostics.json": "7a3e8cfab5972ad05d54034b8adf70e560350ec814423215a46a1435ba8d07a6",
+    "screen-acceptance.json": "5953f05b501ac6c57080d089bb77effaabd3dfe383433aa40cd2e0bc1a241dab",
+    "cache-quarantine-acceptance.json": "06c456d6f369dba98f0a221384600368752fe22e68cda4299f978cd73716585f"
+  },
+  "verification": {
+    "python_tests": 230,
+    "worker_tests": 39,
+    "live_companies": 125,
+    "screen_universe_companies": 441,
+    "independently_reconciled_observations": 233318,
+    "source_revisions": 500965
+  }
+}

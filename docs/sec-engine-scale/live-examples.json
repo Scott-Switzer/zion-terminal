@@ -1,0 +1,106 @@
+{
+  "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+  "terminal_workflow": {
+    "status": "PASS",
+    "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+    "terminal_command": "zion research screen --metrics revenue_growth --minimum 0.1 --ciks 0000789019,0001018724,0001045810,0000104169 --limit 3 --base-url https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev",
+    "screen_examples": [
+      {
+        "cik": "0001045810",
+        "label": "NVIDIA CORP",
+        "period_end": "2026-01-25",
+        "growth_numerator": "85441",
+        "growth_denominator": "130497",
+        "source_ids": [
+          "35c1235b5c9bbccbec88bb418c48fcc430e65d7b4ed991e77cd7fbc2c2f741b5",
+          "ada743a6f82a93e59572d5c05701451696ffb47645cb0831648e65844f92dbab"
+        ]
+      },
+      {
+        "cik": "0000789019",
+        "label": "MICROSOFT CORPORATION",
+        "period_end": "2026-06-30",
+        "growth_numerator": "16705",
+        "growth_denominator": "93908",
+        "source_ids": [
+          "1646c2919899877b19dcc348866d470b709fb69be4faac54f5ec42bab57576c3",
+          "f63d14ac6a575e923df7bd1c3fbfa728b9da1e95387718f0df1aaaa9b5db500b"
+        ]
+      },
+      {
+        "cik": "0001018724",
+        "label": "AMAZON COM INC",
+        "period_end": "2025-12-31",
+        "growth_numerator": "4645",
+        "growth_denominator": "37527",
+        "source_ids": [
+          "02c991509d965269c602f1eac178c468a7036cb4492ea2eb2cc2d4d78a602c21",
+          "7e18588996a0ea6026b6f35582779ab09fd7a749f2ecad5c2af7f80f4d093c37"
+        ]
+      }
+    ],
+    "followup_company_histories": 3,
+    "observations_returned": 67,
+    "batch_measurement": {
+      "http_status": 200,
+      "latency_ms": 3528.46,
+      "response_bytes": 324903,
+      "transport_attempts": 1
+    },
+    "qualification": "SOURCE_BACKED_RESEARCH_DEMONSTRATION;NO_INVESTMENT_RECOMMENDATION"
+  },
+  "api_examples": [
+    {
+      "metric": "operating_cash_flow",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "value_decimal": "-147782000000",
+      "unit": "USD",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "available_at": "2026-02-14T05:00:00Z",
+      "source_observation_ids": [
+        "33fe350360039799bf55ce52bbf674b6779d343d86f823cfe5ff2261ec39a36a"
+      ],
+      "cik": "0000019617"
+    },
+    {
+      "metric": "operating_cash_flow",
+      "period_start": "2025-02-01",
+      "period_end": "2026-01-31",
+      "value_decimal": "41565000000",
+      "unit": "USD",
+      "concept": "us-gaap:NetCashProvidedByUsedInOperatingActivities",
+      "available_at": "2026-03-14T04:00:00Z",
+      "source_observation_ids": [
+        "8f3ede673a12ebcd0bd60d345288492eca3924e31fd63056f9e26a6aeb7bb090"
+      ],
+      "cik": "0000104169"
+    },
+    {
+      "metric": "revenue",
+      "period_start": "2025-07-01",
+      "period_end": "2026-06-30",
+      "value_decimal": "331839000000",
+      "unit": "USD",
+      "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      "available_at": "2026-07-30T04:00:00Z",
+      "source_observation_ids": [
+        "f63d14ac6a575e923df7bd1c3fbfa728b9da1e95387718f0df1aaaa9b5db500b"
+      ],
+      "cik": "0000789019"
+    },
+    {
+      "metric": "revenue",
+      "period_start": "2025-01-01",
+      "period_end": "2025-12-31",
+      "value_decimal": "716924000000",
+      "unit": "USD",
+      "concept": "us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax",
+      "available_at": "2026-02-07T05:00:00Z",
+      "source_observation_ids": [
+        "02c991509d965269c602f1eac178c468a7036cb4492ea2eb2cc2d4d78a602c21"
+      ],
+      "cik": "0001018724"
+    }
+  ]
+}

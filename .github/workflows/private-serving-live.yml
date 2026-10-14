@@ -11,34 +11,34 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify deployed private API
         env:
-          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/private_serving_acceptance.py --output private-serving-acceptance.json
       - name: Verify expanded SEC serving and persistence
         env:
-          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/sec_expanded_acceptance.py --output sec-expanded-acceptance.json
       - name: Verify entire financial collection access
         env:
-          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/collection_serving_acceptance.py --output collection-serving-acceptance.json
       - name: Verify native collection catalog and cloud table queries
         env:
-          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/native_query_acceptance.py --output native-query-acceptance.json
       - name: Verify restricted public financial SQL pilot
         env:
-          ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
+          ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/financial_query_acceptance.py --output financial-query-acceptance.json
-      - name: Verify private immutable SEC financial history
+      - name: Verify scalable private SEC research
         env:
           ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
-        run: python3 scripts/sec_history_acceptance.py --output sec-history-acceptance.json
+        run: python3 scripts/sec_engine_smoke.py --output sec-engine-smoke.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -49,4 +49,4 @@ jobs:
             collection-serving-acceptance.json
             native-query-acceptance.json
             financial-query-acceptance.json
-            sec-history-acceptance.json
+            sec-engine-smoke.json

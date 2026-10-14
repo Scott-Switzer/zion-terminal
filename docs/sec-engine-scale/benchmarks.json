@@ -1,0 +1,285 @@
+{
+  "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+  "api": {
+    "sample": "125 company annual histories, client concurrency3",
+    "latency_ms": {
+      "min": 1287.724,
+      "median": 2803.655,
+      "max": 5583.43
+    },
+    "max_response_bytes": 178602,
+    "source_bytes_read": 141807912,
+    "zip_bytes_read_interactively": 0,
+    "cache_hits": 0
+  },
+  "multi_company_batch": {
+    "status": "PASS",
+    "companies": 3,
+    "http_status": 200,
+    "latency_ms": 2179.535,
+    "response_bytes": 248835,
+    "transport_attempts": 1
+  },
+  "long_histories": [
+    {
+      "cik": "0000789019",
+      "frequency": "quarterly",
+      "status": "PASS",
+      "observations": 535,
+      "coverage_gaps": 165,
+      "pages": 8
+    },
+    {
+      "cik": "0001018724",
+      "frequency": "ttm",
+      "status": "PASS",
+      "observations": 197,
+      "coverage_gaps": 512,
+      "pages": 8
+    },
+    {
+      "cik": "0000909832",
+      "frequency": "quarterly",
+      "status": "PASS",
+      "observations": 512,
+      "coverage_gaps": 236,
+      "pages": 9
+    }
+  ],
+  "basin_partition_evaluation": {
+    "status": "PASS",
+    "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+    "tables": [
+      {
+        "table": "zion_sec_scale_ac8f14de487e.canonical_revisions",
+        "snapshot_id": "6439064561847378426",
+        "metadata_location": "s3://financial-system-datasets/__r2_data_catalog/01a1383f-fe62-7d90-a7e1-d7b6658df4de/01a13840-122e-7f60-b901-d3b14958f105/metadata/00001-01a13840-8d95-7901-8ce9-c88a0e57277c.gz.metadata.json",
+        "partition_spec": "[\n  1000: cik_bucket: bucket[16](1)\n  1001: period_year: truncate[4](5)\n]",
+        "records": 500965,
+        "files": 341,
+        "bytes": 29716312
+      },
+      {
+        "table": "zion_sec_scale_ac8f14de487e.issuers",
+        "snapshot_id": "3588235356563136093",
+        "metadata_location": "s3://financial-system-datasets/__r2_data_catalog/01a1383f-fe62-7d90-a7e1-d7b6658df4de/01a13840-9049-7f20-9629-08eea92669b3/metadata/00001-01a13840-a2ff-79b1-bb91-45432fa6161f.gz.metadata.json",
+        "partition_spec": "[\n  1000: cik_bucket: bucket[16](1)\n]",
+        "records": 441,
+        "files": 16,
+        "bytes": 58451
+      }
+    ],
+    "checks": [
+      {
+        "name": "all_company_revision_counts_join",
+        "status": "PASS",
+        "companies": 441,
+        "revisions": 500965,
+        "latency_ms": 3966.33,
+        "metrics": {
+          "r2_requests_count": 1072,
+          "files_scanned": 367,
+          "bytes_scanned": 2030682,
+          "cache_hits": 0
+        }
+      },
+      {
+        "name": "bounded_partition_query",
+        "status": "PASS",
+        "ciks": [
+          "0000789019"
+        ],
+        "metrics_selected": [
+          "revenue"
+        ],
+        "rows": 182,
+        "latency_ms": 2026.67,
+        "metrics": {
+          "r2_requests_count": 609,
+          "files_scanned": 207,
+          "bytes_scanned": 13891444,
+          "cache_hits": 406
+        }
+      },
+      {
+        "name": "bounded_partition_query",
+        "status": "PASS",
+        "ciks": [
+          "0000019617",
+          "0000104169"
+        ],
+        "metrics_selected": [
+          "net_income",
+          "cash"
+        ],
+        "rows": 226,
+        "latency_ms": 2826.49,
+        "metrics": {
+          "r2_requests_count": 381,
+          "files_scanned": 131,
+          "bytes_scanned": 7067936,
+          "cache_hits": 28
+        }
+      },
+      {
+        "name": "bounded_partition_query",
+        "status": "PASS",
+        "ciks": [
+          "0001018724",
+          "0000070858",
+          "0000002488"
+        ],
+        "metrics_selected": [
+          "operating_cash_flow"
+        ],
+        "rows": 552,
+        "latency_ms": 1681.98,
+        "metrics": {
+          "r2_requests_count": 963,
+          "files_scanned": 325,
+          "bytes_scanned": 21754005,
+          "cache_hits": 844
+        }
+      }
+    ],
+    "runtime_read_only_credential_verified": false,
+    "use": "OPERATOR_EVALUATION_ONLY;NO_RUNTIME_PRIVILEGE_EXPANSION",
+    "licensed_rows": 0,
+    "current_pointer_writes": 0
+  },
+  "normalizer": {
+    "archive_issuers": 20396,
+    "companies": 441,
+    "elapsed_seconds": 53.249,
+    "issuers_processed": 500,
+    "largest_payload_bytes": 1772488,
+    "normalized_revisions": 500965,
+    "quarantine_reasons": {
+      "NO_VALID_MAPPED_FINANCIAL_HISTORY": 56,
+      "SOURCE_IDENTITY_MISMATCH": 3
+    },
+    "quarantined_issuers": 59,
+    "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+    "source_original_archives_unchanged": true,
+    "source_records_verified": 8266462
+  },
+  "independent_calculator": {
+    "status": "PASS",
+    "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+    "registry_sha256": "491124eda9a5288cf01590300a4bd1bea3adabe55d6533cbb7b969490256e06f",
+    "total_observations": 233318,
+    "duckdb_exact_matches": 233318,
+    "source_records_normalized": 500965,
+    "latency_ms": 115182.549,
+    "duckdb_threads": 1,
+    "duckdb_memory_limit": "64MB",
+    "external_access": false,
+    "scope": "441_STORED_PUBLIC_SEC_COMPANYFACTS_MEMBERS;NO_FULL_FINANCIAL_CERTIFICATION"
+  },
+  "resource_samples": {
+    "tail_records": [
+      {
+        "outcome": "ok",
+        "cpuTime": 773,
+        "wallTime": 1284,
+        "eventTimestamp": 1791945361297,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 844,
+        "wallTime": 2840,
+        "eventTimestamp": 1791945360031,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 191,
+        "wallTime": 824,
+        "eventTimestamp": 1791945363705,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 536,
+        "wallTime": 1702,
+        "eventTimestamp": 1791945362293,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 174,
+        "wallTime": 1429,
+        "eventTimestamp": 1791945363184,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 121,
+        "wallTime": 436,
+        "eventTimestamp": 1791945365222,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 652,
+        "wallTime": 1937,
+        "eventTimestamp": 1791945363329,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 671,
+        "wallTime": 2606,
+        "eventTimestamp": 1791945364623,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 514,
+        "wallTime": 838,
+        "eventTimestamp": 1791945366346,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 918,
+        "wallTime": 2002,
+        "eventTimestamp": 1791945365012,
+        "queue_event": false,
+        "diagnostics": [],
+        "exceptions": []
+      },
+      {
+        "outcome": "ok",
+        "cpuTime": 1048,
+        "wallTime": 2481,
+        "eventTimestamp": 1791945365286,
+        "queue_event": true,
+        "diagnostics": [],
+        "exceptions": []
+      }
+    ],
+    "job_id": "18cfb160becc4d3b8882a757e259dcc50332465db7b84821a3cbdff746de9f62",
+    "raw_tail_persisted": false
+  },
+  "measurement_limitations": "ONE_RUN;NO_SLO_OR_MEMORY_USAGE_MEASUREMENT;NETWORK_RETRIES_COUNTED;SOURCE_VALIDATION_BEFORE_CACHE_USE"
+}

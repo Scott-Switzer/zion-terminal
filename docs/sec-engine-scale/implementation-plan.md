@@ -1,0 +1,15 @@
+# SEC engine scale implementation ledger
+
+User specification: attached “Scale the SEC Financial Engine Beyond Five Companies”; native execution, direct commit/deploy, existing archives only. Baseline 2541bc0. No repeated estate/credential/TLS audits, no CURRENT writes, no licensed enablement. Preserve untracked uv.lock.
+
+Architecture: preserve frozen v1 core/release. Introduce v2 generic engine with data-carried mapping policy and statement families, verified full ZIP member catalog and bounded materialization. Hash-pin root/shards/company payloads; materialized histories avoid ZIP reconstruction per request. Same private history path plus company/metric/coverage discovery, snapshot-bound pagination and bounded multi-company asynchronous jobs. Basin partitioned public tables are operator-side evaluation only until restricted runtime credential exists.
+
+1. [x] Generic policy/core and source materializer. Tests first: outside-pilot CIK, banks/insurers not industrial FCF/debt, irregular-quarter evidence, ambiguity/null/revision, balance identity/nonoverlap, exact arithmetic. Build full archive directory and reported-census evidence; independently verify at least 100 source members if coverage permits. Preserve source hashes and explicit unavailable contexts.
+2. [x] Private serving/discovery/pagination/batch and queue jobs. Tests first: unauthenticated before reads; unknown/unsupported CIK; release/query-bound cursors; all pages reconcile; source corruption; as-of/date ranges; limits; immutable cache; durable job replay and bounded tasks. No arbitrary SQL or caller storage paths.
+3. [x] Materialize/publication and isolated partitioned Basin evaluation. Independent source/Python/DuckDB checks, 100-company live tests and existing endpoint regressions, multi-company latency/bytes/cache/resource benchmarks. Record real outputs, exact remaining failures, cost scenario and next cross-domain interface design. Final independent code review, commit/push main and deploy, post-deploy checks and original pointer hashes.
+
+Review focus: unsupported industry semantics; overlapping durations producing duplicate economic quarters; availability cutoff leakage through derived components; cursor tampering/release drift; queued replay creating inconsistent cache/results.
+
+Ruling: existing authorized native execution and explicit implementation request override skill approval pauses; continue without another design/plan approval. Use source-backed policies; no guesses about absent debt components or issuer classifications. Report stored census as declared until independently re-counted.
+
+Execution: generic core and queue/HTTP guards verified RED→GREEN; final independent review found FCF dependency ambiguity in five real cohort rows, fixed before current release. Thirteen source temporal rows additionally rejected. Source identity failures quarantined without remapping. Runtime-only lexical threshold guard preserves the pinned financial screen builder and data release; it fixes Pyodide Decimal error handling without recomputing financial values. No deferred reviewer minors.

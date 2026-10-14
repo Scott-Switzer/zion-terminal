@@ -1,0 +1,320 @@
+{
+  "release_id": "ac8f14de487eee6b78fd6c108e8611af8f326d864a162b00d5308f6c90abfd18",
+  "archive_cik_names_discovered": 20396,
+  "issuers_processed": 500,
+  "issuers_usable": 441,
+  "quarantined": {
+    "0000002110": {
+      "bytes": 47,
+      "member_sha256": "a58227867e296a938f9d0f9babf6a65c4e09575c0f45477a9b4659c91b1afb95",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000002230": {
+      "bytes": 47,
+      "member_sha256": "0fee0c4efa37d9a512b73f5c23f1d2e10d792a980e8113030b0e08eeb9b4a04a",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000002809": {
+      "bytes": 1333393,
+      "member_sha256": "c6288c84e678448745ad053b98e8db7f0859efa2a0062b415208afb187690c8c",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000003124": {
+      "bytes": 1074,
+      "member_sha256": "9592292fe7352586b781b8213db04a6286797959b8a22b7e7e5a22006e1903b8",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000003153": {
+      "bytes": 47,
+      "member_sha256": "2e57fbc179a10656523adea6f8ae9808dc46c0768b5f186bff43850389523c22",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000003521": {
+      "bytes": 2,
+      "member_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "reason": "SOURCE_IDENTITY_MISMATCH"
+    },
+    "0000003794": {
+      "bytes": 47,
+      "member_sha256": "68bac00e9e24b2e57e12a0d05be9383cbf990c2a5feb7c2c6a462c16e96c8ddf",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000003982": {
+      "bytes": 8316,
+      "member_sha256": "e934db20d4e273d0675fd82d1ef35da9ffa69279f376a52db499b1ab1395585c",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000004568": {
+      "bytes": 47,
+      "member_sha256": "4fd7e1ab347038294bddea61c423180d8a18f7db301081ee14f5eff37550642e",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000005007": {
+      "bytes": 5349,
+      "member_sha256": "052ab93f83c966824cc34ad7e35ff772a14c31cc9599580ced25d537c282ce03",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000005094": {
+      "bytes": 47,
+      "member_sha256": "091e98e9f464b2df6e545eda438af5f8f065542dfc4dfc9d4398b83ec9fdfc23",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000005108": {
+      "bytes": 47,
+      "member_sha256": "88df440af2befd45102f6f2a23d3defaf176d7dc496c3cb94df1d7519256beaa",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000006879": {
+      "bytes": 782,
+      "member_sha256": "6acb350f2e7effe1d5d719237cf744bad8a8f9085fb09d49b6d4e8d5d0990b06",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000007340": {
+      "bytes": 47,
+      "member_sha256": "616993ed34fd7241d0602a2b8d035a0f2cece0e5afba5716cd1126c6ff710efb",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000009211": {
+      "bytes": 47,
+      "member_sha256": "d692151dae774ec663fc88b664c830e889b4aca781c8b536fef97c305ecfe1b4",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000009466": {
+      "bytes": 1094,
+      "member_sha256": "8499f6d34d487f32f8ede17076deffee02c0155eeabc4a6ac89a18b2e760def6",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000009521": {
+      "bytes": 47,
+      "member_sha256": "bb7f98e1bdbcc6b48dc8d1f0fcc19f14c425a25fbf28978844327479da9963c7",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000009631": {
+      "bytes": 2096247,
+      "member_sha256": "614ec84e18f259f2ca9ac4ff74427125192a391ff9e7772a88c956f2e51b5901",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000009712": {
+      "bytes": 5850,
+      "member_sha256": "4d842194f5b83de3288012d81ba88f7fbd175d50c772e8b3167002ce03e28784",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000009713": {
+      "bytes": 9205,
+      "member_sha256": "bf6c8755599baf685e7b0ebd225ce8a28eac1aa1b310afe113037a3897ecb785",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000012601": {
+      "bytes": 47,
+      "member_sha256": "0bb3d32bdd4f658371ff466e6ff6108d4fc9138a3d3d2c1a36dcfb2f0a80e235",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000013075": {
+      "bytes": 47,
+      "member_sha256": "7a051ac7afd2865a6357b206e0cd7700152e01f08c8aa9ba6a65c90cf1fbe588",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000013222": {
+      "bytes": 1095,
+      "member_sha256": "ff2130a7b54305989d38b2f46efe621545c91afc900c03c7ea4c0285a9daf40a",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000014170": {
+      "bytes": 47,
+      "member_sha256": "be329de2f86e7cb14efb512e15a4bc004e8067b7d93accc8c4245a553823344d",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000016859": {
+      "bytes": 551627,
+      "member_sha256": "5c081979785789bd3b333357128833c867fd6450fbcb643d1a712dacc7b19378",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000016868": {
+      "bytes": 1181146,
+      "member_sha256": "6ccf0b631dedd75ff5bad530ce5b0e22ed5e864515e2447709366fcb24b8ec40",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000016988": {
+      "bytes": 1535439,
+      "member_sha256": "9e8392c06f647a8d293cceb3554092fc93a05cb37e11a66d07886d62152d3dac",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000018654": {
+      "bytes": 1984,
+      "member_sha256": "4e98ef4174587add52aaaa9bf390145be9a3b6df8b9d8ffefeab5b2734bd038e",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000019780": {
+      "bytes": 47,
+      "member_sha256": "c4465704d86049e081d7a7ac890efb58462d42dbd7ebde40f58db473f7c69829",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000022370": {
+      "bytes": 2,
+      "member_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "reason": "SOURCE_IDENTITY_MISMATCH"
+    },
+    "0000022606": {
+      "bytes": 6659,
+      "member_sha256": "28be92361c9651bbd2383d63a4e6638e04db39b61cef0ac9c2678a2419c6ac96",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000026262": {
+      "bytes": 47,
+      "member_sha256": "351686e150c37a0643a9c32860ce065412740b2cf757d1b2a900ab0a5291cf59",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000027574": {
+      "bytes": 47,
+      "member_sha256": "f9df0eb7af06c0906d1a18560f4f12f81c5d5d2542bb5f7513f25d20e5848c3c",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000027801": {
+      "bytes": 47,
+      "member_sha256": "8c08514576231a3d5c552d01a701a5d531083975c6477bef6e3b5d1aa9807822",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000027825": {
+      "bytes": 47,
+      "member_sha256": "0653a5ce648baade550fcae2001c2bf91e2882f7206db20957c8341c7c156a26",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000028540": {
+      "bytes": 47,
+      "member_sha256": "98af133e07a27755efd2468fbe515774ffc73a08092bc00f1d8ae9e37af5feb2",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000028626": {
+      "bytes": 47,
+      "member_sha256": "819746eb90bc86e2708d4aa52f1fb74f53344eda11ea6e24bb2a7aa30aaf997a",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000029440": {
+      "bytes": 47,
+      "member_sha256": "1552d4f48f7f9723115a433e1ba952244c82c389b7a10c8b58297d6e8d57fcfe",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000030125": {
+      "bytes": 47,
+      "member_sha256": "fa0c67d542b745cb7c0d7768fafc2ddd64aeab1e67498e2226a6aea3e1378967",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000030126": {
+      "bytes": 47,
+      "member_sha256": "75b3c8174a21c23edbdf81231e431e7c5e01de22c68313f432343260bf3e4957",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000030371": {
+      "bytes": 1313,
+      "member_sha256": "be2c0fca5b3d274e4666f7ba86bf48225c14c3cfaf6ffc878d75d08953c1349a",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000031266": {
+      "bytes": 47,
+      "member_sha256": "39c07a3ba4cb5a53256c632c3508a0cf2b6ae9cfb006e7858cde367f8722a9f2",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000033934": {
+      "bytes": 1083,
+      "member_sha256": "0b2f97bfe6f538f85b6fff24b8805e5723364919ef48de7af3468f0728a93bd8",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000034273": {
+      "bytes": 47,
+      "member_sha256": "d83366d6526dc27071967b029c78a7029df7cdb157bd128e662abf4d397da297",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000035315": {
+      "bytes": 47,
+      "member_sha256": "ea8adcbb4c54369ec35905b42ab6d9bb0374266a9eafc59c0588a8c7aeee9917",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000035348": {
+      "bytes": 47,
+      "member_sha256": "0e679ab0fa62f3d44671df563370acd118f8f3aab83f42a8c22459ecf2641f35",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000035402": {
+      "bytes": 47,
+      "member_sha256": "faa80f64e3095aa4b6aa058a6e9ec0482d4021f4c75d497caf633f3ac7886115",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000036637": {
+      "bytes": 47,
+      "member_sha256": "ec18938bedc9560531e6f9fab3d273649346b5f3c5cef4d1ef5485951a837dca",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000037637": {
+      "bytes": 47,
+      "member_sha256": "be29935740eed4c28d5ebea3e31c48f8d3e80ee940e7b59a7f6c62244ce2017d",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000038721": {
+      "bytes": 47,
+      "member_sha256": "3323535c03377f6fb6183e3bcc22403304c5bda7a61e0ea0bfa1cf283dadc17e",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000038778": {
+      "bytes": 47,
+      "member_sha256": "73af825e29fbf6e4e8275533d522008d7cea5b19d08c29996eadc256c1770b1a",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000039473": {
+      "bytes": 47,
+      "member_sha256": "46fde5447648445a5854eb5a44883f66b1b8aebb84d6cc371dfc0baa644ebe79",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000040559": {
+      "bytes": 47,
+      "member_sha256": "9f1fce1dae37218959a6b5dbe5c66073fcf4341b7772d7b0b6dd67054568d336",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000041091": {
+      "bytes": 2733,
+      "member_sha256": "fb31e90da7577da201bdc4d3fef9853eb9d3b11c1fce0b6fb3f53edb9c56b0a5",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000042352": {
+      "bytes": 47,
+      "member_sha256": "d7f38855b722af8743ff51d1dd4b0fbdf550b09b3ba001be493817a8cff74cda",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000044393": {
+      "bytes": 3467,
+      "member_sha256": "fd7334f89f11cee86f75d2cb909cf67c4ef1a478fb1942353536122c85c2d197",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000044402": {
+      "bytes": 47,
+      "member_sha256": "2cdbd4f460550e4e253bf0bc0843b0c8de4aa96559aa96cb1201d99261c934cc",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000045288": {
+      "bytes": 47,
+      "member_sha256": "d6a8b3676c1a8d4c1b1eb0569c57257d8ddc0391056281babaa11984abe05167",
+      "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"
+    },
+    "0000045291": {
+      "bytes": 2,
+      "member_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "reason": "SOURCE_IDENTITY_MISMATCH"
+    }
+  },
+  "source_records_inspected": 8266462,
+  "normalized_revisions": 500965,
+  "independently_reconciled_observations": 233318,
+  "live_companies": 125,
+  "live_observations": 3363,
+  "metrics_available": [
+    "capital_expenditures",
+    "cash",
+    "diluted_shares",
+    "free_cash_flow",
+    "net_income",
+    "operating_cash_flow",
+    "operating_income",
+    "revenue",
+    "total_debt"
+  ],
+  "source_coverage": "PER_COMPANY_FULL_REPORT_IN_PROTECTED_ARTIFACTS/company-coverage.json;NO_ARTIFICIAL_COMPLETENESS"
+}

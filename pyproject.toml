@@ -67,3 +67,4 @@ markers = [
 
 [tool.ruff.lint.per-file-ignores]
 "deploy/cloudflare-query/src/sec_history.py" = ["E501"]
+"deploy/cloudflare-query/src/sec_engine.py" = ["E501"]

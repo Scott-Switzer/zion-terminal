@@ -105,10 +105,32 @@ def metrics_in(text: str) -> list[str]:
 
 
 class Default(WorkerEntrypoint):
+    async def queue(self, batch, env=None, ctx=None):
+        from sec_engine_jobs import queue_batch
+        await queue_batch(env if env is not None else self.env, batch)
+
     async def fetch(self, request):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
+        if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path == '/private/v1/financial-screen':
+            from sec_screener_http import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
+        if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path in {
+            '/private/v1/financial-history', '/private/v1/financial-history/batch',
+            '/private/v1/financial-companies', '/private/v1/financial-metrics',
+            '/private/v1/financial-coverage', '/private/v1/financial-jobs',
+        }:
+            from sec_engine_api import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
         if path == '/private/v1/financial-history':
             from sec_history_api import handle
             value, status = await handle(self.env, request)

@@ -28,6 +28,7 @@ from zion_terminal.config.settings import get_settings
 from zion_terminal.orchestrator.orchestrator import Orchestrator
 from zion_terminal.outputs.formatter import OutputFormat, format_response
 from zion_terminal.providers.base import build_provider
+from zion_terminal.private_research import research
 
 console = Console()
 
@@ -393,6 +394,9 @@ def synthesis(ctx: click.Context, fmt: str) -> None:
         _run_and_output(orc, resp, fmt)
     finally:
         orc.close()
+
+
+main.add_command(research)
 
 
 if __name__ == "__main__":
