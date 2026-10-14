@@ -11,6 +11,8 @@ from urllib.parse import parse_qs, urlparse
 
 from private_financials import PrivateFinancialsError
 from private_http import authenticate
+from sec_balance_quality import VERSION as BALANCE_QUALITY_VERSION
+from sec_balance_quality import balance_checks as same_vintage_balance_checks
 from sec_engine import REGISTRY, VERSION, HistoryError, balance_checks, encoded, history
 from sec_expanded_api import js_options
 from temporal_core import parse_instant
@@ -322,10 +324,24 @@ def query_id(p, m, member):
 
 
 async def financial_history(env, m, p, allow_queue=True):
-    p = validate(p, m)
+    if not re.fullmatch(r"\d{10}", p.get("cik", "")):
+        fail("INVALID_CIK")
+    if p.get("recipient", "human_research") != "human_research":
+        fail("RECIPIENT_NOT_PERMITTED", 403)
     e = await entry(env, m, p["cik"])
+    scope = m
+    if e.get("maximum_as_of") is not None:
+        if not e.get("materialized") or not e.get("date_to"):
+            fail("UPDATED_SOURCE_CONTEXT_INVALID", 503)
+        scope = {**m, "maximum_as_of": e["maximum_as_of"], "date_to": e["date_to"]}
+    p = validate(p, scope)
     data = await company(env, m, p["cik"], e)
     if data is None:
+        if (
+            m.get("_manifest_sha256", env.SEC_ENGINE_MANIFEST_SHA256)
+            != env.SEC_ENGINE_MANIFEST_SHA256
+        ):
+            fail("HISTORICAL_COMPANY_NOT_MATERIALIZED", 422)
         if not allow_queue:
             fail("MATERIALIZATION_REQUIRED", 202)
         from sec_engine_jobs import submit
@@ -333,6 +349,9 @@ async def financial_history(env, m, p, allow_queue=True):
         return await submit(
             env, m, {k: v for k, v in p.items() if k not in ("cursor", "ciks")}, [p["cik"]]
         )
+    quality_version = m.get("balance_quality_version")
+    if quality_version not in (None, BALANCE_QUALITY_VERSION):
+        fail("QUALITY_POLICY_UNSUPPORTED", 503)
     query = query_id(p, m, data["member_sha256"])
     key = PREFIX + m["release_id"] + "/queries/" + query + ".json"
     cached = await stored(env, key, env.ZION_PRIVATE_API_TOKEN)
@@ -346,7 +365,8 @@ async def financial_history(env, m, p, allow_queue=True):
             date_to=p["date_to"],
             as_of=p["as_of"],
         )
-        cached["accounting_checks"] = balance_checks(data, p["as_of"], p["date_from"], p["date_to"])
+        accounting = same_vintage_balance_checks if quality_version else balance_checks
+        cached["accounting_checks"] = accounting(data, p["as_of"], p["date_from"], p["date_to"])
         ids = {
             sid
             for row in cached["observations"] + cached["accounting_checks"]
@@ -369,6 +389,10 @@ async def financial_history(env, m, p, allow_queue=True):
             "registry_sha256": m["registry_sha256"],
             "manifest_sha256": m.get("_manifest_sha256", env.SEC_ENGINE_MANIFEST_SHA256),
             "materialization_release_id": data["release_id"],
+            "company_maximum_as_of": scope["maximum_as_of"],
+            "universe_screen_maximum_as_of": m["maximum_as_of"],
+            "balance_quality_version": quality_version or "sec-engine-v2-legacy-balance",
+            "balance_quality_implementation": m.get("balance_quality_implementation"),
             "source_lineage": data["source_lineage"],
             "concept_definitions": data["concept_definitions"],
             "licensed_sources_used": False,
@@ -507,6 +531,9 @@ async def execute(env, request):
                 for k, v in REGISTRY.items()
             },
             "normalized_revisions": len(data["observations"]),
+            "maximum_as_of": e.get("maximum_as_of", m["maximum_as_of"]),
+            "source_date_to": e.get("date_to", m["date_to"]),
+            "universe_screen_maximum_as_of": m["maximum_as_of"],
             "source_quality_rejections": data.get("rejections", {}),
             "qualification": "SOURCE_COVERAGE_NOT_FULL_FINANCIAL_CERTIFICATION",
         }, 200

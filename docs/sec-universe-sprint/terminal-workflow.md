@@ -45,3 +45,29 @@ Use an ISO UTC availability timestamp at or before the release maximum. The
 current screen index only supports its exact release maximum timestamp. Inspect
 release metadata before choosing the workflow's `--as-of`; a later date fails
 rather than silently substituting a cutoff.
+
+## Readable terminal output
+
+Add `--format table` to discovery, history, batch, compare, screen, coverage, or
+provenance commands. JSON remains the default. `--output NEW_FILE.json` always
+exports the complete returned JSON, independently of the display format. Table
+values preserve exact decimals or numerator/denominator ratios; missing values,
+coverage/derived gaps, release, cutoff, period, unit, and pagination remain visible.
+An endpoint that does not return a cutoff or report period displays `NOT_RETURNED`.
+Coverage tables show observation and gap counts rather than inferred dates.
+
+For example, `zion research compare --ciks 0000047111,0000063276 --frequency annual
+--metrics revenue,operating_margin,operating_cash_flow,free_cash_flow
+--as-of 2026-09-24T00:00:00Z --date-from 2020-01-01 --format table
+--output new-comparison.json` presents exact values and differences while retaining
+all source records in the export.
+
+Provenance tables construct a filing-index link only when the CIK is 1–10 ASCII
+digits, positive, and the accession is the canonical `##########-##-######` form.
+They use the SEC's documented symbolic path
+`https://www.sec.gov/Archives/edgar/data/{integer_CIK}/{accession}-index.html`.
+The accession prefix can identify a third-party filer, so it is not required to
+match the issuer CIK. Invalid identifiers and absent source records display
+explicit missing-link reasons. Links are format-validated; the CLI does not fetch
+or launch the destination. See the SEC's official
+[Accessing EDGAR Data: Paths and directory structure](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data).

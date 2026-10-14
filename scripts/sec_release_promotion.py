@@ -8,7 +8,8 @@ from decimal import Decimal
 from pathlib import Path
 
 from materialize_sec_engine import REGISTRY, digest, encoded, history, materialize
-from sec_engine import balance_checks
+from sec_balance_quality import VERSION as BALANCE_QUALITY_VERSION
+from sec_balance_quality import balance_checks
 from sec_incremental_update import bounded_read, instant, public
 
 CHECKS = {"coverage", "accounting", "anomalies", "reconciliation", "provenance"}
@@ -100,7 +101,29 @@ def candidate_overlay(
     data["rejected_contexts"] = [
         r for r in data["rejected_contexts"] if instant(r["available_at"]) <= cutoff
     ]
+    raw_name = "raw/" + cik + "/" + change["member_sha256"] + ".json"
+    raw_ref = candidate["objects"][raw_name]
+    normalized_name = "companies/" + cik + ".json"
+    normalized_body = bounded_read(candidate_dir / normalized_name)
+    normalized_ref = candidate["objects"][normalized_name]
+    if (
+        digest(normalized_body) != normalized_ref["sha256"]
+        or len(normalized_body) != normalized_ref["bytes"]
+    ):
+        raise ValueError("CANDIDATE_PROVENANCE_HASH_MISMATCH")
+    provider_source = json.loads(normalized_body).get("source_lineage", {}).get("source", {})
+    candidate_body = bounded_read(candidate_dir / "manifest.json")
     data["source_lineage"] = dict(
+        raw_source=raw_ref,
+        candidate_manifest={
+            "key": "gold/sec-engine/update-candidates/"
+            + candidate["release_id"]
+            + "/manifest.json",
+            "sha256": digest(candidate_body),
+            "bytes": len(candidate_body),
+        },
+        source=provider_source,
+        maximum_as_of=change["maximum_as_of"],
         rights="PUBLIC_SEC_ONLY",
         member_sha256=digest(raw),
         candidate_release_id=candidate["release_id"],
@@ -190,6 +213,13 @@ def compose_candidate(base_dir, candidate_dir, output_dir):
                 base_manifest_sha256=digest(base_body),
                 candidate_manifest_sha256=digest(candidate_body),
                 registry_sha256=base["registry_sha256"],
+                balance_quality_version=BALANCE_QUALITY_VERSION,
+                balance_quality_implementation_sha256=digest(
+                    (
+                        Path(__file__).parents[1]
+                        / "deploy/cloudflare-query/src/sec_balance_quality.py"
+                    ).read_bytes()
+                ),
             )
         )
     )
@@ -201,6 +231,7 @@ def compose_candidate(base_dir, candidate_dir, output_dir):
         date_to=candidate["maximum_as_of"][:10],
         update_candidate_id=candidate["release_id"],
         parent_release_id=base["release_id"],
+        balance_quality_version=BALANCE_QUALITY_VERSION,
     )
     reports = {}
     for cik, ref in base["companies"].items():
@@ -299,6 +330,7 @@ def compose_candidate(base_dir, candidate_dir, output_dir):
         status="PASS",
         release_id=release,
         parent_release_id=base["release_id"],
+        balance_quality_version=BALANCE_QUALITY_VERSION,
         candidate_release_id=candidate["release_id"],
         checks=reports,
         registry_rebuilt_from_raw=True,

@@ -1,7 +1,7 @@
-"""Source-refresh-only SEC catalog composer; financial revision promotion is not supported.
+"""Controlled per-company SEC updates; fixed historical screening cutoff.
 
-Keeps the archive effective cutoff, independently verifies the cached raw snapshot,
-and rejects any changed financial observations. No CURRENT/config/provider writes.
+Prior-cutoff histories must reproduce exactly; new-cutoff histories are independently
+verified. No CURRENT/config/provider writes.
 """
 
 import argparse
@@ -13,7 +13,7 @@ from fractions import Fraction
 from pathlib import Path
 
 from materialize_sec_engine import REGISTRY, digest, encoded, history
-from sec_incremental_update import bounded_read
+from sec_incremental_update import bounded_read, instant
 from sec_release_promotion import candidate_overlay, validate_candidate_inputs
 from sec_screener import company_row, exact
 
@@ -134,6 +134,105 @@ def independent_check(data, raw, results, registry_sha):
     return {k: v for k, v in receipt.items() if k != "checks"}
 
 
+def history_signature(result, source_data=None):
+    """Financial parity with independently resolvable component lineage.
+
+    Snapshot metadata may change raw IDs. Resolve every signed term back to its
+    financial context; do not equate different components merely by net value.
+    """
+    sources = {
+        row["source_observation_id"]: row for row in (source_data or {}).get("observations", [])
+    }
+    citation_fields = {
+        "member_sha256",
+        "source_observation_id",
+        "source_observation_ids",
+        "source_record_ids",
+    }
+
+    def financial_context(row):
+        context = {
+            key: row.get(key)
+            for key in (
+                "concept",
+                "unit",
+                "currency",
+                "value_decimal",
+                "period_start",
+                "period_end",
+                "available_at",
+                "accession",
+                "form",
+            )
+        }
+        context["filed"] = row.get("source_record", {}).get("filed")
+        return context
+
+    def clean(value):
+        if isinstance(value, dict):
+            output = {
+                k: clean(v)
+                for k, v in value.items()
+                if k not in citation_fields and k != "source_terms"
+            }
+            if "source_terms" in value:
+                terms = {}
+                for term in value["source_terms"]:
+                    sid = term["source_observation_id"]
+                    if sid not in sources:
+                        raise ValueError("FINANCIAL_COMPONENT_SOURCE_MISSING")
+                    context = financial_context(sources[sid])
+                    key = encoded(context)
+                    terms.setdefault(key, dict(context=context, coefficient=0))["coefficient"] += (
+                        term["coefficient"]
+                    )
+                output["source_terms"] = sorted(
+                    (v for v in terms.values() if v["coefficient"]), key=encoded
+                )
+            return output
+        if isinstance(value, list):
+            return [clean(v) for v in value]
+        return value
+
+    return {
+        key: sorted((clean(row) for row in result[key]), key=encoded)
+        for key in ("observations", "coverage_gaps")
+    }
+
+
+def update_histories(prior, data, root, cutoff):
+    if instant(cutoff) < instant(root["maximum_as_of"]):
+        raise ValueError("UPDATE_CUTOFF_BEFORE_PARENT")
+    old_results = {}
+    current = {}
+    screen = {}
+    for frequency in ("annual", "quarterly", "ttm"):
+        kwargs = dict(metrics=list(REGISTRY), frequency=frequency, date_from="1930-01-01")
+        old = history(prior, **kwargs, date_to=root["date_to"], as_of=root["maximum_as_of"])
+        fixed = history(data, **kwargs, date_to=root["date_to"], as_of=root["maximum_as_of"])
+        if history_signature(old, prior) != history_signature(fixed, data):
+            raise ValueError("HISTORICAL_AVAILABILITY_REPRODUCTION_FAILED")
+        fresh = history(data, **kwargs, date_to=cutoff[:10], as_of=cutoff)
+        old_metrics = {r["metric"] for r in old["observations"]}
+        new_metrics = {r["metric"] for r in fresh["observations"]}
+        if not old_metrics <= new_metrics:
+            raise ValueError("SUPPORTED_METRIC_COVERAGE_LOST")
+        old_results[frequency] = old
+        current[frequency] = fresh
+        screen[frequency] = fixed
+    return (
+        current,
+        screen,
+        dict(
+            status="PASS",
+            frequencies=["annual", "quarterly", "ttm"],
+            comparison="FINANCIAL_FIELDS_COMPONENT_CONTEXT_AND_COEFFICIENTS_GAP_SEMANTICS;RAW_ID_CHANGES_RETAINED_IN_RECONCILIATION",
+            supported_metric_coverage="NO_LOSS",
+            historical_cutoff=root["maximum_as_of"],
+        ),
+    )
+
+
 def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_dir):
     _, candidate, _, _ = validate_candidate_inputs(base_dir, candidate_dir)
     root = json.loads(read(s, parent_ref, 1048576))
@@ -149,11 +248,15 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
             or manifest.get("licensed_sources_allowed") is not False
         ):
             raise ValueError("PUBLIC_SEC_ONLY_REQUIRED")
+    helper_path = Path(__file__).parents[1] / "deploy/cloudflare-query/src/sec_balance_quality.py"
+    helper_raw = bounded_read(helper_path)
     release = digest(
         encoded(
             dict(
                 parent_manifest_sha256=parent_ref["sha256"],
                 candidate_id=candidate["release_id"],
+                balance_quality_version="sec-balance-same-vintage-v1",
+                balance_quality_implementation_sha256=digest(helper_raw),
                 registry_sha256=root["registry_sha256"],
             )
         )
@@ -161,6 +264,7 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
     prefix = "gold/sec-engine/releases/" + release + "/"
     budget = Budget()
     new = dict(root, release_id=release)
+    new["balance_quality_version"] = "sec-balance-same-vintage-v1"
     # Explicit source-release allowlist preserves inherited immutable payload identities.
     new["source_releases"] = sorted(set(root.get("source_releases", [])) | {release})
     new["previous_releases"] = {
@@ -184,18 +288,11 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
         data, report = candidate_overlay(
             candidate_dir, cik, prior, release, root["registry_sha256"]
         )
-        # Preserve parent effective cutoff; all inherited indexes remain reproducible.
-        results = {
-            frequency: history(
-                data,
-                metrics=list(REGISTRY),
-                frequency=frequency,
-                date_from="1930-01-01",
-                date_to=root["date_to"],
-                as_of=root["maximum_as_of"],
-            )
-            for frequency in ("annual", "quarterly", "ttm")
-        }
+        company_cutoff = candidate["companies"][cik]["maximum_as_of"]
+        results, screen_results, historical_gate = update_histories(
+            prior, data, root, company_cutoff
+        )
+        report["historical_reproduction"] = historical_gate
         if not any(result["observations"] for result in results.values()):
             raise ValueError("PROMOTION_GATE_NO_VALID_HISTORY")
         for result in results.values():
@@ -206,8 +303,38 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
             report["reconciliation"][k]
             for k in ("removed_source_ids", "added_source_ids", "revised_contexts")
         )
-        if report["financial_observation_changes"]:
-            raise ValueError("SOURCE_REFRESH_ONLY_GATE_REQUIRES_NO_FINANCIAL_CHANGES")
+        if report["financial_observation_changes"] and not any(
+            check["status"] == "PASS" for check in report["accounting"]
+        ):
+            raise ValueError("ACCOUNTING_PASS_REQUIRED_FOR_FINANCIAL_UPDATE")
+        report["effective_maximum_as_of"] = company_cutoff
+        post_cutoff = [
+            row
+            for row in data["observations"]
+            if instant(row["available_at"]) > instant(root["maximum_as_of"])
+        ]
+        report["post_parent_financial_sources"] = dict(
+            observations=len(post_cutoff),
+            accessions=sorted({row["accession"] for row in post_cutoff}),
+            availability_instants=sorted({row["available_at"] for row in post_cutoff}),
+        )
+        report["history_output_counts"] = {
+            frequency: dict(
+                parent_cutoff=len(screen_results[frequency]["observations"]),
+                company_cutoff=len(results[frequency]["observations"]),
+            )
+            for frequency in results
+        }
+        report["coverage_anomaly"] = dict(
+            normalized_observations=len(data["observations"]),
+            normalized_payload_bytes=len(encoded(data)),
+            supported_metrics_no_loss=True,
+            source_rejection_counts=data.get("rejections", {}),
+            rejected_context_count=len(data.get("rejected_contexts", [])),
+            availability_excluded=candidate["companies"][cik].get("availability_excluded", 0),
+            accounting_passes=sum(check["status"] == "PASS" for check in report["accounting"]),
+            accounting_failures=sum(check["status"] == "FAIL" for check in report["accounting"]),
+        )
         body = encoded(data)
         payloads[cik] = body
         item["materialized"] = dict(
@@ -217,6 +344,8 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
             member_sha256=data["member_sha256"],
             source_release_id=release,
         )
+        item["maximum_as_of"] = company_cutoff
+        item["date_to"] = company_cutoff[:10]
         item["policy"] = data["policy"]
         item["coverage"] = {
             frequency: {
@@ -228,7 +357,7 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
             }
             for frequency, result in results.items()
         }
-        replacements[cik] = company_row(cik, data, results["annual"]["observations"])
+        replacements[cik] = company_row(cik, data, screen_results["annual"]["observations"])
         reports[cik] = report
     # Conservative preflight, then enforce exact cumulative cloud-create budget.
     screen_refs = root["screening_metrics"]["metrics"]
@@ -288,8 +417,14 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
         candidate_release_id=candidate["release_id"],
         retrieved_at=candidate["retrieved_at"],
         effective_maximum_as_of=root["maximum_as_of"],
-        financial_observation_changes=False,
-        limitation="GLOBAL_FINANCIAL_CUTOFF_UNCHANGED;PROVIDER_RESPONSE_REFRESH_ONLY;NO_MIXED_CUTOFF_ADVANCE",
+        financial_observation_changes=any(
+            r["financial_observation_changes"] for r in reports.values()
+        ),
+        per_company_cutoffs={cik: r["effective_maximum_as_of"] for cik, r in reports.items()},
+        limitation="SCREEN_GLOBAL_CUTOFF_UNCHANGED;ONLY_HASH_PINNED_UPDATED_COMPANIES_HAVE_NEWER_HISTORY_CEILINGS",
+    )
+    new["balance_quality_implementation"] = pin(
+        s, prefix, "implementation/sec_balance_quality.py", helper_raw, budget
     )
     rootref = pin(s, prefix, "manifest.json", encoded(new), budget)
     receipt = dict(
@@ -303,7 +438,9 @@ def publish_update(s, parent_ref, original_ref, base_dir, candidate_dir, output_
         candidate_release_id=candidate["release_id"],
         effective_maximum_as_of=root["maximum_as_of"],
         candidate_retrieved_at=candidate["retrieved_at"],
-        financial_observation_changes=False,
+        financial_observation_changes=any(
+            r["financial_observation_changes"] for r in reports.values()
+        ),
         checks=reports,
         cloud_bytes_written=budget.bytes,
         cloud_create_calls=budget.creates,

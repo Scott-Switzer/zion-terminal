@@ -22,7 +22,7 @@ def encoded(value):
     ).encode()
 
 
-def main():
+def main(report_path=None):
     started = time.perf_counter()
     con = duckdb.connect(":memory:")
     con.execute("SET memory_limit='64MB'")
@@ -46,10 +46,14 @@ def main():
         raw = (OUT / (cik + ".companyfacts.json")).read_bytes()
         assert hashlib.sha256(raw).hexdigest() == entry["member_sha256"]
         company = json.loads(raw, parse_float=Decimal)
+        data = json.loads((OUT / (cik + ".history.json")).read_text())
+        needed_concepts = {r["concept"].removeprefix("us-gaap:") for r in data["observations"]}
         records = {}
         latest_contexts = {}
         availability_cache = {}
         for tag, definition in company["facts"]["us-gaap"].items():
+            if tag not in needed_concepts:
+                continue
             for unit, rows in definition.get("units", {}).items():
                 for row in rows:
                     original = {
@@ -119,7 +123,12 @@ def main():
                         contexts = {}
                         invalid = set()
                         for native in company["facts"]["us-gaap"][tag]["units"][unit]:
-                            if native.get("form") not in ("10-K", "10-K/A", "10-Q", "10-Q/A") or not native.get("filed"):
+                            if native.get("form") not in (
+                                "10-K",
+                                "10-K/A",
+                                "10-Q",
+                                "10-Q/A",
+                            ) or not native.get("filed"):
                                 continue
                             context = (native.get("start"), native.get("end"))
                             filed = native["filed"]
@@ -127,7 +136,8 @@ def main():
                                 try:
                                     availability_cache[filed] = datetime.combine(
                                         date.fromisoformat(filed) + timedelta(days=1),
-                                        day_time.min, ZoneInfo("America/New_York")
+                                        day_time.min,
+                                        ZoneInfo("America/New_York"),
                                     ).astimezone(timezone.utc)
                                 except ValueError:
                                     availability_cache[filed] = None
@@ -176,6 +186,9 @@ def main():
         con.execute("DELETE FROM terms")
     result = {
         "status": "PASS",
+        "verification_implementation_sha256": hashlib.sha256(
+            Path(__file__).read_bytes()
+        ).hexdigest(),
         "release_id": manifest["release_id"],
         "registry_sha256": manifest["registry_sha256"],
         "checks": checks,
@@ -192,9 +205,17 @@ def main():
         "scope": str(len(lineage))
         + "_STORED_PUBLIC_SEC_COMPANYFACTS_MEMBERS;NO_FULL_FINANCIAL_CERTIFICATION",
     }
-    (OUT / "independent-reconciliation.json").write_text(json.dumps(result, indent=2) + "\n")
+    target = (
+        Path(report_path) if report_path is not None else OUT / "independent-reconciliation.json"
+    )
+    target.write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps({k: v for k, v in result.items() if k != "checks"}))
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--report", type=Path)
+    args = parser.parse_args()
+    main(args.report)

@@ -35,3 +35,36 @@ def test_partial_publication_identity_changes_when_checkpoint_set_expands():
     first = u.publication_identity("a" * 64, records)
     records["0000000002"] = {"status": "USABLE", "ref": {"sha256": "b" * 64}}
     assert u.publication_identity("a" * 64, records) != first
+
+
+def test_resume_loads_numeric_stage_receipts_not_api_smoke(tmp_path):
+    import json
+
+    (tmp_path / "stage-2000.json").write_text(json.dumps({"status": "PASS", "attempted": 2000}))
+    (tmp_path / "stage-smoke.json").write_text(json.dumps({"status": "PASS", "checks": []}))
+    assert u.load_stages(tmp_path, 20396) == [{"status": "PASS", "attempted": 2000}]
+
+
+def test_source_eligibility_distinguishes_us_reporting_from_unsupported_scope():
+    import json
+
+    cik = "0000000001"
+    foreign = {
+        "cik": 1,
+        "facts": {"ifrs-full": {"Revenue": {"units": {"USD": [{"form": "20-F"}]}}}},
+    }
+    assert (
+        u.classify_source(json.dumps(foreign).encode(), cik)["classification"]
+        == "NO_US_GAAP_TAXONOMY"
+    )
+    native = {
+        "cik": 1,
+        "facts": {
+            "us-gaap": {"UnmappedStandardTag": {"units": {"USD": [{"form": "10-K", "val": None}]}}}
+        },
+    }
+    assert u.classify_source(json.dumps(native).encode(), cik)["eligible"] is True
+    assert (
+        u.classify_source(json.dumps(native).encode(), "0000000002")["classification"]
+        == "SOURCE_IDENTITY_MISMATCH"
+    )

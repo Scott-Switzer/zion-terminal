@@ -213,7 +213,226 @@ def collect_history(base, token, params, release=None):
     raise click.ClickException("ALL_PAGES_PAGE_BUDGET_EXCEEDED_NO_PARTIAL_OUTPUT")
 
 
-def emit_dataset(value, output):
+def sec_filing_index(cik, accession):
+    """Validate identifiers for SEC's documented filing-index symbolic path."""
+    if (
+        not isinstance(cik, str)
+        or not re.fullmatch(r"[0-9]{1,10}", cik)
+        or int(cik) == 0
+        or not isinstance(accession, str)
+        or not re.fullmatch(r"[0-9]{10}-[0-9]{2}-[0-9]{6}", accession)
+    ):
+        return None
+    return f"https://www.sec.gov/Archives/edgar/data/{int(cik)}/{accession}-index.html"
+
+
+def render_table(value, action):
+    """Readable exact values; the exported dataset remains the unchanged JSON."""
+    contexts = list(value.get("pages", [value]))
+    for history in value.get("histories", {}).values():
+        contexts.extend(history.get("pages", [history]))
+    for page in list(contexts):
+        for company in page.get("companies", []):
+            if isinstance(company.get("result"), dict):
+                contexts.append(company["result"])
+    releases, cutoffs, qualifications, gaps = set(), set(), set(), set()
+    rows = []
+
+    def exact(row):
+        if row is None:
+            return "MISSING"
+        if "numerator" in row and "denominator" in row:
+            return str(row["numerator"]) + "/" + str(row["denominator"])
+        return row.get("value_decimal", "NOT_RETURNED")
+
+    def period(row):
+        return (
+            str(row.get("period_start") or "NOT_RETURNED")
+            + ".."
+            + str(row.get("period_end") or "NOT_RETURNED")
+        )
+
+    def add(cik, item, row, amount, quality, link="-"):
+        rows.append(
+            [
+                cik or "NOT_RETURNED",
+                item,
+                period(row),
+                row.get("unit") or "NOT_RETURNED",
+                amount,
+                quality,
+                link,
+            ]
+        )
+
+    for page in contexts:
+        release = page.get("release_id") or page.get("provenance", {}).get("release_id")
+        if release:
+            releases.add(str(release))
+        if page.get("as_of"):
+            cutoffs.add(str(page["as_of"]))
+        for key in ("qualification", "coverage_qualification", "release_quality"):
+            if page.get(key):
+                qualifications.add(str(page[key]))
+        cik = page.get("cik")
+        for gap in page.get("coverage_gaps", []) + page.get("missing_companies", []):
+            gaps.add(json.dumps([cik, gap], sort_keys=True))
+            add(
+                gap.get("cik", cik),
+                gap.get("metric", "SCREEN_MISSING"),
+                gap,
+                "MISSING",
+                gap.get("reason") or "REASON_NOT_RETURNED",
+            )
+        for metric, definitions in (page.get("coverage") or {}).items():
+            for name, counts in definitions.items():
+                if not isinstance(counts, dict):
+                    continue
+                amount = counts.get("gaps", 0)
+                for index in range(amount):
+                    gaps.add(f"coverage:{cik}:{metric}:{name}:{index}")
+                unit = page.get("metrics", {}).get(name, {}).get("unit")
+                add(
+                    cik,
+                    metric + ":" + name,
+                    {"unit": unit},
+                    "observations=" + str(counts.get("observations", "NOT_RETURNED")),
+                    "gaps=" + str(amount),
+                )
+        if action == "provenance":
+            records = page.get("source_records", {})
+            expected = {
+                sid
+                for row in page.get("observations", []) + page.get("accounting_checks", [])
+                for sid in row.get("source_observation_ids", [])
+            }
+            for sid in sorted(set(records) | expected):
+                leaf = records.get(sid)
+                if leaf is None:
+                    gaps.add("source_missing:" + sid)
+                    add(cik, sid, {}, "MISSING", "SOURCE_RECORD_MISSING", "LINK_MISSING")
+                    continue
+                link = sec_filing_index(leaf.get("cik", cik), leaf.get("accession"))
+                add(
+                    leaf.get("cik", cik),
+                    leaf.get("metric", sid),
+                    leaf,
+                    exact(leaf),
+                    "SOURCE_RECORD_PRESENT" if link else "LINK_MISSING_INVALID_CIK_OR_ACCESSION",
+                    link or "LINK_MISSING",
+                )
+        elif action != "compare":
+            for row in page.get("observations", []):
+                add(cik, row.get("metric", "NOT_RETURNED"), row, exact(row), "OBSERVED")
+            for match in page.get("matches", []):
+                row = match["observation"]
+                add(
+                    match["cik"],
+                    match.get("metric", page.get("metric", "NOT_RETURNED")),
+                    row,
+                    exact(row),
+                    "OBSERVED",
+                )
+            for company in page.get("companies", []):
+                if company.get("http_status", 200) >= 400:
+                    error = (
+                        company.get("result", {}).get("error", {}).get("code", "ERROR_NOT_RETURNED")
+                    )
+                    gaps.add("batch_error:" + str(company.get("cik")))
+                    add(
+                        company.get("cik"),
+                        "HTTP_" + str(company["http_status"]),
+                        {},
+                        "MISSING",
+                        error,
+                    )
+                elif "result" not in company:
+                    add(
+                        company.get("cik"),
+                        company.get("label") or "LABEL_NOT_RETURNED",
+                        {},
+                        "N/A",
+                        company.get("quarantine_reason")
+                        or company.get("status")
+                        or str(company.get("http_status", "NOT_RETURNED")),
+                    )
+    for cik, derived in value.get("derived_gaps", {}).items():
+        for gap in derived:
+            gaps.add(json.dumps([cik, gap], sort_keys=True))
+            add(
+                cik,
+                gap.get("metric", "DERIVED_GAP"),
+                gap,
+                "MISSING",
+                gap.get("reason", "NOT_RETURNED"),
+            )
+    for row in value.get("comparisons", []):
+        for cik, amount in row["values"].items():
+            difference = row.get("difference_from_first", {}).get(cik)
+            add(
+                cik,
+                row["metric"],
+                row,
+                exact(amount),
+                "MISSING" if amount is None else "delta=" + exact(difference),
+            )
+    if not rows:
+        rows.append(
+            [
+                value.get("cik", "N/A"),
+                action,
+                "NOT_RETURNED",
+                "NOT_RETURNED",
+                "NO_ROWS",
+                value.get("status", "SEE_JSON"),
+                "-",
+            ]
+        )
+
+    def cell(item):
+        return "".join(c if c.isprintable() else " " for c in str(item))
+
+    rows = list(dict.fromkeys(tuple(cell(item) for item in row) for row in rows))
+    headers = ["CIK", "ITEM", "REPORT_PERIOD", "UNIT", "EXACT_VALUE", "QUALITY", "SEC_FILING_INDEX"]
+    widths = [
+        max(len(header), max(len(row[index]) for row in rows))
+        for index, header in enumerate(headers)
+    ]
+
+    def line(row):
+        return " | ".join(text.ljust(width) for text, width in zip(row, widths)).rstrip()
+
+    partial = any(
+        page.get("next_cursor") or page.get("pagination", {}).get("next_cursor")
+        for page in contexts
+    )
+    assembled_complete = value.get("complete") or (
+        action == "compare"
+        and value.get("histories")
+        and all(history.get("complete") for history in value["histories"].values())
+    )
+    output = [
+        "Release: " + (", ".join(sorted(releases)) or "NOT_RETURNED"),
+        "As of: " + (", ".join(sorted(cutoffs)) or "NOT_RETURNED"),
+        "Report period / unit: explicit per row; NOT_RETURNED means unavailable",
+        "Quality gaps: " + str(len(gaps)),
+        "Quality: " + ("; ".join(sorted(qualifications)) or "NOT_RETURNED"),
+        "Pagination: "
+        + (
+            "MORE_PAGES_AVAILABLE"
+            if partial and not assembled_complete
+            else "NO_ADDITIONAL_CURSOR_IN_THIS_RESPONSE"
+        ),
+        line(headers),
+        line(["-" * width for width in widths]),
+    ]
+    output.extend(line(row) for row in rows)
+    if action == "provenance":
+        output.append("SEC index links: identifier format validated; destination not fetched.")
+    return "\n".join(output)
+
+
+def emit_dataset(value, output, display_format="json", action="history"):
     serialized = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
     if output:
         # Exclusive creation prevents accidental replacement of an existing research artifact.
@@ -222,7 +441,7 @@ def emit_dataset(value, output):
                 stream.write(serialized)
         except OSError:
             raise click.ClickException("EXPORT_DESTINATION_UNWRITABLE_OR_EXISTS") from None
-    click.echo(serialized.rstrip())
+    click.echo(render_table(value, action) if display_format == "table" else serialized.rstrip())
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -305,9 +524,17 @@ def fetch(base, token, route, params):
     type=click.Path(path_type=Path),
     help="Export exact JSON including SEC lineage; destination must be new.",
 )
+@click.option(
+    "--format",
+    "display_format",
+    type=click.Choice(["json", "table"]),
+    default="json",
+    show_default=True,
+)
 @click.option("--all-pages", is_flag=True, help="Collect at most 100 pages / 20 MiB, or fail.")
-def research(action, base_url, credential_file, all_pages, output, **options):
+def research(action, base_url, credential_file, all_pages, output, display_format, **options):
     """Query private financial data without starting providers or the LLM orchestrator."""
+    display_action = action
     try:
         credentials = local_credentials(credential_file)
     except (OSError, UnicodeError):
@@ -356,6 +583,14 @@ def research(action, base_url, credential_file, all_pages, output, **options):
             if sum(h["response_bytes"] for h in histories.values()) > MAX_TOTAL:
                 raise click.ClickException("ALL_PAGES_TOTAL_BUDGET_EXCEEDED_NO_PARTIAL_OUTPUT")
             release = histories[cik]["release_id"]
+        cutoffs = {
+            page["as_of"]
+            for item in histories.values()
+            for page in item["pages"]
+            if page.get("as_of") is not None
+        }
+        if len(cutoffs) > 1:
+            raise click.ClickException("COMPARE_REQUIRES_COMMON_AVAILABILITY_CUTOFF")
         result = compare_histories(histories)
         result.update(
             histories=histories,
@@ -365,7 +600,7 @@ def research(action, base_url, credential_file, all_pages, output, **options):
             as_of=supplied.get("as_of") or histories[ciks[0]]["pages"][0].get("as_of"),
             base_url=base,
         )
-        emit_dataset(result, output)
+        emit_dataset(result, output, display_format, display_action)
         return
     if action == "provenance":
         action = "history"
@@ -408,7 +643,7 @@ def research(action, base_url, credential_file, all_pages, output, **options):
                     "complete": True,
                 }
             )
-            emit_dataset(output, export_path)
+            emit_dataset(output, export_path, display_format, display_action)
             return
         if cursor in seen:
             raise click.ClickException("PAGINATION_CURSOR_REPEATED_NO_PARTIAL_OUTPUT")

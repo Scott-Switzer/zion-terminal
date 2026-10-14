@@ -11,6 +11,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -136,10 +137,40 @@ class CachedRangeArchive:
         return {"Body": io.BytesIO(b"".join(parts))}
 
 
+def classify_source(raw, cik):
+    """Classify reporting metadata only; never convert these facts to financial values."""
+    try:
+        source = json.loads(raw)
+        if str(source.get("cik", "")).zfill(10) != cik:
+            return {"eligible": False, "classification": "SOURCE_IDENTITY_MISMATCH"}
+        definitions = source.get("facts", {}).get("us-gaap", {})
+        if not definitions:
+            return {"eligible": False, "classification": "NO_US_GAAP_TAXONOMY"}
+        periodic = any(
+            row.get("form") in ("10-K", "10-K/A", "10-Q", "10-Q/A")
+            for definition in definitions.values()
+            for rows in definition.get("units", {}).values()
+            for row in rows
+        )
+        return {
+            "eligible": periodic,
+            "classification": "ELIGIBLE_US_PERIODIC_SOURCE"
+            if periodic
+            else "NO_US_PERIODIC_CONTEXTS",
+        }
+    except (ValueError, TypeError, AttributeError):
+        return {"eligible": None, "classification": "SOURCE_SCHEMA_UNVERIFIED"}
+
+
 def evaluate(raw, cik, source, entry, release, registry_sha, temporary):
     data, error = materializer.evaluate_member(raw, cik, source, entry, release, registry_sha)
     if error:
-        return {"status": "QUARANTINED", "reason": error, "member_sha256": materializer.digest(raw)}
+        return {
+            "status": "QUARANTINED",
+            "reason": error,
+            "member_sha256": materializer.digest(raw),
+            "source_eligibility": classify_source(raw, cik),
+        }
     body = encoded(data)
     if len(body) > 16 * 1048576 or len(data["observations"]) > 12000:
         return {
@@ -176,6 +207,7 @@ def evaluate(raw, cik, source, entry, release, registry_sha, temporary):
             "status": "QUARANTINED",
             "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY",
             "member_sha256": data["member_sha256"],
+            "source_eligibility": classify_source(raw, cik),
         }
     ref = {
         "sha256": materializer.digest(body),
@@ -199,11 +231,26 @@ def evaluate(raw, cik, source, entry, release, registry_sha, temporary):
     assert verification["status"] == "PASS"
     return {
         "status": "USABLE",
+        "source_eligibility": {"eligible": True, "classification": "ELIGIBLE_US_PERIODIC_SOURCE"},
         "ref": ref,
         "body": body,
         "screen": company_row(cik, data, annual["observations"]),
         "verification": {k: v for k, v in verification.items() if k != "checks"},
     }
+
+
+def load_stages(directory, total):
+    stages = [
+        json.loads(path.read_text())
+        for path in sorted(directory.glob("stage-*.json"))
+        if re.fullmatch(r"stage-\d+\.json", path.name)
+    ]
+    if not all(
+        stage.get("status") == "PASS" and stage.get("attempted") in expansion_stages(total)
+        for stage in stages
+    ):
+        raise ValueError("STAGE_RECEIPT_INVALID")
+    return stages
 
 
 def main():
@@ -243,11 +290,7 @@ def main():
     s = client()
     local = CachedRangeArchive(s, base["source"])
     started = time.perf_counter()
-    stages = [json.loads(path.read_text()) for path in sorted(OUT.glob("stage-*.json"))]
-    assert all(
-        stage.get("status") == "PASS" and stage.get("attempted") in expansion_stages(a.total)
-        for stage in stages
-    )
+    stages = load_stages(OUT, a.total)
     reason = None
     pool = ThreadPoolExecutor(max_workers=4)
     pending = deque()
@@ -376,6 +419,33 @@ def main():
         path.name.split(".")[0]: load_checkpoint(path, release)
         for path in checkpoints.glob("*.json.gz")
     }
+    for cik, record in sorted(records.items()):
+        if record.get("source_eligibility") is not None:
+            continue
+        if record["status"] == "USABLE":
+            eligibility = {"eligible": True, "classification": "ELIGIBLE_US_PERIODIC_SOURCE"}
+        elif record.get("reason") == "SOURCE_IDENTITY_MISMATCH":
+            eligibility = {"eligible": False, "classification": "SOURCE_IDENTITY_MISMATCH"}
+        else:
+            try:
+                eligibility = classify_source(
+                    materializer.extract(local, base["source"], entries[cik]), cik
+                )
+            except (ValueError, TypeError, zlib.error):
+                eligibility = {
+                    "eligible": None,
+                    "classification": "SOURCE_INTEGRITY_OR_BUDGET_UNVERIFIED",
+                }
+        record["source_eligibility"] = eligibility
+        save_checkpoint(checkpoints / (cik + ".json.gz"), record)
+    resources = {
+        "range_requests_this_invocation": local.requests,
+        "source_bytes_this_invocation": local.bytes_read,
+        "range_cache_maximum_bytes": 3 * 4 * 1048576,
+        "financial_calculator_threads": 1,
+        "publication_io_threads": 4,
+    }
+    (OUT / "resource-usage.json").write_bytes(encoded(resources))
     publish_catalog(
         s, base, entries, registry_raw, release, prefix, records, budget, reason, stages, started
     )
@@ -410,12 +480,26 @@ def publish_catalog(
         issuers_attempted=len(records),
         companies_fully_certified=0,
         source_releases=[materialization_release],
+        source_eligibility_counts=dict(
+            Counter(
+                "eligible"
+                if r.get("source_eligibility", {}).get("eligible") is True
+                else "ineligible"
+                if r.get("source_eligibility", {}).get("eligible") is False
+                else "unverified"
+                for r in records.values()
+            )
+        ),
     )
     shards = {}
     directory = []
     for cik, entry in entries.items():
         ref = companies.get(cik)
-        item = {"archive_entry": entry, "label": ref["label"] if ref else None}
+        item = {
+            "archive_entry": entry,
+            "label": ref["label"] if ref else None,
+            "source_eligibility": records.get(cik, {}).get("source_eligibility"),
+        }
         if ref:
             item.update(
                 materialized={
@@ -535,6 +619,13 @@ def publish_catalog(
             r.get("verification", {}).get("total_observations", 0) for r in records.values()
         ),
         "fully_certified_companies": 0,
+        "source_eligibility_counts": root["source_eligibility_counts"],
+        "source_eligibility_reasons": dict(
+            Counter(
+                r.get("source_eligibility", {}).get("classification", "NOT_CLASSIFIED")
+                for r in records.values()
+            )
+        ),
         "stages": stages,
         "resource_stop": reason,
         "cloud_bytes_written": budget.bytes,
