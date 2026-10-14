@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -86,6 +87,8 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--activate", action="store_true")
     parser.add_argument("--rollback-drill", action="store_true")
+    parser.add_argument("--research-cohort", type=Path)
+    parser.add_argument("--research-validation-output", type=Path)
     args = parser.parse_args()
     if not args.activate:
         parser.error("--activate explicitly selects the staging activation operation")
@@ -94,6 +97,10 @@ def main():
         for v in (args.candidate_version, args.previous_version)
     ):
         parser.error("new evidence output and valid immutable version IDs required")
+    if bool(args.research_cohort) != bool(args.research_validation_output):
+        parser.error("cohort and new validation output must be supplied together")
+    if args.research_validation_output and args.research_validation_output.exists():
+        parser.error("research validation output must be new")
     repo = Path(__file__).resolve().parents[1]
     publication = json.loads(args.publication.read_text())
     root_path = args.publication.parent / "manifest.json"
@@ -279,6 +286,27 @@ def main():
         old = current_history(baseline["release_id"])
         if old != baseline:
             raise RuntimeError("HISTORICAL_REPRODUCTION_FAILED")
+        if args.research_cohort:
+            with args.output.with_suffix(".research-validation.log").open("w") as log:
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(repo / "scripts/unified_research_acceptance.py"),
+                        "--cohort",
+                        str(args.research_cohort),
+                        "--output",
+                        str(args.research_validation_output),
+                        "--research-release",
+                        root["release_id"],
+                    ],
+                    cwd=repo,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    timeout=600,
+                )
+            if completed.returncode:
+                raise RuntimeError("FULL_RESEARCH_VALIDATION_FAILED")
+            report.append({"name": "twenty_company_research", "status": "PASS"})
         if args.rollback_drill:
             raise RuntimeError("INTENTIONAL_VERIFIED_ROLLBACK_DRILL")
         return dict(status="PASS", checks=report, historical_reproduction=old)
