@@ -109,6 +109,13 @@ class Default(WorkerEntrypoint):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
+        if path == '/private/v1/financial-history':
+            from sec_history_api import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
         if path == '/private/v1/datasets' or path.startswith('/private/v1/datasets/'):
             from private_dataset_proxy import handle
 

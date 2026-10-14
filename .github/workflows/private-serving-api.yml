@@ -7,6 +7,9 @@ on:
       - 'scripts/private_serving_acceptance.py'
       - 'tests/unit/test_private*.py'
       - 'tests/unit/test_financial_foundation.py'
+      - 'tests/unit/test_sec_history*.py'
+      - 'tests/unit/test_sec_manifest_recovery.py'
+      - 'contracts/sec-financial-metric-registry-v1.json'
       - 'src/zion_terminal/datasets/financial_foundation.py'
       - 'contracts/financial*'
       - 'contracts/fundamental*'
@@ -32,6 +35,9 @@ jobs:
       - name: Synthetic existing-data and frozen contract tests
         run: >-
           python -m pytest -q
+          tests/unit/test_sec_history.py
+          tests/unit/test_sec_history_api.py
+          tests/unit/test_sec_manifest_recovery.py
           tests/unit/test_financial_foundation.py
           tests/unit/test_private_financials.py
           tests/unit/test_private_api.py
@@ -55,6 +61,7 @@ jobs:
       - name: Changed-module lint and syntax
         run: |
           ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py deploy/cloudflare-query/src/sec_expanded*.py tests/unit/test_sec_expanded*.py scripts/publish_sec_expanded_index.py scripts/sec_expanded_acceptance.py scripts/collection_serving_acceptance.py scripts/datasets_client.py tests/unit/test_hosted_datasets_client.py tests/unit/test_collection_serving_acceptance.py scripts/publish_collection_catalog.py tests/unit/test_publish_collection_catalog.py scripts/native_query_acceptance.py tests/unit/test_native_query_acceptance.py
+          ruff check deploy/cloudflare-query/src/sec_history*.py tests/unit/test_sec_history*.py tests/unit/test_sec_manifest_recovery.py scripts/*sec_history*.py scripts/sec_foundation_recovery.py scripts/provision_sec_read_token.py scripts/reconcile_sec_catalog_registration.py
           python -m py_compile deploy/cloudflare-query/src/private_*.py deploy/cloudflare-query/src/thin_worker.py scripts/private_serving_acceptance.py
       - name: Frozen contract unchanged
         run: |

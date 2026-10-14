@@ -1,0 +1,133 @@
+{
+  "version": "sec-financial-history-v1",
+  "metrics": {
+    "revenue": {
+      "unit": "USD",
+      "kind": "flow",
+      "concepts": [
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "SalesRevenueNet",
+        "Revenues"
+      ],
+      "definition": "Reported revenue in the exact native concept; no assessed-tax-including substitution."
+    },
+    "operating_income": {
+      "unit": "USD",
+      "kind": "flow",
+      "concepts": [
+        "OperatingIncomeLoss"
+      ],
+      "definition": "Reported operating income or loss."
+    },
+    "net_income": {
+      "unit": "USD",
+      "kind": "flow",
+      "concepts": [
+        "NetIncomeLoss"
+      ],
+      "definition": "Consolidated net income/loss; not net income available to common."
+    },
+    "operating_cash_flow": {
+      "unit": "USD",
+      "kind": "flow",
+      "concepts": [
+        "NetCashProvidedByUsedInOperatingActivities"
+      ],
+      "definition": "Net cash from operating activities."
+    },
+    "capital_expenditures": {
+      "unit": "USD",
+      "kind": "flow",
+      "concepts": [
+        "PaymentsToAcquirePropertyPlantAndEquipment"
+      ],
+      "definition": "Reported positive PP&E cash payments; excludes acquisitions/intangibles and other investment."
+    },
+    "cash": {
+      "unit": "USD",
+      "kind": "instant",
+      "concepts": [
+        "CashAndCashEquivalentsAtCarryingValue"
+      ],
+      "definition": "Cash and cash equivalents; excludes restricted cash and marketable securities."
+    },
+    "total_debt": {
+      "unit": "USD",
+      "kind": "instant",
+      "concepts": [],
+      "definition": "Reported carrying amounts of borrowings plus capital/finance leases, using all explicit nonoverlapping same-date components. Excludes operating leases. Missing components never become zero."
+    },
+    "diluted_shares": {
+      "unit": "shares",
+      "kind": "weighted",
+      "concepts": [
+        "WeightedAverageNumberOfDilutedSharesOutstanding"
+      ],
+      "definition": "Reported period weighted-average diluted shares; never sum or subtract weighted averages."
+    },
+    "free_cash_flow": {
+      "unit": "USD",
+      "kind": "flow",
+      "concepts": [],
+      "definition": "Operating cash flow minus positive PP&E payments, with exact matching periods/currency."
+    }
+  },
+  "company_debt_components": {
+    "0000320193": [
+      "CommercialPaper",
+      "OtherShortTermBorrowings",
+      "LongTermDebtCurrent",
+      "LongTermDebtNoncurrent",
+      "FinanceLeaseLiabilityCurrent",
+      "FinanceLeaseLiabilityNoncurrent"
+    ],
+    "0000909832": [
+      "ShortTermBorrowings",
+      "LongTermDebtCurrent",
+      "LongTermDebtNoncurrent",
+      "FinanceLeaseLiabilityCurrent",
+      "FinanceLeaseLiabilityNoncurrent"
+    ],
+    "0001045810": [
+      "DebtCurrent",
+      "LongTermDebtNoncurrent",
+      "CapitalLeaseObligationsNoncurrent"
+    ],
+    "0001326801": [
+      "DebtCurrent",
+      "LongTermDebtNoncurrent",
+      "CapitalLeaseObligationsNoncurrent"
+    ],
+    "0001652044": [
+      "DebtCurrent",
+      "LongTermDebtNoncurrent",
+      "CapitalLeaseObligationsNoncurrent"
+    ]
+  },
+  "debt_quarantined_companies": [
+    "0000320193",
+    "0000909832"
+  ],
+  "debt_scope_note": "DebtCurrent includes current capital leases; LongTermDebtNoncurrent excludes capital leases, so noncurrent capital leases are also mandatory. Apple/Costco overlap requires filing-level confirmation; no operating-lease substitution.",
+  "company_revenue_concepts": {
+    "0000909832": [
+      "Revenues"
+    ]
+  },
+  "fiscal_quarter_days": {
+    "default": [
+      75,
+      105
+    ],
+    "0000909832": [
+      75,
+      120
+    ]
+  },
+  "revenue_policy": "Native concept retained; overlapping unequal concepts rejected; TTM cannot span concept changes.",
+  "implementation_sha256": "7285702095e61b7130eb7438c9d78954ee689300499d460bbd2836efdcc76584",
+  "dependency_sha256": {
+    "temporal_core.py": "4413e8abc7fd69a3a30228effb3df07a1e64f39e73a67951c0b239ba8914eb57",
+    "new_york_tz.py": "472d46eee454dedfaaaf281996acf65c00967ab2a6680f81e9d95860d5e5841a"
+  }
+}

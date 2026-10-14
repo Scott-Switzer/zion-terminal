@@ -1,0 +1,16 @@
+{
+  "release_id": "b2b25814a374cfdc2dfd0a6283b8eaf2c430b24778a2afe94de8c0562be446f4",
+  "public_sec_only": true,
+  "examples": [
+    {
+      "metric": "capital_expenditures",
+      "period_start": "2014-09-28",
+      "period_end": "2015-09-26",
+      "concept": "us-gaap:PaymentsToAcquirePropertyPlantAndEquipment",
+      "source_observation_ids": [
+        "21596475e20d9c4b6496b7baa35f28b488fb797949f2367e684731130efb9f22"
+      ],
+      "available_at": "2017-11-04T04:00:00Z"
+    }
+  ]
+}

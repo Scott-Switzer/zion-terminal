@@ -1,0 +1,655 @@
+[
+  {
+    "cik": "0000320193",
+    "label": "Apple Inc.",
+    "normalized_revisions": 1426,
+    "bytes": 1026939,
+    "coverage": {
+      "annual": {
+        "revenue": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "operating_income": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "capital_expenditures": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 69
+        },
+        "diluted_shares": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "free_cash_flow": {
+          "observations": 11,
+          "gaps": 0
+        }
+      },
+      "quarterly": {
+        "revenue": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "operating_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 41,
+          "gaps": 5
+        },
+        "capital_expenditures": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 104
+        },
+        "diluted_shares": {
+          "observations": 35,
+          "gaps": 11
+        },
+        "free_cash_flow": {
+          "observations": 41,
+          "gaps": 5
+        }
+      },
+      "ttm": {
+        "revenue": {
+          "observations": 43,
+          "gaps": 3
+        },
+        "operating_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 38,
+          "gaps": 8
+        },
+        "capital_expenditures": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 105
+        },
+        "diluted_shares": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "free_cash_flow": {
+          "observations": 38,
+          "gaps": 8
+        }
+      }
+    },
+    "rejections": {
+      "UNSUPPORTED_FORM": 69
+    },
+    "debt_required_components": [
+      "CommercialPaper",
+      "OtherShortTermBorrowings",
+      "LongTermDebtCurrent",
+      "LongTermDebtNoncurrent",
+      "FinanceLeaseLiabilityCurrent",
+      "FinanceLeaseLiabilityNoncurrent"
+    ]
+  },
+  {
+    "cik": "0000909832",
+    "label": "COSTCO WHOLESALE CORP /NEW",
+    "normalized_revisions": 1570,
+    "bytes": 1120157,
+    "coverage": {
+      "annual": {
+        "revenue": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "operating_income": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 9,
+          "gaps": 2
+        },
+        "capital_expenditures": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 69
+        },
+        "diluted_shares": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "free_cash_flow": {
+          "observations": 9,
+          "gaps": 2
+        }
+      },
+      "quarterly": {
+        "revenue": {
+          "observations": 45,
+          "gaps": 1
+        },
+        "operating_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 33,
+          "gaps": 13
+        },
+        "capital_expenditures": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 104
+        },
+        "diluted_shares": {
+          "observations": 41,
+          "gaps": 5
+        },
+        "free_cash_flow": {
+          "observations": 33,
+          "gaps": 13
+        }
+      },
+      "ttm": {
+        "revenue": {
+          "observations": 45,
+          "gaps": 1
+        },
+        "operating_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 30,
+          "gaps": 16
+        },
+        "capital_expenditures": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 105
+        },
+        "diluted_shares": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "free_cash_flow": {
+          "observations": 30,
+          "gaps": 16
+        }
+      }
+    },
+    "rejections": {},
+    "debt_required_components": [
+      "ShortTermBorrowings",
+      "LongTermDebtCurrent",
+      "LongTermDebtNoncurrent",
+      "FinanceLeaseLiabilityCurrent",
+      "FinanceLeaseLiabilityNoncurrent"
+    ]
+  },
+  {
+    "cik": "0001045810",
+    "label": "NVIDIA CORP",
+    "normalized_revisions": 1247,
+    "bytes": 891745,
+    "coverage": {
+      "annual": {
+        "revenue": {
+          "observations": 12,
+          "gaps": 1
+        },
+        "operating_income": {
+          "observations": 12,
+          "gaps": 5
+        },
+        "net_income": {
+          "observations": 12,
+          "gaps": 15
+        },
+        "operating_cash_flow": {
+          "observations": 12,
+          "gaps": 1
+        },
+        "capital_expenditures": {
+          "observations": 0,
+          "gaps": 13
+        },
+        "cash": {
+          "observations": 12,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 13
+        },
+        "diluted_shares": {
+          "observations": 12,
+          "gaps": 0
+        },
+        "free_cash_flow": {
+          "observations": 0,
+          "gaps": 13
+        }
+      },
+      "quarterly": {
+        "revenue": {
+          "observations": 46,
+          "gaps": 2
+        },
+        "operating_income": {
+          "observations": 42,
+          "gaps": 10
+        },
+        "net_income": {
+          "observations": 32,
+          "gaps": 30
+        },
+        "operating_cash_flow": {
+          "observations": 46,
+          "gaps": 2
+        },
+        "capital_expenditures": {
+          "observations": 17,
+          "gaps": 30
+        },
+        "cash": {
+          "observations": 47,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "diluted_shares": {
+          "observations": 35,
+          "gaps": 12
+        },
+        "free_cash_flow": {
+          "observations": 16,
+          "gaps": 31
+        }
+      },
+      "ttm": {
+        "revenue": {
+          "observations": 40,
+          "gaps": 8
+        },
+        "operating_income": {
+          "observations": 28,
+          "gaps": 24
+        },
+        "net_income": {
+          "observations": 14,
+          "gaps": 48
+        },
+        "operating_cash_flow": {
+          "observations": 43,
+          "gaps": 5
+        },
+        "capital_expenditures": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "cash": {
+          "observations": 0,
+          "gaps": 49
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 49
+        },
+        "diluted_shares": {
+          "observations": 0,
+          "gaps": 49
+        },
+        "free_cash_flow": {
+          "observations": 0,
+          "gaps": 48
+        }
+      }
+    },
+    "rejections": {
+      "UNSUPPORTED_FORM": 5
+    },
+    "debt_required_components": [
+      "DebtCurrent",
+      "LongTermDebtNoncurrent",
+      "CapitalLeaseObligationsNoncurrent"
+    ]
+  },
+  {
+    "cik": "0001326801",
+    "label": "Meta Platforms, Inc.",
+    "normalized_revisions": 1145,
+    "bytes": 828097,
+    "coverage": {
+      "annual": {
+        "revenue": {
+          "observations": 11,
+          "gaps": 8
+        },
+        "operating_income": {
+          "observations": 11,
+          "gaps": 8
+        },
+        "net_income": {
+          "observations": 11,
+          "gaps": 7
+        },
+        "operating_cash_flow": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "capital_expenditures": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 12
+        },
+        "diluted_shares": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "free_cash_flow": {
+          "observations": 11,
+          "gaps": 0
+        }
+      },
+      "quarterly": {
+        "revenue": {
+          "observations": 38,
+          "gaps": 16
+        },
+        "operating_income": {
+          "observations": 38,
+          "gaps": 16
+        },
+        "net_income": {
+          "observations": 39,
+          "gaps": 14
+        },
+        "operating_cash_flow": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "capital_expenditures": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 47
+        },
+        "diluted_shares": {
+          "observations": 35,
+          "gaps": 11
+        },
+        "free_cash_flow": {
+          "observations": 46,
+          "gaps": 0
+        }
+      },
+      "ttm": {
+        "revenue": {
+          "observations": 15,
+          "gaps": 39
+        },
+        "operating_income": {
+          "observations": 20,
+          "gaps": 34
+        },
+        "net_income": {
+          "observations": 25,
+          "gaps": 28
+        },
+        "operating_cash_flow": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "capital_expenditures": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "cash": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "diluted_shares": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "free_cash_flow": {
+          "observations": 46,
+          "gaps": 0
+        }
+      }
+    },
+    "rejections": {
+      "UNSUPPORTED_FORM": 5
+    },
+    "debt_required_components": [
+      "DebtCurrent",
+      "LongTermDebtNoncurrent",
+      "CapitalLeaseObligationsNoncurrent"
+    ]
+  },
+  {
+    "cik": "0001652044",
+    "label": "Alphabet Inc.",
+    "normalized_revisions": 898,
+    "bytes": 649535,
+    "coverage": {
+      "annual": {
+        "revenue": {
+          "observations": 11,
+          "gaps": 1
+        },
+        "operating_income": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "capital_expenditures": {
+          "observations": 11,
+          "gaps": 1
+        },
+        "cash": {
+          "observations": 11,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 3,
+          "gaps": 8
+        },
+        "diluted_shares": {
+          "observations": 4,
+          "gaps": 7
+        },
+        "free_cash_flow": {
+          "observations": 11,
+          "gaps": 0
+        }
+      },
+      "quarterly": {
+        "revenue": {
+          "observations": 45,
+          "gaps": 2
+        },
+        "operating_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "net_income": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "operating_cash_flow": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "capital_expenditures": {
+          "observations": 45,
+          "gaps": 2
+        },
+        "cash": {
+          "observations": 46,
+          "gaps": 0
+        },
+        "total_debt": {
+          "observations": 4,
+          "gaps": 42
+        },
+        "diluted_shares": {
+          "observations": 10,
+          "gaps": 36
+        },
+        "free_cash_flow": {
+          "observations": 45,
+          "gaps": 1
+        }
+      },
+      "ttm": {
+        "revenue": {
+          "observations": 33,
+          "gaps": 14
+        },
+        "operating_income": {
+          "observations": 45,
+          "gaps": 1
+        },
+        "net_income": {
+          "observations": 45,
+          "gaps": 1
+        },
+        "operating_cash_flow": {
+          "observations": 44,
+          "gaps": 2
+        },
+        "capital_expenditures": {
+          "observations": 40,
+          "gaps": 7
+        },
+        "cash": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "total_debt": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "diluted_shares": {
+          "observations": 0,
+          "gaps": 48
+        },
+        "free_cash_flow": {
+          "observations": 40,
+          "gaps": 6
+        }
+      }
+    },
+    "rejections": {
+      "UNSUPPORTED_FORM": 30
+    },
+    "debt_required_components": [
+      "DebtCurrent",
+      "LongTermDebtNoncurrent",
+      "CapitalLeaseObligationsNoncurrent"
+    ]
+  }
+]

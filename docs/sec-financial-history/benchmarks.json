@@ -1,0 +1,197 @@
+{
+  "scope": "15 sequential live company/frequency requests; single run, no SLO claim",
+  "latency_ms": {
+    "min": 912.394,
+    "median": 2080.974,
+    "max": 3727.45
+  },
+  "max_response_bytes": 1016784,
+  "basin": {
+    "status": "PASS",
+    "namespace": "zion_sec_hist_b2b25814a374",
+    "source_release_id": "b2b25814a374cfdc2dfd0a6283b8eaf2c430b24778a2afe94de8c0562be446f4",
+    "checks": [
+      {
+        "cik": "0000320193",
+        "status": "PASS",
+        "source_revisions": 1426,
+        "latency_ms": 2573.22,
+        "metrics": {
+          "r2_requests_count": 14,
+          "files_scanned": 12,
+          "bytes_scanned": 260169,
+          "cache_hits": 0
+        }
+      },
+      {
+        "cik": "0000909832",
+        "status": "PASS",
+        "source_revisions": 1570,
+        "latency_ms": 1913.43,
+        "metrics": {
+          "r2_requests_count": 14,
+          "files_scanned": 12,
+          "bytes_scanned": 260169,
+          "cache_hits": 0
+        }
+      },
+      {
+        "cik": "0001045810",
+        "status": "PASS",
+        "source_revisions": 1247,
+        "latency_ms": 877.86,
+        "metrics": {
+          "r2_requests_count": 14,
+          "files_scanned": 12,
+          "bytes_scanned": 260169,
+          "cache_hits": 12
+        }
+      },
+      {
+        "cik": "0001326801",
+        "status": "PASS",
+        "source_revisions": 1145,
+        "latency_ms": 795.18,
+        "metrics": {
+          "r2_requests_count": 14,
+          "files_scanned": 12,
+          "bytes_scanned": 260169,
+          "cache_hits": 12
+        }
+      },
+      {
+        "cik": "0001652044",
+        "status": "PASS",
+        "source_revisions": 898,
+        "latency_ms": 641.94,
+        "metrics": {
+          "r2_requests_count": 14,
+          "files_scanned": 12,
+          "bytes_scanned": 260169,
+          "cache_hits": 12
+        }
+      }
+    ],
+    "tables": [
+      {
+        "table": "zion_sec_hist_b2b25814a374.public_sec_facts",
+        "snapshot_id": "8824915767742107248",
+        "metadata_location": "s3://financial-system-datasets/__r2_data_catalog/01a137dd-1cdc-7af2-8d63-88caee1d1cb2/01a137dd-1f53-7cc3-8341-1dc7739c5ce6/metadata/00001-01a137dd-4d77-7361-a067-5e4c63546839.gz.metadata.json",
+        "bytes": 256571
+      },
+      {
+        "table": "zion_sec_hist_b2b25814a374.public_issuers",
+        "snapshot_id": "8131531962726049777",
+        "metadata_location": "s3://financial-system-datasets/__r2_data_catalog/01a137dd-1cdc-7af2-8d63-88caee1d1cb2/01a137dd-50cb-7c10-bdbd-4cbb55b62a6c/metadata/00001-01a137e0-3260-7941-b12b-7b7b684555bc.gz.metadata.json",
+        "bytes": 1852
+      }
+    ],
+    "licensed_migrations": 0,
+    "production_pointer_changes": 0,
+    "runtime_read_token_validated": false,
+    "credential_usage": "EXISTING_OPERATOR_ONLY;NOT_INSTALLED_FOR_NEW_HISTORY_API"
+  },
+  "independent": {
+    "status": "PASS",
+    "checks": [
+      {
+        "cik": "0000320193",
+        "frequency": "annual",
+        "observations_independently_reconciled": 88,
+        "status": "PASS"
+      },
+      {
+        "cik": "0000320193",
+        "frequency": "quarterly",
+        "observations_independently_reconciled": 347,
+        "status": "PASS"
+      },
+      {
+        "cik": "0000320193",
+        "frequency": "ttm",
+        "observations_independently_reconciled": 257,
+        "status": "PASS"
+      },
+      {
+        "cik": "0000909832",
+        "frequency": "annual",
+        "observations_independently_reconciled": 84,
+        "status": "PASS"
+      },
+      {
+        "cik": "0000909832",
+        "frequency": "quarterly",
+        "observations_independently_reconciled": 336,
+        "status": "PASS"
+      },
+      {
+        "cik": "0000909832",
+        "frequency": "ttm",
+        "observations_independently_reconciled": 243,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001045810",
+        "frequency": "annual",
+        "observations_independently_reconciled": 72,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001045810",
+        "frequency": "quarterly",
+        "observations_independently_reconciled": 281,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001045810",
+        "frequency": "ttm",
+        "observations_independently_reconciled": 125,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001326801",
+        "frequency": "annual",
+        "observations_independently_reconciled": 88,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001326801",
+        "frequency": "quarterly",
+        "observations_independently_reconciled": 334,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001326801",
+        "frequency": "ttm",
+        "observations_independently_reconciled": 198,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001652044",
+        "frequency": "annual",
+        "observations_independently_reconciled": 84,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001652044",
+        "frequency": "quarterly",
+        "observations_independently_reconciled": 333,
+        "status": "PASS"
+      },
+      {
+        "cik": "0001652044",
+        "frequency": "ttm",
+        "observations_independently_reconciled": 247,
+        "status": "PASS"
+      }
+    ],
+    "total_observations": 3117,
+    "duckdb_exact_matches": 3117,
+    "source_records_normalized": 6286,
+    "latency_ms": 52164.37,
+    "duckdb_threads": 1,
+    "duckdb_memory_limit": "64MB",
+    "external_access": false,
+    "scope": "FIVE_STORED_PUBLIC_SEC_COMPANYFACTS_MEMBERS;NO_LIVE_PROVIDER_REQUEST;NO_FULL_FINANCIAL_CERTIFICATION"
+  }
+}

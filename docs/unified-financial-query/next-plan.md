@@ -7,3 +7,8 @@
 4. Expand public SEC mappings only with source-context, units, fiscal-period, availability and restatement validation. Establish source-backed historical security links before ticker-based historical queries. Preserve unmapped raw records.
 5. Benchmark a larger authorized public-only Iceberg partition pilot; establish account cost telemetry and actual cancellation behavior before increasing budgets. No automatic DuckDB fallback or production pointer promotion.
 6. Add source-specific entitlement policies and complete contract validation before any licensed multi-table pilot. Each new source/table and any canonical publication requires its own acceptance evidence and promotion gate.
+
+
+## SEC history follow-through
+
+See [the bounded SEC history milestone](../sec-financial-history/README.md) and [updated acceptance evidence](../sec-financial-history/acceptance-gates.json). The original foundation evidence above is preserved; unresolved estate, credential, TLS and full certification gates remain explicit.

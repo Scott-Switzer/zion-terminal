@@ -34,6 +34,11 @@ jobs:
           ZION_PRIVATE_BASE_URL: https://api-thin-staging.scotttunnel.xyz
           ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
         run: python3 scripts/financial_query_acceptance.py --output financial-query-acceptance.json
+      - name: Verify private immutable SEC financial history
+        env:
+          ZION_PRIVATE_BASE_URL: https://zion-financial-serving-v2-thin-staging.scswitzer.workers.dev
+          ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
+        run: python3 scripts/sec_history_acceptance.py --output sec-history-acceptance.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -44,3 +49,4 @@ jobs:
             collection-serving-acceptance.json
             native-query-acceptance.json
             financial-query-acceptance.json
+            sec-history-acceptance.json

@@ -1,0 +1,180 @@
+{
+  "schema_version": "sec-history-acceptance-v1",
+  "bounded_sec_service_ready": true,
+  "full_foundation_ready": false,
+  "full_financial_certification": false,
+  "release_id": "b2b25814a374cfdc2dfd0a6283b8eaf2c430b24778a2afe94de8c0562be446f4",
+  "gates": {
+    "four_store_metadata_census": {
+      "status": "PASS",
+      "evidence": "other-stores-metadata-summary.json",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "historical_350_error_classification": {
+      "status": "PASS",
+      "evidence": "inventory-reconciliation.json; oversize-manifest-validation.json",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "registered_manifests_integrity": {
+      "status": "PASS",
+      "evidence": "805 exact hashes",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "all_registered_references_resolved": {
+      "status": "FAIL",
+      "reason": "Legacy ambiguous relative reference explicitly quarantined, not repaired."
+    },
+    "all_archives_analytically_queryable": {
+      "status": "FAIL",
+      "reason": "No exhaustive footer, codec, and row census."
+    },
+    "all_store_catalog_registration_reconciled": {
+      "status": "FAIL",
+      "reason": "Correct endpoints establish two catalogs active and research/filings 404 under available credential; physical membership remains incomplete."
+    },
+    "basin_cross_table_sql": {
+      "status": "PASS",
+      "evidence": "basin-pilot-evidence.json",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "private_service_independent_source_match": {
+      "status": "PASS",
+      "evidence": "private-query-acceptance.json",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "exact_precision_nulls_and_historical_availability": {
+      "status": "PASS",
+      "evidence": "private-query-acceptance.json; 13 adapter unit tests",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "source_version_change_live": {
+      "status": "PASS",
+      "evidence": "live-source-version-gate.json",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "unauthorized_inputs_and_licensed_access_denied": {
+      "status": "PASS",
+      "evidence": "live private checks plus restricted public entrypoint unit test",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "query_budgets_and_no_silent_truncation": {
+      "status": "PASS",
+      "evidence": "live overflow 413; synthetic size/deadline tests; engine cancellation unverified",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "narrow_read_only_runtime_credential": {
+      "status": "FAIL",
+      "reason": "Operator and OAuth provisioning APIs return 403/9109; candidate policy not tested against runtime."
+    },
+    "mapping_specs_and_source_preservation": {
+      "status": "PASS",
+      "evidence": "versioned contracts; four semantic helper tests; full canonical validation remains future work",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "canonical_financial_certification": {
+      "status": "FAIL",
+      "reason": "Five-company bounded SEC reconciliation only; filing-level mapping certification and broader historical security links incomplete."
+    },
+    "production_publication_pointers_unchanged": {
+      "status": "PASS",
+      "evidence": "publication-pointer-gates.json",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "existing_private_routes_regression": {
+      "status": "PASS",
+      "evidence": {
+        "private_serving_acceptance": {
+          "status": "PASS",
+          "checks": 18
+        },
+        "sec_expanded_acceptance": {
+          "status": "PASS",
+          "checks": 20
+        },
+        "collection_serving_acceptance": {
+          "status": "PASS",
+          "checks": 18
+        },
+        "native_query_acceptance": {
+          "status": "PASS",
+          "checks": 23
+        }
+      },
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "custom_domain_current_reachability": {
+      "status": "FAIL",
+      "reason": "Custom TLS fails before HTTP; certificate/settings reads denied. Root cause not established; routing unchanged."
+    },
+    "no_new_provider_or_wrds_collection": {
+      "status": "PASS",
+      "evidence": "Existing stored public SEC members; metadata-only audit; no acquisition jobs",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "no_licensed_migration_or_llm_disclosure": {
+      "status": "PASS",
+      "evidence": "Public SEC and owned synthetic pilot only; regressions emit counts, never licensed rows",
+      "evidence_scope": "BASELINE_FOUNDATION;see original acceptance-gates.json"
+    },
+    "bounded_oversized_manifest_recovery": {
+      "status": "PASS",
+      "evidence": "foundation-recovery.json"
+    },
+    "unsealed_and_legacy_explicit_quarantine": {
+      "status": "PASS",
+      "evidence": "foundation-recovery.json"
+    },
+    "correct_catalog_endpoint_diagnosis": {
+      "status": "PASS",
+      "evidence": "catalog-reconciliation.json"
+    },
+    "sec_independent_arithmetic_and_source_reconciliation": {
+      "status": "PASS",
+      "evidence": "independent-reconciliation.json"
+    },
+    "sec_cross_table_sql_all_revisions": {
+      "status": "PASS",
+      "evidence": "basin-history-verification.json"
+    },
+    "sec_authenticated_live_history": {
+      "status": "PASS",
+      "evidence": "private-history-acceptance.json"
+    },
+    "immutable_non_debt_reproducibility": {
+      "status": "PASS",
+      "evidence": "immutable-reproducibility.json"
+    }
+  },
+  "verification": {
+    "python_tests": 167,
+    "worker_tests": 39,
+    "live_history_checks": 60,
+    "old_route_checks": 79,
+    "independently_matched_observations": 3117,
+    "basin_source_revisions": 6286,
+    "immutable_non_debt_checks": 15
+  },
+  "evidence_directory": "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-financial-history",
+  "evidence_sha256": {
+    "sec_expanded_acceptance.json": "41d8a2552de801930ca2f235df485e75c37545bf26be65526a05dfc54d612381",
+    "catalog-reconciliation.json": "49ed9305efd2c0ee299953a3142990d4795d5b3c6b4609d9b938d94a61073a6c",
+    "history-manifest.json": "37d334e20830a43905b7fd39762946e7986004e82df19cd90ca0cbf866b922f8",
+    "basin-history-verification.json": "bd702f73051a71de2b31b7a4de50cc4a3d2fdd519c642c89533e554338c1ea26",
+    "publication-pointer-gates.json": "48b32f3e21d2af6844e6510c855c3599e4816bc18b7d2ffaf13ea75cc47a361f",
+    "history-publication.json": "6e25aee9f34ee1b5d106a7c8a1450be22c49ab8ab1de7d87ad5251a5329d459f",
+    "permission-capability-probes.json": "f7a95b4151ef3ca6fce98ecbc37ff04a18a7144b01d203584b3c987f8e0fc636",
+    "least-privilege-provisioning.json": "c716434a07053fed8e0a8d3c906e57a291a6feafdfa5e8294976323ef5a7797d",
+    "metric-registry.json": "ee51952e43131e31db344c5982446d5a59172b332e9f2da9d0ef3ae5604118db",
+    "immutable-reproducibility.json": "4facdd528ac97d36f614cbebd4d4a1ca478d34c571099a3bb5ae59503d5e83f1",
+    "private-history-acceptance.json": "e5d62eedb16a179b468ddf46c4366b045abbcd725b9cf4ed58947e8a47d0e585",
+    "zone-readonly.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "collection_serving_acceptance.json": "e350e5199b5a7cd321fea9a5b9e3ad71877123192cebd564304c33e644f9bae1",
+    "company-coverage.json": "eaa85deec542b76f11160c71b30c489ffc64771aee5e2d2098de5db441b78f16",
+    "source-lineage.json": "9e5e43353b8c60ba1c7b0386d0e718024c808fb1629c6b91955b33d5c1ac944c",
+    "native_query_acceptance.json": "a72f3e75c1169053c3fd7842de778647284989f91e630f91649fc4e3651ef130",
+    "tls-route-diagnostics.json": "2c157010574091149d8cb9525cfeeaac3817b44efb56972d0363dd1827483997",
+    "foundation-recovery.json": "133f44e263dabf0232f88d12909ef5d3fc6e2db5e4ea5bdd1bf8f7f64dcb54fa",
+    "independent-reconciliation.json": "1625e057c742e8e52d824f21bb260269865f323ebd93227fa0ee1d2c5d0fda6b",
+    "private_serving_acceptance.json": "3c45b332f272ee161d66f617fd9f66040c0f5f3a16b7076e6d6280243a0bf531"
+  }
+}

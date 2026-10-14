@@ -64,3 +64,6 @@ pythonpath = ["src"]
 markers = [
     "integration: marks tests requiring network (deselect with '-m not integration')",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"deploy/cloudflare-query/src/sec_history.py" = ["E501"]
