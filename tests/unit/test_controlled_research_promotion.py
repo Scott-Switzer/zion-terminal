@@ -101,8 +101,30 @@ def test_active_version_uses_timestamp_instead_of_array_order():
 
 def test_active_version_rejects_split_traffic():
     import pytest
+
     with pytest.raises(RuntimeError, match="SPLIT"):
-        m.single_active_version([{"created_on": "2026-10-14", "versions": [
-            {"version_id": "11111111-1111-1111-1111-111111111111", "percentage": 50},
-            {"version_id": "22222222-2222-2222-2222-222222222222", "percentage": 50},
-        ]}])
+        m.single_active_version(
+            [
+                {
+                    "created_on": "2026-10-14",
+                    "versions": [
+                        {"version_id": "11111111-1111-1111-1111-111111111111", "percentage": 50},
+                        {"version_id": "22222222-2222-2222-2222-222222222222", "percentage": 50},
+                    ],
+                }
+            ]
+        )
+
+
+def test_edge_propagation_wait_does_not_accept_stale_version():
+    states = iter(["old", "old", "new"])
+    pauses = []
+    m.wait_for_version(lambda: next(states), "new", attempts=3, pause=pauses.append)
+    assert pauses == [2, 2]
+
+
+def test_edge_propagation_failure_remains_explicit():
+    import pytest
+
+    with pytest.raises(RuntimeError, match="EDGE_VERSION"):
+        m.wait_for_version(lambda: "old", "new", attempts=2, pause=lambda _: None)

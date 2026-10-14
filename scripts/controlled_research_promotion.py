@@ -28,6 +28,15 @@ def single_active_version(deployments):
     return version
 
 
+def wait_for_version(read_version, expected, *, attempts=8, pause=time.sleep):
+    for attempt in range(attempts):
+        if read_version() == expected:
+            return
+        if attempt + 1 < attempts:
+            pause(2)
+    raise RuntimeError("EDGE_VERSION_NOT_PROPAGATED")
+
+
 def run_controlled(*, preflight, activate, verify, rollback, verify_previous, record):
     report = {"status": "PREFLIGHT", "events": [], "rollback_verified": False}
 
@@ -212,9 +221,16 @@ def main():
         )
         return args.candidate_version
 
+    def edge_version():
+        body, measure = request("/v3/capabilities")
+        if measure["http_status"] != 200:
+            return None
+        return body.get("worker_version_id")
+
     def verify():
         if active_version() != args.candidate_version:
             raise RuntimeError("CANDIDATE_VERSION_NOT_ACTIVE")
+        wait_for_version(edge_version, args.candidate_version)
         report = []
         for name, route, params in (
             ("overview", "research-overview", {"cik": "0000789019"}),
@@ -264,6 +280,7 @@ def main():
     def verify_previous():
         if active_version() != args.previous_version:
             raise RuntimeError("ROLLBACK_VERSION_NOT_ACTIVE")
+        wait_for_version(edge_version, args.previous_version)
         actual = current_history(baseline["release_id"])
         if actual != baseline:
             raise RuntimeError("ROLLBACK_HISTORY_UNVERIFIED")
