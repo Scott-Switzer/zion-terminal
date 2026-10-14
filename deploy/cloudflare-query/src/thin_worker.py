@@ -113,6 +113,23 @@ class Default(WorkerEntrypoint):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
+        if path.startswith('/private/v1/research-'):
+            from unified_research_api import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
+        if path.startswith('/v1/market/') and getattr(self.env, 'OWNER_ONLY_MARKET_DATA', 'false') == 'true':
+            from private_http import authenticate
+            from private_financials import PrivateFinancialsError
+            try:
+                authenticate(self.env, request)
+            except PrivateFinancialsError as error:
+                return Response(json.dumps({'error': {'code': error.code}}), status=error.status,
+                                headers={'content-type': 'application/json',
+                                         'cache-control': 'private, no-store',
+                                         'vary': 'Authorization'})
         if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path == '/private/v1/financial-screen':
             from sec_screener_http import handle
             value, status = await handle(self.env, request)

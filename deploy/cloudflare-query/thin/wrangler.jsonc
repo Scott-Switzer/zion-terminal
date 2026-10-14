@@ -40,7 +40,10 @@
     "SEC_HISTORY_MANIFEST_SHA256": "37d334e20830a43905b7fd39762946e7986004e82df19cd90ca0cbf866b922f8",
     "SEC_ENGINE_MANIFEST_KEY": "gold/sec-engine/releases/b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb/manifest.json",
     "SEC_ENGINE_MANIFEST_SHA256": "4e0d6b9eac28ea2352dd255c4f8323f1fd4d486796063921cec691942660be7b",
-    "SEC_ENGINE_ENABLED": "true"
+    "SEC_ENGINE_ENABLED": "true",
+    "UNIFIED_RESEARCH_MANIFEST_KEY": "gold/unified-research/releases/e5ec856897a070613fa5242110a3fce9999896cc4c750cdb8860c76ef78edec1/manifest.json",
+    "UNIFIED_RESEARCH_MANIFEST_SHA256": "d6cf2aff7f65b2f32107c3e2b72825afa52215e352de99d016c6693f77f57e72",
+    "OWNER_ONLY_MARKET_DATA": "true"
   },
   "observability": {
     "enabled": true,

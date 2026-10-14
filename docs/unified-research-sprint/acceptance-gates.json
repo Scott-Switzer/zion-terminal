@@ -1,0 +1,59 @@
+{
+  "schema_version": "unified-research-acceptance-v1",
+  "status": "IN_PROGRESS",
+  "gates": [
+    {
+      "id": 1,
+      "name": "Metric/period certification",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 2,
+      "name": "Historical security identity",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 3,
+      "name": "Authorized prices and corporate actions",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 4,
+      "name": "Three independently verified end-to-end calculations",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 5,
+      "name": "Combined fundamentals/market screen",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 6,
+      "name": "Terminal research/provenance/export",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 7,
+      "name": "Historical release reproducibility",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    },
+    {
+      "id": 8,
+      "name": "Verified deployment and benchmarks",
+      "status": "FAIL",
+      "evidence": "Live sprint validation pending."
+    }
+  ],
+  "prohibitions": {
+    "licensed_wrds_enabled": false,
+    "production_current_changes": false,
+    "full_financial_certification_claimed": false
+  }
+}

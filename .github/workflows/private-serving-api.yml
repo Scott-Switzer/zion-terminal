@@ -6,6 +6,12 @@ on:
       - 'deploy/cloudflare-query/src/**'
       - 'scripts/private_serving_acceptance.py'
       - 'tests/unit/test_private*.py'
+      - 'tests/unit/test_unified_research_api.py'
+      - 'tests/unit/test_financial_certification.py'
+      - 'tests/unit/test_valuation_engine*.py'
+      - 'tests/unit/test_security_identity.py'
+      - 'scripts/*unified*.py'
+      - 'scripts/controlled_research_promotion.py'
       - 'tests/unit/test_financial_foundation.py'
       - 'tests/unit/test_sec_history*.py'
       - 'tests/unit/test_sec_engine*.py'
@@ -45,6 +51,15 @@ jobs:
           tests/unit/test_sec_basin_optimize.py
           tests/unit/test_sec_balance_quality.py
           tests/unit/test_private_research_workflow.py
+          tests/unit/test_unified_research_api.py
+          tests/unit/test_unified_research_acceptance.py
+          tests/unit/test_financial_certification.py
+          tests/unit/test_valuation_engine*.py
+          tests/unit/test_security_identity.py
+          tests/unit/test_owner_market_release.py
+          tests/unit/test_publish_unified_research_release.py
+          tests/unit/test_controlled_research_promotion.py
+          tests/unit/test_benchmark_unified_matched.py
           tests/unit/test_sec_incremental_update.py
           tests/unit/test_private_research_cli.py
           tests/unit/test_sec_history.py
@@ -76,6 +91,7 @@ jobs:
           ruff check deploy/cloudflare-query/src/sec_history*.py tests/unit/test_sec_history*.py tests/unit/test_sec_manifest_recovery.py scripts/*sec_history*.py scripts/sec_foundation_recovery.py scripts/provision_sec_read_token.py scripts/reconcile_sec_catalog_registration.py
           ruff check deploy/cloudflare-query/src/sec_engine*.py deploy/cloudflare-query/src/sec_screener*.py scripts/*sec_engine*.py scripts/sec_screener_acceptance.py scripts/sec_incremental_update.py tests/unit/test_sec_engine*.py tests/unit/test_sec_screener*.py tests/unit/test_sec_incremental_update.py src/zion_terminal/private_research.py
           ruff check deploy/cloudflare-query/src/sec_universe_screen.py scripts/sec_universe_pipeline.py scripts/sec_release_promotion.py scripts/sec_publish_update_release.py scripts/sec_research_workflow.py scripts/sec_basin_optimize.py scripts/sec_universe_basin.py scripts/sec_universe_live_acceptance.py deploy/cloudflare-query/src/sec_balance_quality.py tests/unit/test_sec_balance_quality.py tests/unit/test_sec_universe*.py tests/unit/test_sec_release*.py tests/unit/test_sec_publish_update_release.py tests/unit/test_sec_basin_optimize.py tests/unit/test_private_research_workflow.py
+          ruff check deploy/cloudflare-query/src/unified_research_api.py deploy/cloudflare-query/src/financial_certification.py deploy/cloudflare-query/src/security_identity.py deploy/cloudflare-query/src/valuation_engine.py scripts/controlled_research_promotion.py scripts/prepare_owner_market_release.py scripts/publish_unified_research_release.py scripts/benchmark_unified_matched.py tests/unit/test_unified_research_api.py tests/unit/test_financial_certification.py tests/unit/test_security_identity.py tests/unit/test_valuation_engine*.py tests/unit/test_controlled_research_promotion.py tests/unit/test_owner_market_release.py tests/unit/test_publish_unified_research_release.py tests/unit/test_benchmark_unified_matched.py
           python -m py_compile deploy/cloudflare-query/src/private_*.py deploy/cloudflare-query/src/thin_worker.py scripts/private_serving_acceptance.py
       - name: Frozen contract unchanged
         run: |

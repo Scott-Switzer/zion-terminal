@@ -69,6 +69,59 @@ ALLOWED["compare"] = (ALLOWED["history"] - {"cik", "cursor"}) | {"ciks"}
 ALLOWED["provenance"] = ALLOWED["history"]
 
 
+UNIFIED = {"overview", "prices", "valuation", "peers", "market-screen", "identity", "certification"}
+ENTITY_OPTIONS = {
+    "cik",
+    "symbol",
+    "security_id",
+    "as_of",
+    "expected_release_id",
+    "expected_market_release_id",
+}
+for name in UNIFIED:
+    ROUTES[name] = "research-" + ("screen" if name == "market-screen" else name)
+ALLOWED.update(
+    overview=ENTITY_OPTIONS | {"metrics", "date_to"},
+    identity=ENTITY_OPTIONS | {"date_to"},
+    prices=ENTITY_OPTIONS | {"date_from", "date_to", "limit", "cursor"},
+    valuation=ENTITY_OPTIONS | {"metrics", "frequency", "date_from", "date_to"},
+    peers={
+        "ciks",
+        "metrics",
+        "frequency",
+        "as_of",
+        "expected_release_id",
+        "expected_market_release_id",
+    },
+    certification={
+        "cik",
+        "metrics",
+        "frequency",
+        "as_of",
+        "date_from",
+        "date_to",
+        "limit",
+        "cursor",
+        "expected_release_id",
+    },
+)
+ALLOWED["market-screen"] = {
+    "ciks",
+    "fundamental_metric",
+    "fundamental_minimum",
+    "fundamental_maximum",
+    "market_metric",
+    "market_minimum",
+    "market_maximum",
+    "as_of",
+    "limit",
+    "cursor",
+    "sort",
+    "expected_release_id",
+    "expected_market_release_id",
+}
+
+
 def compare_histories(histories):
     """Align only identical periods and units; never silently choose a vintage."""
     groups = {}
@@ -236,14 +289,16 @@ def render_table(value, action):
             if isinstance(company.get("result"), dict):
                 contexts.append(company["result"])
     releases, cutoffs, qualifications, gaps = set(), set(), set(), set()
+    market_releases = set()
     rows = []
 
     def exact(row):
         if row is None:
             return "MISSING"
-        if "numerator" in row and "denominator" in row:
+        if row.get("numerator") is not None and row.get("denominator") is not None:
             return str(row["numerator"]) + "/" + str(row["denominator"])
-        return row.get("value_decimal", "NOT_RETURNED")
+        value = row.get("value_decimal", "NOT_RETURNED")
+        return "MISSING" if value is None else value
 
     def period(row):
         return (
@@ -269,6 +324,13 @@ def render_table(value, action):
         release = page.get("release_id") or page.get("provenance", {}).get("release_id")
         if release:
             releases.add(str(release))
+        if "market_release_id" in page:
+            market_releases.add(str(page["market_release_id"] or "NOT_AVAILABLE"))
+        quality = page.get("quality")
+        if quality:
+            qualifications.add(
+                json.dumps(quality, sort_keys=True) if isinstance(quality, dict) else str(quality)
+            )
         if page.get("as_of"):
             cutoffs.add(str(page["as_of"]))
         for key in ("qualification", "coverage_qualification", "release_quality"):
@@ -323,7 +385,54 @@ def render_table(value, action):
                 )
         elif action != "compare":
             for row in page.get("observations", []):
-                add(cik, row.get("metric", "NOT_RETURNED"), row, exact(row), "OBSERVED")
+                quality = row.get("quality", row.get("status", "OBSERVED"))
+                if isinstance(quality, dict):
+                    quality = json.dumps(quality, sort_keys=True)
+                if row.get("rule_ids"):
+                    quality = (
+                        str(quality)
+                        + "; version="
+                        + str(row.get("version", "NOT_RETURNED"))
+                        + "; rules="
+                        + ",".join(row["rule_ids"])
+                    )
+                if row.get("formula_id"):
+                    quality = (
+                        str(quality)
+                        + "; formula="
+                        + str(row["formula_id"])
+                        + "@"
+                        + str(row.get("formula_version", "NOT_RETURNED"))
+                    )
+                add(
+                    row.get("cik", cik), row.get("metric", "NOT_RETURNED"), row, exact(row), quality
+                )
+            for row in page.get("prices", []):
+                quality = row.get("quality", "SOURCE_QUALIFICATION_NOT_RETURNED")
+                if isinstance(quality, dict):
+                    quality = json.dumps(quality, sort_keys=True)
+                if row.get("available_at") is None:
+                    quality = str(quality) + "; HISTORICAL_PIT_UNAVAILABLE"
+                add(
+                    row.get("cik", cik),
+                    "price:" + str(row.get("security_id", "NOT_RETURNED")),
+                    {**row, "period_end": row.get("session_date")},
+                    exact(row),
+                    quality,
+                )
+            identity = page.get("identity")
+            if isinstance(identity, dict):
+                add(
+                    identity.get("cik", cik),
+                    "identity:" + str(identity.get("security_id", "NOT_RETURNED")),
+                    {
+                        "period_start": identity.get("valid_from"),
+                        "period_end": identity.get("valid_to"),
+                        "unit": "N/A",
+                    },
+                    identity.get("symbol", "SYMBOL_NOT_RETURNED"),
+                    identity.get("status", "SEE_PROVENANCE"),
+                )
             for match in page.get("matches", []):
                 row = match["observation"]
                 add(
@@ -413,6 +522,7 @@ def render_table(value, action):
     )
     output = [
         "Release: " + (", ".join(sorted(releases)) or "NOT_RETURNED"),
+        "Market release: " + (", ".join(sorted(market_releases)) or "NOT_RETURNED"),
         "As of: " + (", ".join(sorted(cutoffs)) or "NOT_RETURNED"),
         "Report period / unit: explicit per row; NOT_RETURNED means unavailable",
         "Quality gaps: " + str(len(gaps)),
@@ -432,6 +542,180 @@ def render_table(value, action):
     return "\n".join(output)
 
 
+def render_price_chart(value):
+    """Text chart of returned prices only; exact labels remain unrounded."""
+    pages = value.get("pages", [value])
+    prices = [row for page in pages for row in page.get("prices", [])]
+    chart = [
+        "AUTHORIZED RETURNED PRICES; VISUAL HEIGHTS ARE NOT NUMERICAL OUTPUT",
+        "SEC release: " + str(pages[0].get("release_id", "NOT_RETURNED")),
+        "Market release: " + str(pages[0].get("market_release_id") or "NOT_AVAILABLE"),
+    ]
+    chart.append("As of financial availability: " + str(pages[0].get("as_of", "NOT_RETURNED")))
+    chart.append("Quality gaps: " + str(sum(len(page.get("coverage_gaps", [])) for page in pages)))
+    if prices:
+        chart.append(
+            "Price quality: "
+            + "; ".join(
+                sorted(
+                    {
+                        json.dumps(row.get("quality", "NOT_RETURNED"), sort_keys=True)
+                        for row in prices
+                    }
+                )
+            )
+        )
+        chart.append(
+            "Adjustment policy: "
+            + ", ".join(
+                sorted({str(row.get("adjustment_policy", "NOT_RETURNED")) for row in prices})
+            )
+        )
+    if not prices:
+        chart.append("NO_AUTHORIZED_PRICE_OBSERVATIONS")
+        chart.extend(
+            str(gap.get("reason", "REASON_NOT_RETURNED"))
+            for page in pages
+            for gap in page.get("coverage_gaps", [])
+        )
+        return "\n".join(chart)
+    scopes = {
+        (r.get("security_id"), r.get("unit"), r.get("currency"), r.get("adjustment_policy"))
+        for r in prices
+    }
+    if len(scopes) != 1:
+        raise click.ClickException("CHART_REQUIRES_ONE_SECURITY_UNIT_AND_ADJUSTMENT_SCOPE")
+    prices.sort(key=lambda row: row.get("session_date", ""))
+    if len({r.get("session_date") for r in prices}) != len(prices):
+        raise click.ClickException("CHART_AMBIGUOUS_PRICE_SESSION")
+    numbers = []
+    try:
+        for row in prices:
+            raw = row["value_decimal"]
+            if not isinstance(raw, str) or len(raw) > 256:
+                raise ValueError()
+            number = Decimal(raw)
+            if (
+                not number.is_finite()
+                or abs(number.adjusted()) > 80
+                or abs(number.as_tuple().exponent) > 80
+            ):
+                raise ValueError()
+            numbers.append(Fraction(number))
+    except (KeyError, TypeError, ValueError, InvalidOperation, OverflowError):
+        raise click.ClickException("CHART_EXACT_PRICE_VALUE_REQUIRED") from None
+    if len(prices) == 1:
+        chart.append("SINGLE_OBSERVATION_NO_TREND")
+    else:
+        low, high = min(numbers), max(numbers)
+        bars = "▁▂▃▄▅▆▇█"
+        # Bounded visual only; all original returned labels follow below.
+        displayed = numbers[-120:]
+        chart.append(
+            "".join(
+                bars[0 if high == low else int((n - low) * 7 / (high - low))] for n in displayed
+            )
+        )
+        chart.append(
+            f"Displayed last {len(displayed)} of {len(prices)} returned observations; "
+            "no interpolated sessions."
+        )
+    chart.extend(
+        str(r.get("session_date", "NOT_RETURNED"))
+        + "  "
+        + r["value_decimal"]
+        + "  "
+        + str(r.get("unit", "NOT_RETURNED"))
+        for r in prices
+    )
+    if any(r.get("available_at") is None for r in prices):
+        chart.append("HISTORICAL_PIT_UNAVAILABLE_FOR_ROWS_WITHOUT_AVAILABILITY")
+    return "\n".join(chart)
+
+
+def render_valuation_chart(value):
+    """Plot exact returned formula fractions; unavailable periods remain gaps."""
+    pages = value.get("pages", [value])
+    rows = [r for page in pages for r in page.get("observations", [])]
+    chart = [
+        "RETURNED FORMULA SERIES; VISUAL HEIGHTS ARE NOT NUMERICAL OUTPUT",
+        "SEC release: " + str(pages[0].get("release_id", "NOT_RETURNED")),
+        "Research release: " + str(pages[0].get("research_release_id", "NOT_RETURNED")),
+        "As of: " + str(pages[0].get("as_of", "NOT_RETURNED")),
+        "Quality gaps: " + str(sum(len(p.get("coverage_gaps", [])) for p in pages)),
+    ]
+    scopes = {
+        (r.get("metric"), r.get("cik"), r.get("unit"), r.get("currency"), r.get("frequency"))
+        for r in rows
+    }
+    if len(scopes) > 1:
+        raise click.ClickException("CHART_REQUIRES_ONE_METRIC_ISSUER_UNIT_CURRENCY_AND_FREQUENCY")
+    rows = sorted(rows, key=lambda r: r.get("period_end", ""))
+    if len({r.get("period_end") for r in rows}) != len(rows):
+        raise click.ClickException("CHART_AMBIGUOUS_REPORT_PERIOD")
+    numbers = []
+    labels = []
+    for r in rows:
+        numerator = r.get("numerator", r.get("value_numerator"))
+        denominator = r.get("denominator", r.get("value_denominator"))
+        try:
+            if numerator is not None and denominator is not None:
+                if not re.fullmatch(r"-?\d{1,160}", str(numerator)) or not re.fullmatch(
+                    r"\d{1,160}", str(denominator)
+                ):
+                    raise ValueError()
+                number = Fraction(int(numerator), int(denominator))
+                label = str(numerator) + "/" + str(denominator)
+            elif r.get("value_decimal") is not None:
+                raw = r["value_decimal"]
+                if not isinstance(raw, str) or not re.fullmatch(r"-?\d{1,80}(?:\.\d{1,40})?", raw):
+                    raise ValueError()
+                number = Fraction(raw)
+                label = raw
+            else:
+                number = None
+                label = "MISSING"
+        except (ValueError, ZeroDivisionError, TypeError):
+            raise click.ClickException("CHART_EXACT_FORMULA_VALUE_REQUIRED") from None
+        numbers.append(number)
+        labels.append(label)
+    valid = [n for n in numbers if n is not None]
+    if len(valid) == 1:
+        chart.append("SINGLE_OBSERVATION_NO_TREND")
+    if valid:
+        low, high = min(valid), max(valid)
+        bars = "▁▂▃▄▅▆▇█"
+        chart.append(
+            "".join(
+                "·" if n is None else bars[0 if high == low else int((n - low) * 7 / (high - low))]
+                for n in numbers[-120:]
+            )
+        )
+    else:
+        chart.append("NO_AVAILABLE_FORMULA_OBSERVATIONS")
+    chart.append("No interpolated periods; · denotes missing returned observation.")
+    for r, label in zip(rows, labels):
+        chart.append(
+            str(r.get("period_end", "NOT_RETURNED"))
+            + "  "
+            + label
+            + "  "
+            + str(r.get("unit", "NOT_RETURNED"))
+            + "  "
+            + str(r.get("formula_id", "NOT_RETURNED"))
+            + "/"
+            + str(r.get("formula_version", "NOT_RETURNED"))
+            + "  "
+            + str(r.get("quality", "NOT_RETURNED"))
+        )
+    chart.extend(
+        str(g.get("period_end", "NOT_RETURNED")) + "  GAP " + str(g.get("reason", "NOT_RETURNED"))
+        for p in pages
+        for g in p.get("coverage_gaps", [])
+    )
+    return "\n".join(chart)
+
+
 def emit_dataset(value, output, display_format="json", action="history"):
     serialized = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
     if output:
@@ -441,7 +725,13 @@ def emit_dataset(value, output, display_format="json", action="history"):
                 stream.write(serialized)
         except OSError:
             raise click.ClickException("EXPORT_DESTINATION_UNWRITABLE_OR_EXISTS") from None
-    click.echo(render_table(value, action) if display_format == "table" else serialized.rstrip())
+    if display_format == "chart":
+        rendered = (
+            render_valuation_chart(value) if action == "valuation" else render_price_chart(value)
+        )
+    else:
+        rendered = render_table(value, action) if display_format == "table" else serialized.rstrip()
+    click.echo(rendered)
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -504,6 +794,15 @@ def fetch(base, token, route, params):
     default=Path.home() / ".config/zion/private-api.env",
     show_default=True,
 )
+@click.option("--symbol")
+@click.option("--security-id")
+@click.option("--expected-market-release-id")
+@click.option("--fundamental-metric")
+@click.option("--fundamental-minimum")
+@click.option("--fundamental-maximum")
+@click.option("--market-metric")
+@click.option("--market-minimum")
+@click.option("--market-maximum")
 @click.option("--cik")
 @click.option("--ciks")
 @click.option("--metrics", help="Comma-separated history metrics; one metric for screen.")
@@ -527,7 +826,7 @@ def fetch(base, token, route, params):
 @click.option(
     "--format",
     "display_format",
-    type=click.Choice(["json", "table"]),
+    type=click.Choice(["json", "table", "chart"]),
     default="json",
     show_default=True,
 )
@@ -562,6 +861,33 @@ def research(action, base_url, credential_file, all_pages, output, display_forma
     supplied = {key: value for key, value in options.items() if value is not None}
     if set(supplied) - ALLOWED[action]:
         raise click.ClickException("OPTION_NOT_SUPPORTED_FOR_ACTION")
+    if display_format == "chart" and action not in ("prices", "valuation"):
+        raise click.ClickException("CHART_REQUIRES_PRICES_OR_VALUATION_ACTION")
+    if (
+        display_format == "chart"
+        and action == "valuation"
+        and (not supplied.get("metrics") or len(supplied["metrics"].split(",")) != 1)
+    ):
+        raise click.ClickException("CHART_REQUIRES_ONE_METRIC")
+    if action in ("overview", "prices", "valuation", "identity"):
+        if sum(bool(supplied.get(key)) for key in ("cik", "symbol", "security_id")) != 1:
+            raise click.ClickException("ONE_ENTITY_IDENTIFIER_REQUIRED")
+    if action == "certification" and not supplied.get("cik"):
+        raise click.ClickException("CIK_REQUIRED")
+    if action == "peers":
+        ciks = supplied.get("ciks", "").split(",")
+        if (
+            not 2 <= len(ciks) <= 20
+            or len(ciks) != len(set(ciks))
+            or any(not re.fullmatch(r"[0-9]{10}", cik) for cik in ciks)
+        ):
+            raise click.ClickException("PEERS_REQUIRES_2_TO_20_CIKS")
+    if action == "market-screen":
+        for prefix in ("fundamental", "market"):
+            if any(
+                supplied.get(prefix + suffix) is not None for suffix in ("_minimum", "_maximum")
+            ) and not supplied.get(prefix + "_metric"):
+                raise click.ClickException("SCREEN_FILTER_METRIC_REQUIRED")
     if action == "compare":
         ciks = list(dict.fromkeys(supplied.pop("ciks", "").split(",")))
         if len(ciks) < 2 or len(ciks) > 20 or not all(ciks):
@@ -617,10 +943,18 @@ def research(action, base_url, credential_file, all_pages, output, display_forma
         supplied["metric"] = supplied.pop("metrics")
     if "search" in supplied:
         supplied["q"] = supplied.pop("search")
-    if all_pages and action not in ("history", "companies", "screen"):
+    if all_pages and action not in (
+        "history",
+        "companies",
+        "screen",
+        "prices",
+        "market-screen",
+        "certification",
+    ):
         raise click.ClickException("ALL_PAGES_UNSUPPORTED_FOR_ACTION")
     export_path = output
     pages, total, seen, release = [], 0, set(), None
+    market_release = None
     for _ in range(100):
         value, size = fetch(base, token, ROUTES[action], supplied)
         total += size
@@ -630,6 +964,14 @@ def research(action, base_url, credential_file, all_pages, output, display_forma
         if release is not None and current_release != release:
             raise click.ClickException("PAGINATION_RELEASE_CHANGED_NO_PARTIAL_OUTPUT")
         release = current_release
+        if action in UNIFIED:
+            current_market = value.get("market_release_id")
+            if (pages and current_market != market_release) or (
+                supplied.get("expected_market_release_id") is not None
+                and current_market != supplied["expected_market_release_id"]
+            ):
+                raise click.ClickException("PAGINATION_MARKET_RELEASE_CHANGED_NO_PARTIAL_OUTPUT")
+            market_release = current_market
         pages.append(value)
         cursor = value.get("next_cursor") or value.get("pagination", {}).get("next_cursor")
         if not all_pages or not cursor:
@@ -651,6 +993,8 @@ def research(action, base_url, credential_file, all_pages, output, display_forma
         supplied["cursor"] = cursor
         if release:
             supplied["expected_release_id"] = release
+        if action in UNIFIED and market_release is not None:
+            supplied["expected_market_release_id"] = market_release
     raise click.ClickException("ALL_PAGES_PAGE_BUDGET_EXCEEDED_NO_PARTIAL_OUTPUT")
 
 

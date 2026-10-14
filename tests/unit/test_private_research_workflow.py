@@ -329,3 +329,270 @@ def test_compare_rejects_different_company_cutoffs_without_partial_export(monkey
     )
     assert result.exit_code != 0 and "COMPARE_REQUIRES_COMMON_AVAILABILITY_CUTOFF" in result.output
     assert not output.exists()
+
+
+def test_unified_prices_route_table_and_market_pin(monkeypatch):
+    calls = []
+
+    def fetch(base, token, route, params):
+        calls.append((route, dict(params)))
+        return {
+            "schema_version": "unified-research-v1",
+            "release_id": "sec",
+            "market_release_id": "market",
+            "as_of": "2026-09-24T00:00:00Z",
+            "prices": [
+                {
+                    "session_date": "2026-09-23",
+                    "value_decimal": "123.000000000000001",
+                    "unit": "USD/share",
+                    "currency": "USD",
+                    "security_id": "synthetic-security",
+                    "available_at": None,
+                    "source_ids": ["synthetic-source"],
+                    "quality": {"status": "SOURCE_QUALIFIED", "reasons": ["PIT_UNAVAILABLE"]},
+                }
+            ],
+        }, 100
+
+    monkeypatch.setattr(cli, "fetch", fetch)
+    result = CliRunner().invoke(
+        cli.research,
+        [
+            "prices",
+            "--symbol",
+            "DEMO",
+            "--format",
+            "table",
+            "--expected-market-release-id",
+            "market",
+        ],
+        env={"ZION_PRIVATE_API_TOKEN": "secret"},
+    )
+    assert result.exit_code == 0, result.output
+    assert calls[0][0] == "research-prices"
+    assert calls[0][1]["symbol"] == "DEMO"
+    assert calls[0][1]["expected_market_release_id"] == "market"
+    for text in ["123.000000000000001", "USD/share", "market", "PIT_UNAVAILABLE"]:
+        assert text in result.output
+
+
+def test_unified_pages_pin_market_and_reject_drift_before_export(monkeypatch, tmp_path):
+    calls = []
+
+    def fetch(base, token, route, params):
+        calls.append(dict(params))
+        return {
+            "release_id": "sec",
+            "market_release_id": "one" if len(calls) == 1 else "two",
+            "prices": [],
+            "next_cursor": "next" if len(calls) == 1 else None,
+        }, 100
+
+    monkeypatch.setattr(cli, "fetch", fetch)
+    path = tmp_path / "partial.json"
+    result = CliRunner().invoke(
+        cli.research,
+        ["prices", "--symbol", "DEMO", "--all-pages", "--output", str(path)],
+        env={"ZION_PRIVATE_API_TOKEN": "secret"},
+    )
+    assert result.exit_code != 0 and "MARKET_RELEASE_CHANGED" in result.output
+    assert calls[1]["expected_market_release_id"] == "one"
+    assert not path.exists()
+
+
+def test_unified_valuation_table_exact_formula_and_peer_cik():
+    value = {
+        "release_id": "sec",
+        "market_release_id": "market",
+        "as_of": "cutoff",
+        "quality": {"status": "PARTIAL", "reasons": ["DEBT_NOT_SUPPORTED"]},
+        "observations": [
+            {
+                "cik": "0000000001",
+                "metric": "price_to_sales",
+                "numerator": "9007199254740993",
+                "denominator": "7",
+                "unit": "ratio",
+                "period_end": "2025-12-31",
+                "formula_id": "price_to_sales",
+                "formula_version": "v1",
+                "quality": {"status": "SUPPORTED"},
+            }
+        ],
+    }
+    table = cli.render_table(value, "peers")
+    for text in ["9007199254740993/7", "price_to_sales@v1", "0000000001", "DEBT_NOT_SUPPORTED"]:
+        assert text in table
+
+
+def test_prices_chart_exact_labels_single_point_and_unsupported():
+    data = {
+        "release_id": "sec",
+        "market_release_id": "market",
+        "prices": [
+            {
+                "session_date": "2026-09-23",
+                "value_decimal": "9007199254740993.0001",
+                "unit": "USD/share",
+            }
+        ],
+    }
+    chart = cli.render_price_chart(data)
+    assert "9007199254740993.0001" in chart and "SINGLE_OBSERVATION_NO_TREND" in chart
+    chart = cli.render_price_chart(
+        {
+            "release_id": "sec",
+            "prices": [],
+            "coverage_gaps": [{"metric": "price", "reason": "MARKET_RIGHTS_NOT_AUTHORIZED"}],
+        }
+    )
+    assert "NO_AUTHORIZED_PRICE_OBSERVATIONS" in chart and "MARKET_RIGHTS_NOT_AUTHORIZED" in chart
+
+
+def test_unified_identifier_peers_chart_and_filter_guards_before_network(monkeypatch):
+    def forbidden(*args):
+        raise AssertionError("must not fetch")
+
+    monkeypatch.setattr(cli, "fetch", forbidden)
+    for options, error in [
+        (["overview"], "ONE_ENTITY_IDENTIFIER_REQUIRED"),
+        (["overview", "--cik", "0000000001", "--symbol", "DEMO"], "ONE_ENTITY_IDENTIFIER_REQUIRED"),
+        (["peers", "--ciks", "0000000001"], "PEERS_REQUIRES_2_TO_20_CIKS"),
+        (["valuation", "--symbol", "DEMO", "--format", "chart"], "CHART_REQUIRES_ONE_METRIC"),
+        (["market-screen", "--market-minimum", "0"], "SCREEN_FILTER_METRIC_REQUIRED"),
+    ]:
+        result = CliRunner().invoke(cli.research, options, env={"ZION_PRIVATE_API_TOKEN": "secret"})
+        assert result.exit_code != 0 and error in result.output
+
+
+def test_unavailable_valuation_is_missing_not_none_ratio():
+    data = {
+        "release_id": "sec",
+        "observations": [
+            {
+                "metric": "enterprise_value",
+                "value_decimal": None,
+                "numerator": None,
+                "denominator": None,
+                "unit": "USD",
+                "quality": {"status": "UNAVAILABLE", "reasons": ["DEBT_MISSING"]},
+            }
+        ],
+    }
+    table = cli.render_table(data, "valuation")
+    assert "MISSING" in table and "DEBT_MISSING" in table and "None/None" not in table
+
+
+def test_multisession_chart_scopes_quality_and_exact_rises():
+    data = {
+        "release_id": "sec",
+        "market_release_id": "market",
+        "as_of": "cutoff",
+        "coverage_gaps": [],
+        "prices": [
+            {
+                "session_date": "2026-09-22",
+                "value_decimal": "9007199254740993.0001",
+                "unit": "USD/share",
+                "security_id": "synthetic",
+                "adjustment_policy": "RAW",
+                "quality": {"status": "SOURCE_QUALIFIED"},
+                "available_at": None,
+            },
+            {
+                "session_date": "2026-09-23",
+                "value_decimal": "9007199254740993.0002",
+                "unit": "USD/share",
+                "security_id": "synthetic",
+                "adjustment_policy": "RAW",
+                "quality": {"status": "SOURCE_QUALIFIED"},
+                "available_at": None,
+            },
+        ],
+    }
+    chart = cli.render_price_chart(data)
+    for text in ["▁█", "cutoff", "Quality gaps: 0", "SOURCE_QUALIFIED", "RAW"]:
+        assert text in chart
+    data["prices"][1]["security_id"] = "other"
+    with pytest.raises(Exception, match="ONE_SECURITY"):
+        cli.render_price_chart(data)
+
+
+def test_certification_table_shows_evidence_status_and_version():
+    value = {
+        "release_id": "sec",
+        "version": "sec-financial-certification-v1",
+        "observations": [
+            {
+                "metric": "revenue",
+                "value_decimal": "10",
+                "unit": "USD",
+                "period_start": "2024-01-01",
+                "period_end": "2024-12-31",
+                "status": "ACCOUNTING_CERTIFIED",
+                "version": "sec-financial-certification-v1",
+                "rule_ids": ["ACCOUNTING.REVENUE_MINUS_COST_EQUALS_GROSS_PROFIT.v1"],
+            }
+        ],
+    }
+    text = cli.render_table(value, "certification")
+    assert "ACCOUNTING_CERTIFIED" in text
+    assert "sec-financial-certification-v1" in text
+    assert "REVENUE_MINUS_COST_EQUALS_GROSS_PROFIT" in text
+
+
+def test_valuation_chart_retains_nonterminating_fraction_and_formula_version():
+    data = {
+        "release_id": "sec-version",
+        "research_release_id": "research-version",
+        "as_of": "2026-01-01T00:00:00Z",
+        "observations": [
+            {
+                "metric": "operating_margin",
+                "cik": "0000000001",
+                "period_end": "2024-12-31",
+                "unit": "ratio",
+                "currency": None,
+                "numerator": "1",
+                "denominator": "3",
+                "value_decimal": None,
+                "formula_id": "op-margin",
+                "formula_version": "v1",
+                "quality": "VERIFIED",
+            }
+        ],
+        "coverage_gaps": [],
+    }
+    chart = cli.render_valuation_chart(data)
+    assert (
+        "1/3" in chart
+        and "sec-version" in chart
+        and "research-version" in chart
+        and "op-margin/v1" in chart
+    )
+    assert "SINGLE_OBSERVATION_NO_TREND" in chart
+
+
+def test_valuation_chart_missing_period_remains_explicit_gap():
+    rows = [
+        {
+            "metric": "operating_margin",
+            "cik": "0000000001",
+            "period_end": year + "-12-31",
+            "unit": "ratio",
+            "numerator": n,
+            "denominator": "3" if n else None,
+            "value_decimal": None,
+            "quality": "VERIFIED" if n else "UNAVAILABLE",
+        }
+        for year, n in [("2022", "1"), ("2023", None), ("2024", "2")]
+    ]
+    data = {
+        "observations": rows,
+        "coverage_gaps": [{"period_end": "2023-12-31", "reason": "SOURCE_MISSING"}],
+    }
+    chart = cli.render_valuation_chart(data)
+    assert "2023-12-31  MISSING" in chart and "SOURCE_MISSING" in chart and "·" in chart
+    with pytest.raises(Exception, match="ONE_METRIC"):
+        cli.render_valuation_chart({"observations": rows + [dict(rows[0], metric="net_margin")]})
