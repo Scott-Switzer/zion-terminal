@@ -234,6 +234,18 @@ def main():
         report = []
         for name, route, params in (
             ("overview", "research-overview", {"cik": "0000789019"}),
+            (
+                "flow_valuation",
+                "research-valuation",
+                {
+                    "cik": "0000001800",
+                    "metrics": "operating_margin,net_margin,revenue_growth",
+                    "frequency": "annual",
+                    "as_of": "2019-10-31T00:00:00Z",
+                    "date_to": "2019-10-31",
+                    "date_from": "2014-01-01",
+                },
+            ),
             ("certification", "research-certification", {"cik": "0000320193", "limit": 2}),
             ("private_market_history", "research-prices", {"symbol": "WMT", "limit": 2}),
         ):

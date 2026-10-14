@@ -262,7 +262,13 @@ async def financial(env, root, m, cik, p):
 def formula_rows(h, metrics, cutoff, cik):
     rows = h["observations"]
     out = []
-    periods = sorted({(r.get("period_start"), r.get("period_end")) for r in rows})
+    periods = sorted(
+        {
+            (r["period_start"], r["period_end"])
+            for r in rows
+            if r.get("period_start") and r.get("period_end")
+        }
+    )
     for metric in metrics:
         if metric not in FORMULAS:
             fail("INVALID_METRIC", 422)

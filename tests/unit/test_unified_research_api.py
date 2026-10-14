@@ -433,3 +433,32 @@ def test_symbol_overview_requires_exact_supported_identity_point(fixture):
     assert status == 200 and result["identity"]["cik"] == "0000104169"
     assert result["as_of"] == "2019-12-04T00:00:00Z"
     assert query("overview", {"symbol": "WMT", "date_to": "2019-12-05"})[1] == 422
+
+
+def test_valuation_flow_periods_do_not_sort_instant_balance_rows():
+    api = module()
+
+    def row(metric, value, start):
+        return dict(
+            metric=metric,
+            value_decimal=value,
+            period_start=start,
+            period_end="2018-12-31",
+            frequency="annual",
+            unit="USD",
+            currency="USD",
+            available_at="2019-02-02T05:00:00Z",
+            source_observation_ids=[metric],
+        )
+
+    h = {
+        "observations": [
+            row("cash", "1", None),
+            row("revenue", "10", "2018-01-01"),
+            row("operating_income", "2", "2018-01-01"),
+        ]
+    }
+    result = api.formula_rows(h, ["operating_margin"], "2019-11-01T00:00:00Z", "0000001800")
+    assert len(result) == 1
+    assert result[0]["value_numerator"] == "1"
+    assert result[0]["value_denominator"] == "5"
