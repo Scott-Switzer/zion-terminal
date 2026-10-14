@@ -10,6 +10,7 @@ import gzip
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -52,7 +53,7 @@ class Budget:
             raise ResourceStop("STORAGE_BUDGET")
         # Reserve one whole paid Class A unit plus retained first-month storage.
         # Reads (<1M) reserve one whole Class B unit; excluded ongoing base plans.
-        ceiling = 4.50 + 0.36 + (self.bytes + size) / 1e9 * 0.015
+        ceiling = 4.50 + 0.36 + math.ceil((self.bytes + size) / 1e9) * 0.015
         if self.writes + 1 > 1_000_000 or ceiling > self.dollars:
             raise ResourceStop("SPEND_BUDGET")
         self.bytes += size
@@ -631,7 +632,9 @@ def publish_catalog(
         "cloud_bytes_written": budget.bytes,
         "cloud_create_calls": budget.writes,
         "authorized_spend_usd": budget.dollars,
-        "estimated_first_month_ceiling_usd": round(4.5 + 0.36 + budget.bytes / 1e9 * 0.015, 4),
+        "estimated_first_month_ceiling_usd": round(
+            4.5 + 0.36 + math.ceil(budget.bytes / 1e9) * 0.015, 4
+        ),
         "elapsed_seconds": round(time.perf_counter() - started, 2),
         "current_pointer_writes": 0,
         "licensed_sources": 0,

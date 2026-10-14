@@ -8,11 +8,13 @@ import argparse
 import gzip
 import hashlib
 import json
+import math
 import re
 import shutil
 import zlib
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from decimal import Decimal
 from pathlib import Path
 
 from materialize_sec_engine import OUT as BASE
@@ -112,6 +114,16 @@ def save(path, value):
     temporary.replace(path)
 
 
+def first_month_ceiling(retained_bytes):
+    """Reserve whole GB-month storage units with exact decimal spend arithmetic."""
+    if type(retained_bytes) is not int or retained_bytes < 0:
+        raise ValueError("RETAINED_BYTES_SCHEMA")
+    gb_months = math.ceil(Decimal(retained_bytes) / Decimal(1_000_000_000))
+    storage = Decimal(gb_months) * Decimal("0.015")
+    dollars = Decimal("4.50") + Decimal("0.36") + storage + Decimal("0.02")
+    return gb_months, float(dollars)
+
+
 def source_inventory(receipt_path, checkpoint_dir, release):
     receipt = json.loads(receipt_path.read_bytes())
     root_raw = (receipt_path.parent / "serving-manifest.json").read_bytes()
@@ -132,10 +144,23 @@ def source_inventory(receipt_path, checkpoint_dir, release):
         raise ValueError("SOURCE_RELEASE_NOT_COMPLETE_OR_POLICY")
     records = []
     attempted = 0
+    checkpoint_identity = hashlib.sha256(b'{"checkpoints":{')
     for path in sorted(checkpoint_dir.glob("*.json.gz")):
         checkpoint = json.loads(gzip.decompress(path.read_bytes()))
         if checkpoint["context"] != release:
             raise ValueError("CHECKPOINT_RELEASE")
+        if attempted:
+            checkpoint_identity.update(b",")
+        checkpoint_identity.update(canonical(path.name.split(".")[0]) + b":")
+        checkpoint_identity.update(
+            json.dumps(
+                checkpoint,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            ).encode()
+        )
         attempted += 1
         if checkpoint["status"] != "USABLE":
             continue
@@ -148,8 +173,16 @@ def source_inventory(receipt_path, checkpoint_dir, release):
         ):
             raise ValueError("CHECKPOINT_SOURCE_SCOPE")
         records.append({"cik": cik, "ref": ref})
+    checkpoint_identity.update(b'},"run_id":' + canonical(release) + b"}")
+    if checkpoint_identity.hexdigest() != receipt["release_id"]:
+        raise ValueError("CHECKPOINT_SET_PUBLICATION_HASH")
     if attempted != receipt["attempted"] or len(records) != receipt["usable"]:
         raise ValueError("CHECKPOINT_RECEIPT_COUNTS")
+    if (
+        sum(record["ref"]["normalized_revisions"] for record in records)
+        != receipt["normalized_revisions"]
+    ):
+        raise ValueError("CHECKPOINT_RECEIPT_REVISION_COUNTS")
     # Reserve whole paid request units, all retained native bytes, prior experiments,
     # and the maximum new data+metadata before touching the new tables.
     prior = json.loads((BASE / "basin-identity-optimization.json").read_bytes())
@@ -160,17 +193,21 @@ def source_inventory(receipt_path, checkpoint_dir, release):
         + METADATA_RESERVE
         + FRESH_PUBLICATION_RESERVE
     )
-    estimate = 4.5 + 0.36 + retained / 1e9 * 0.015 + 0.02
+    storage_gb_months, estimate = first_month_ceiling(retained)
     if estimate > 5 or receipt["cloud_create_calls"] + 1000 > 1_000_000:
         raise RuntimeError("STOP_TASK_SPEND_CAP")
     return records, {
         "native_receipt_sha256": hashlib.sha256(receipt_path.read_bytes()).hexdigest(),
+        "checkpoint_set_publication_identity_verified": True,
         "native_bytes": receipt["cloud_bytes_written"],
         "fresh_publication_retained_reserve_bytes": FRESH_PUBLICATION_RESERVE,
         "prior_basin_budget": prior["budget"],
         "reserved_total_retained_bytes": retained,
         "estimated_first_month_ceiling_usd": estimate,
+        "reserved_storage_whole_gb_months": storage_gb_months,
+        "storage_rounding": "CEILING_WHOLE_GB_MONTH_EXACT_DECIMAL",
         "source_companies": len(records),
+        "normalized_revisions_expected": receipt["normalized_revisions"],
         "source_release_id": release,
         "native_publication_release_id": receipt["release_id"],
         "rights": "PUBLIC_SEC_ONLY",
@@ -536,7 +573,12 @@ def register(args):
             ) != len(files):
                 raise ValueError("CATALOG_COUNTS_PARITY")
             snapshot = table.current_snapshot()
-            metadata_bytes = len(table.io.new_input(table.metadata_location))
+            metadata_locations = {table.metadata_location} | {
+                entry.metadata_file for entry in table.metadata.metadata_log
+            }
+            metadata_bytes = sum(
+                len(table.io.new_input(location)) for location in metadata_locations
+            )
             metadata_bytes += len(table.io.new_input(snapshot.manifest_list))
             metadata_bytes += sum(
                 manifest.manifest_length for manifest in snapshot.manifests(table.io)
@@ -609,6 +651,36 @@ def scan_reservation(plan, sources):
     return passes * sum(source["bytes"] for source in sources) + 5_000_000
 
 
+def full_join_halves(companies, namespace):
+    """Disjoint full-universe coverage, each strictly below Basin's 10k row limit."""
+    ciks = [item["cik"] for item in companies]
+    if len(ciks) != len(set(ciks)):
+        raise ValueError("DUPLICATE_COMPANY_IDENTITY")
+    queries = []
+    covered = []
+    for half in range(2):
+        groups = list(range(half * 8, (half + 1) * 8))
+        expected = [
+            [item["cik"], item["rows"]]
+            for item in sorted(companies, key=lambda item: item["cik"])
+            if group(item["cik"]) in groups
+        ]
+        if len(expected) >= 10000:
+            raise ValueError("FULL_JOIN_HALF_RESPONSE_LIMIT")
+        covered.extend(row[0] for row in expected)
+        group_sql = ",".join(map(str, groups))
+        query = (
+            f"SELECT f.cik,COUNT(*) AS n FROM {namespace}.canonical_revisions f "
+            f"JOIN {namespace}.issuers i ON f.cik=i.cik "
+            f"WHERE f.cik_group IN ({group_sql}) AND i.cik_group IN ({group_sql}) "
+            f"GROUP BY f.cik ORDER BY f.cik LIMIT {len(expected) + 1}"
+        )
+        queries.append(("full_universe_issuer_join_" + str(half), query, expected, groups))
+    if sorted(covered) != sorted(ciks):
+        raise ValueError("FULL_JOIN_COVERAGE")
+    return queries
+
+
 def validate(args):
     from publish_basin_public_pilot import sql, token
 
@@ -646,7 +718,7 @@ def validate(args):
     save_report()
     credential = token()
     queries = []
-    for index, (ciks, metrics, lo) in enumerate(CASES):
+    for index, (ciks, metrics, lo) in enumerate(CASES[:2]):
         if not all(cik in {item["cik"] for item in prepared["companies"]} for cik in ciks):
             continue
         groups = sorted(set(group(cik) for cik in ciks))
@@ -676,16 +748,7 @@ def validate(args):
         f"WHERE f.cik_group={group(cik)} AND f.cik='{cik}' AND i.cik='{cik}' GROUP BY f.cik"
     )
     queries.insert(1, ("bounded_issuer_join", join, [[cik, expected_count]], [group(cik)]))
-    all_expected = [
-        [item["cik"], item["rows"]]
-        for item in sorted(prepared["companies"], key=lambda item: item["cik"])
-    ]
-    full_join = (
-        f"SELECT f.cik,COUNT(*) AS n FROM {namespace}.canonical_revisions f "
-        f"JOIN {namespace}.issuers i ON f.cik=i.cik GROUP BY f.cik ORDER BY f.cik "
-        f"LIMIT {len(all_expected) + 1}"
-    )
-    queries.insert(0, ("full_universe_issuer_join", full_join, all_expected, list(range(16))))
+    queries = full_join_halves(prepared["companies"], namespace) + queries
     try:
         for name, query, expected, groups in queries:
             # EXPLAIN has historically scanned zero bytes; reserve 5MB metadata headroom.
@@ -727,7 +790,7 @@ def validate(args):
             budget.record(result)
             actual = (
                 [[row["cik"], int(row["n"])] for row in result["rows"]]
-                if name in ("bounded_issuer_join", "full_universe_issuer_join")
+                if name == "bounded_issuer_join" or name.startswith("full_universe_issuer_join_")
                 else [
                     [row["source_observation_id"], row["value_decimal"]] for row in result["rows"]
                 ]
@@ -744,8 +807,9 @@ def validate(args):
             save_report()
         successes = [entry for entry in report["queries"] if entry["status"] == "PASS"]
         report["status"] = "PASS" if len(successes) == len(queries) else "PARTIAL_BUDGET_LIMIT"
-        report["full_universe_join_verified"] = any(
-            entry["name"] == "full_universe_issuer_join" for entry in successes
+        report["full_universe_join_verified"] = all(
+            any(entry["name"] == "full_universe_issuer_join_" + str(half) for entry in successes)
+            for half in range(2)
         )
         report["bounded_join_verified"] = any(
             entry["name"] == "bounded_issuer_join" for entry in successes

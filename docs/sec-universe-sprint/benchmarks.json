@@ -1,0 +1,19 @@
+{
+  "query_shape": "annual revenue,net_income,operating_cash_flow since2015;clientconcurrency3",
+  "comparison_qualification": "DIFFERENT_COMPANY_COHORTS_AND_RESPONSE_SIZES;NOT_MATCHED_SPEEDUP_OR_CONTROLLED_COLD_CACHE_PROOF",
+  "before": {
+    "companies": 125,
+    "requests": 125,
+    "p50_ms": 2803.655,
+    "p95_ms": 4332.057,
+    "source_sha256": "7df3b777178cfafa02c1b2fafa0733f86d5dc435e0342c7e47e1e2d25ba78844"
+  },
+  "after": {
+    "companies": 50,
+    "p50": 1442.335,
+    "p95": 3669.1,
+    "max": 3972.327,
+    "source_sha256": "d5b3e2f966d5cfce244d4dfc52cf5cd637f7f93acdee331b443ace5a7acbb5b7"
+  },
+  "percentile_method": "NEAREST_RANK_P95;MEDIAN_P50"
+}

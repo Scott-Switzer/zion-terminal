@@ -12,7 +12,7 @@ The private history API accepts `release_id` only for explicitly approved previo
 
 Metric-specific sorted screening chunks bound memory independently of universe size. Screening retains exact decimals/rationals, complete leaf-source IDs and missingness. See [terminal workflow](terminal-workflow.md), [screening contract](terminal-universe-screen.md), [Basin measurements](basin-optimization.md), and [controlled update limitations](updates-controlled-promotion.md).
 
-Operational credential, TLS and historical-manifest blockers retain the exact actions in [the prior operator guide](../sec-engine-scale/operations.md); this sprint does not retry unauthorized provisioning or expand licensed access.
+Operational credential, TLS and historical-manifest blockers retain the exact actions in [current operator actions](operations.md); this sprint does not retry unauthorized provisioning or expand licensed access.
 
 ## Completed archive expansion
 
@@ -23,3 +23,7 @@ The immutable native release `0f0fa0be29d822e3b25e913239845c4702cddbfb7f60d2e0cf
 Processing used 107.6 minutes of wall time since the first completed checkpoint, including safe restarts and concurrent integration work. The final invocation took 1,156.9 seconds; it is not the full-run duration. Native retained publication data totals 6,522,557,784 bytes. Checkpoints survived interruption without promoting a failed issuer. The final invocation read 2,168,455,168 ranged source bytes with a 12MiB maximum cache; those counters are not cumulative across invocations.
 
 The streaming composer published selective real SEC updates for NIKE and Costco as release `b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb`, retaining the full native parent and original 441-company release. Independent raw-source checks and financial/context parity at the old cutoff passed. NIKE adds seven quarterly and five TTM outputs; Costco adds seven annual, six quarterly and five TTM outputs. Other issuers and the universe screener retain the September 24 cutoff. Per-company freshness, immutable raw candidate references and exact source terms are explicit in responses.
+
+The current serving release has **4,151,579 reconciled outputs** including the selective updates. The final project suite passed **890 tests with 2 skipped**; operator Basin tests passed17. Actual staging rollback/restore and all three protected CURRENT hashes passed. The final combined budget reserves exactly **$5.00** after whole storage billing-unit rounding; as-run estimates are retained and actual account billing is unobserved.
+
+See [PASS/FAIL gates](acceptance-gates.json), [coverage](coverage-summary.json), [API benchmarks](benchmarks.json), [full-universe Basin results](basin-full-universe.md), [security review](security-review.md), [current operator actions](operations.md), and [next implementation priorities](next-plan.md). These distinguish demonstrated native research delivery from financial certification, universal Basin latency improvement and unresolved administrator permissions.

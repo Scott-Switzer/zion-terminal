@@ -1,33 +1,73 @@
-# Full-universe isolated Basin preparation
+# Full-universe Basin identity layout: executed evidence
 
-Implemented `scripts/sec_universe_basin.py`; **not executed against native SEC objects or the cloud**. Await the parent’s completed native release and resource-budget approval before invoking stages. The native terminal remains primary. Basin tables receive no runtime credential, CURRENT pointer, or production promotion.
+The isolated full-universe Basin materialization and SQL verification **passed** on October 13, 2026. It contains **8,576,461 canonical revisions for 15,136 usable issuers**, stored as 16 sorted identity-group fact files and one issuer file. The native serving path remains primary; no CURRENT pointer, runtime credential, Worker bundle, or serving default was changed by this workstream. Additional full-company financial certifications remain zero.
 
-The three stages are explicit. `prepare` uses the existing native R2 client in the FRC environment; `register` and `validate` use PPE’s PyIceberg environment and the existing operator-token helper. No credential is copied between environments. Pass `--release` as the **materialization run identity** used by checkpoint `context` and company payloads, not the separately derived native publication release identity.
+## Source and exact parity
 
-Source gates require a complete native publication receipt with no resource stop, a SHA-pinned local serving manifest with PUBLIC_SEC_ONLY policy and licensed sources disabled, matching source materialization release, exact checkpoint/receipt counts, PASS verification, and exact immutable company object keys/hashes/lengths/member hashes. Quarantined issuers remain excluded. Every observation preserves the original 15-column Basin projection, including string decimals, nulls, source record JSON, and lineage. The only added field is deterministic integer `cik_group=CRC32(CIK)%16`.
+Materialization run: `c1fae45f2684fc29e5aaca95c29a18ffa5a769376ba234c6686206ea1167080a`. Native publication: `0f0fa0be29d822e3b25e913239845c4702cddbfb7f60d2e0cf1661a8cea1a388`. The complete native receipt accounts for 20,396 attempted issuers, including 5,260 quarantined issuers excluded from these tables.
 
-`prepare` fetches four companies at most concurrently, iterates sorted CIKs within each of 16 coarse groups, sorts each company by metric/end/source ID/full row, and buffers 25,000 rows per Parquet row group. It writes one sorted file per nonempty group plus one issuer file. There are no per-company Parquet files or partitions. Every group gets sequential source-projection row hash/count parity on local readback; duplicates are preserved. Issuers contain exactly one row per usable CIK. Outputs stop above 512 MB, and disk must retain 600 MiB free plus pending write headroom. Original archives are untouched.
+Source gates verified the native serving-manifest SHA, PUBLIC_SEC_ONLY policy with licensed sources disabled, exact complete checkpoint counts, the complete checkpoint-set hash reproducing the native publication identity, PASS company verification, immutable company object keys, source object SHA/length, member hashes, and summed normalized revision counts. Every company's source payload was read once through the existing native R2 helper with four bounded fetches. No raw archive was downloaded or modified.
 
-`register` verifies local hashes, uploads through catalog-vended `table.io`, and calls `Table.add_files(..., check_duplicate_files=True)` once per table. Full remote file hashes and streaming original-projection hashes/counts are checked before catalog registration. Catalog file paths, totals, and current metadata sizes are checked afterward. No append fallback silently rewrites files. Unsupported IO, footer inference, add_files behavior, or existing snapshots stop the run and preserve evidence.
+The original 15-column `canonical_revisions` projection is preserved, including nulls, exact string decimals, source-record JSON and lineage. The additional integer column is `cik_group=CRC32(CIK)%16`; its values are checked separately. Sorted CIK/metric/end/source-ID/full-row ordering supports sequential duplicate-preserving source-projection SHA/count comparison for every group. Local readback, full remote file-byte hashes, remote original-field row hashes/counts, deterministic groups, catalog file paths and snapshot totals all passed. The issuer table has exactly one row per usable CIK.
 
-This path is documented in [PyIceberg Add Files](https://py.iceberg.apache.org/api/#add-files): order-preserving transforms infer partitions from Parquet column statistics, missing field IDs use automatic name mapping, and duplicate checking remains enabled. Installed PPE IdentityTransform reports `preserves_order=True`. All group files have full statistics with a constant integer group. Files are exclusively owned by the isolated new table; destructive table maintenance could delete registered files and is outside this task.
+Namespace: `zion_sec_universe_c1fae45f2684_identity16`.
 
-`validate` permits at most ten additional SQL calls and 768 MB measured scan bytes, distinct from the completed experiments’ 48-call allocation. It records cumulative totals, actual EXPLAIN plans, and exact result checks. Explicit group constants must select at most the requested group count in the plan. Execution reserves one full pass for each actual planned source, doubled when the plan contains late materialization, plus 5 MB metadata headroom. A full-universe issuer join is prioritized first and its per-CIK counts must exactly match every prepared company; a bounded issuer join and three small cases follow. Oversized optional cases are skipped explicitly; insufficient budget for the full join is reported clearly and never waived. One execution per case establishes correctness and pruning, not cold/warm latency distributions. Unknown scan metrics or absent plan estimates fail closed.
+| Table | Rows | Files | Data bytes | Snapshot |
+|---|---:|---:|---:|---|
+| canonical_revisions | 8,576,461 | 16 | 472,603,704 | `3494557472409119475` |
+| issuers | 15,136 | 1 | 823,312 | `8383757386293381114` |
 
-The first-month spend guard reserves native retained bytes, prior Basin persistent accounting, all 512 MB new data plus 50 MB metadata, paid R2 request-unit allowances, and an additional $0.02 operation/SQL allowance (including the expanded 768 MB SQL cap) under the $5 task cap. [Current Basin pricing](https://developers.cloudflare.com/basin-sql/platform/pricing/) bills $0.0025/GB with a 10 MB query minimum; metadata-only EXPLAIN is free of SQL scan charges. Charges remain additive to R2 and catalog operations. The allowance is conservative for these small bounded operations; base subscriptions and unrelated account usage are excluded. Current metadata is measured after registration against the 50 MB reserve; the reserve is a preflight bound, not a claim of zero orphaned metadata on a failed commit.
+## Actual SQL evidence
 
-Example invocations after authorization (choose the corresponding already installed Python environment):
+Two disjoint identity-group halves verified every CIK/count pair exactly: 7,673 plus 7,463 issuer rows, covering all 15,136 issuers and all 8,576,461 revisions. Each half filters the group on both sides of a CIK-equality join and uses expected count plus one as LIMIT. This respects the documented [10,000 LIMIT maximum](https://developers.cloudflare.com/basin-sql/troubleshooting/#invalid-limit-values); oversize halves fail rather than truncate. The bounded join and two small financial queries also matched their source-derived expected results exactly.
 
-```text
-python scripts/sec_universe_basin.py prepare --release <materialization-run-id>
-python scripts/sec_universe_basin.py register --release <materialization-run-id>
-python scripts/sec_universe_basin.py validate --release <materialization-run-id>
-```
+| Query | Returned rows | Planned fact files | Execution scan-file counter | Scanned bytes | Observed latency ms |
+|---|---:|---:|---:|---:|---:|
+| Full join, groups 0–7 | 7,673 | 8 | 19 | 639,748 | 5,809.07 |
+| Full join, groups 8–15 | 7,463 | 8 | 19 | 618,754 | 6,701.12 |
+| MSFT revenue | 182 | 1 | 6 | 29,408,793 | 3,816.02 |
+| MSFT issuer join | 1 | 1 | 12 | 161,101 | 1,733.77 |
+| Two issuers / net income + cash | 226 | 2 | 7 | 58,473,480 | 5,242.59 |
 
-Stages refuse existing outputs/progress instead of silently resetting cumulative spend. Interrupted upload recovery requires inspecting the recorded state; rerun is deliberately blocked. Prepare is not a financial certification: full-company certification remains zero. Unit tests include a local synthetic Parquet round trip; live catalog registration and full-universe size remain unverified until explicitly run.
+All five actual JSON EXPLAIN plans and all five executions succeeded. The explicit identity-group predicates selected eight files per full-universe half, one file for MSFT, and two files for the two-issuer case. Execution `files_scanned` counters include metadata/late-materialization activity and are not unique Parquet file counts.
 
-Validation before execution: eight full-universe tests plus four prior experiment tests passed (12 total). Tests include synthetic local Parquet preparation, installed PyIceberg identity footer inference and rejection of mixed-group files, separate native publication/run identities, partial-release refusal, exact decimals/duplicates/lineage, disk caps, and fail-closed SQL budget/plan estimates. Ruff formatting and checks passed. No native-source/cloud stage has been executed.
+These are single observed executions with cache counters recorded; they establish correctness and actual pruning, not cold/warm p50 or p95. The larger full-universe workload is not a matched latency comparison with the earlier 441-issuer experiment. The earlier pilot's two-issuer p95 regression still does not justify promoting a Basin serving default.
 
-The parent expanded only this new full-universe workstream's SQL allocation to 768 MB on October 13. The prior 508,894,581 experiment bytes remain recorded independently and in cumulative totals; no historical cap or evidence was rewritten. At most five EXPLAIN/execution pairs run (full-universe join, three small cases, bounded join), preserving the ten-call ceiling. Thirteen focused tests passed after this update, including an all-table 400 MB one-pass plan that fits and an 800 MB late-materialization reservation that correctly stops.
+## Record-quality accounting
 
-During the already required company payload reads, preparation also aggregates exact `rejections` reason counts, their total, `source_inventory.counts`, and policy-family company counts into `prepared.json.record_quality`. These counters are labeled **INSPECTED_NOT_FINANCIALLY_CERTIFIED**. Rejections describe only mapped concept source rows; unmapped concepts remain in the immutable archive and are not silently classified as accepted or rejected. Raw inventory totals cover usable company payloads, including their unmapped concepts; quarantined issuer payloads are excluded and remain a distinct issuer-level category. No extra source reads or normalization pass is added. Counts must be nonnegative integers, and missing source inventory is explicitly counted.
+Counters below use already-required source payload reads and are labeled **INSPECTED_NOT_FINANCIALLY_CERTIFIED**. They cover usable company payloads; quarantined issuer payloads are a separate category. Raw inventories include unmapped concepts, while rejection counts describe mapped concept source rows only. Unmapped concepts are not silently accepted, rejected or certified and remain available in the immutable source archive.
+
+| Inspected source measure | Count |
+|---|---:|
+| Raw source records | 119,784,879 |
+| Candidate US periodic records | 118,202,926 |
+| Mapped record rejections | 106,377 |
+| Unsupported form | 89,398 |
+| Unsupported native unit | 16,476 |
+| Period end after source filing date | 503 |
+| Financial-statement-evidence policy family | 1,738 companies |
+| General US GAAP unclassified policy family | 13,398 companies |
+| Missing source inventories | 0 |
+
+## Resource and credential constraints
+
+New data totals **473,427,016 bytes**, below the 512 MB data cap. Measured retained metadata, including current/logged metadata JSON, manifest lists and manifests, totals **28,597 bytes**, below the 50 MB reserve. Preparation retained a 600 MiB free-disk reserve plus compressed pending-write headroom and produced no per-company Parquet files. Original archives remain untouched.
+
+The new SQL allocation used **10 calls and 89,301,876 scanned bytes**, below its 768 MB cap. Including the completed prior experiments, cumulative Basin SQL accounting is **58 calls and 598,196,457 scanned bytes**. Historical experimental caps/evidence were preserved separately. Reservations used actual source-plan bytes, doubled only for late materialization, plus metadata headroom; missing metrics/estimates fail closed.
+
+The as-run registration preflight recorded a **$4.990771 fractional-storage estimate**, including native retained bytes, prior Basin accounting, the full 512 MB plus 50 MB new reserve, concurrent fresh-publication 200 MB reserve, and operation/SQL allowances under the $5 task maximum. Final budget reconciliation corrects [R2 whole-unit storage rounding](https://developers.cloudflare.com/r2/pricing/): 7,384,736,954 reserved bytes require **8 GB-months**, so the final reserved ceiling is **$5.00 exactly** (`4.50 + 0.36 + 8 × 0.015 + 0.02`), within the authorized maximum. Exact decimal arithmetic prevents floating-point boundary errors. As-run receipts were preserved unchanged; `final-budget-reconciliation.json` records the correction and receipt hash. No cloud writes, SQL calls, or source reads were repeated. This is a bounded task reservation, not an observed account bill; unrelated account usage and base subscriptions are excluded. [Current Basin pricing](https://developers.cloudflare.com/basin-sql/platform/pricing/) is additive to R2/catalog charges, uses $0.0025/GB with a 10 MB query minimum, and excludes EXPLAIN from SQL scan billing.
+
+Preparation used the existing FRC native R2 client; registration/validation used PPE's existing Basin operator token and catalog-vended `table.io`. No credentials were copied or expanded. Files were registered through documented [PyIceberg add_files](https://py.iceberg.apache.org/api/#add-files) with identity statistics, automatic name mapping and duplicate checks enabled. Unsupported inference/IO or existing snapshots stop rather than silently fall back to another write path. Registered files are isolated table-owned assets; destructive table maintenance is outside this task. Runtime least-privilege credential validation remains unverified.
+
+## Reproducible implementation and evidence
+
+Implementation: `scripts/sec_universe_basin.py`, explicit `prepare`, `register`, and `validate` stages. The `--release` argument is the materialization run identity, not the separately derived native publication identity. Stages refuse existing evidence/progress to prevent silent budget resets or duplicate writes.
+
+Evidence directory: `/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/basin-prepared/`.
+
+- `prepared.json`: full source/local parity, per-group hashes/counts, issuer source rows, record-quality totals.
+- `registered.json`: actual tables/snapshots, remote parity, metadata sizes and stricter spend preflight.
+- `sql-validation.json`: complete real plans, exact SQL comparisons, latency/cache/scan metrics and cumulative budgets.
+- `final-budget-reconciliation.json`: protected final whole-unit $5.00 reservation and preserved as-run receipt provenance.
+
+Seventeen focused tests passed, covering exact decimals/duplicates/lineage, source-publication hash tamper detection, source policy/completeness, synthetic Parquet preparation, installed identity footer inference and mixed-group rejection, disk/query limits, disjoint full-universe coverage without truncation, and exact whole-GB rounding (8 GB fits $5; 9 GB exceeds it). Ruff formatting and checks passed. Full-repository verification is owned by the parent integration task.

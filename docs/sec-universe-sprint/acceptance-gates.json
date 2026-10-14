@@ -1,0 +1,130 @@
+{
+  "schema_version": "sec-universe-sprint-gates-v1",
+  "serving_release_id": "b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb",
+  "native_sprint_required_gates_pass": true,
+  "full_archive_financial_certification": false,
+  "gates": {
+    "full_archive_attempted": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "20396/20396 attempted; automatic2000/5000/full stages; no resource stop"
+    },
+    "eligibility_and_quarantine": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "15224 eligible/5172 ineligible;15136 usable/5260 quarantined;88 eligible without mapped history;70 identity mismatches isolated"
+    },
+    "independent_financial_arithmetic": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "4151549 native outputs plus30 independently reconciled update outputs; Python/DuckDB raw-source and signed-component checks"
+    },
+    "metric_frequency_coverage_report": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "coverage-summary.json contains annual/quarterly/TTM counts and gaps; annual debt only1company; no zero filling"
+    },
+    "mapped_record_quality_accounting": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "106377 explicit mapped source rejections;119784879 raw records inspected, not certified; quarantined issuers excluded from this inventory"
+    },
+    "full_universe_basin_cross_table_sql": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "Both join halves exactly cover15136 CIK/count pairs and8576461revisions;5EXPLAIN+5executions succeeded"
+    },
+    "basin_identity_partition_pruning": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "Actual fulltable plans select8/8 fact files for halves,1forMSFT,2for twoissuers; source projection parity exact"
+    },
+    "all_case_basin_latency_selection": {
+      "status": "FAIL",
+      "required_for_native_sprint": false,
+      "evidence": "Matched441issuer experiment twoissuer p95 regressed1609\u21922490ms; fulluniverse MSFT one observed3816.02ms/29408793bytes. No Basin serving promotion"
+    },
+    "validated_sec_updates_served": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "NIKE/Costco current b39a670 release; immutable raw+normalized references, historical component parity, coverage/accounting/independent gates; other companies/screener retainSep24"
+    },
+    "historical_reproduction_and_staging_rollback": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "Originalac8/fullparent0f Microsoft values reproduce; actual Worker rollback to08 then restoreb39 yielded identical observations"
+    },
+    "native_terminal_research_workflow": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "DefaultCLI discovery,15136universe screen, outside500 annual/quarterly exact comparison, fresh cutoffs, provenance and reproducible exports verified"
+    },
+    "private_auth_and_query_boundaries": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "11 deployed smoke checks including401auth,400SQL,404unknown/unapproved releases,409drift,422freshness; unit entitlement and budget tests"
+    },
+    "licensed_dataset_isolation": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "PUBLIC_SEC_ONLY;0licensed rows/sources, no WRDS collector/download/migration"
+    },
+    "incremental_spend_guard": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "Userauthorized5USD; finalwholebillingunit reservation5.00USD exactly:4.50ClassA+0.36ClassB+8GB-months*0.015+0.02operations/SQL. As-runfractional4.990771estimate retainedunchanged; correctedguard/testsPASS. Actualbillingunobserved."
+    },
+    "local_project_verification": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "890passed/2skipped; operator17focusedtests passed; nativebudget7tests passed includingRED\u2192GREENbilling-rounding regression; Ruff and frozenv2 contract checks passed; remoteCI not asserted"
+    },
+    "production_current_integrity": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "All3protectedCURRENT SHA256 hashes unchanged afteractual stagingrollback/restore"
+    },
+    "existing_private_routes_regression": {
+      "status": "PASS",
+      "required_for_native_sprint": true,
+      "evidence": "18 existing private route checks PASS; previous contracts unchanged"
+    },
+    "read_only_basin_runtime_credential": {
+      "status": "FAIL",
+      "required_for_native_sprint": false,
+      "evidence": "Prior tokenprovisioning403/9109; no authorized token-management credential found/no narrowcandidate issued; operator SQL success is not leastprivilege proof"
+    },
+    "custom_hostname_tls": {
+      "status": "FAIL",
+      "required_for_native_sprint": false,
+      "evidence": "Final unauthenticatedcurl exit35 TLSprotocol-version alert beforeHTTP; priorcertificate/settings/DNSreads403; cause unconfirmed"
+    },
+    "legacy_release_recovery": {
+      "status": "FAIL",
+      "required_for_native_sprint": false,
+      "evidence": "340unsealed directories and one ambiguous reference still quarantined; authoritative producer evidence required"
+    },
+    "complete_financial_certification": {
+      "status": "FAIL",
+      "required_for_native_sprint": false,
+      "evidence": "0fully certified companies; eightbase metrics+conditionalFCF do not certify complete statements or allrawconcepts"
+    }
+  },
+  "evidence_sha256": {
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/publication.json": "5bd626a23918886b207c8fb32b56b18c15ea4be92666e38406b89798cf7306cf",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/coverage-quality.json": "e6dd982914a25fab14d7e489d7257904d4ea517e8c7d7b63ff899c7ecb110708",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/final-live-50.json": "d5b3e2f966d5cfce244d4dfc52cf5cd637f7f93acdee331b443ace5a7acbb5b7",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/final-smoke.json": "712b98fac26fe49a95c6d7c1fc4a620a23c0c8f7a9a9d78eab5cd8784475a5f8",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/terminal/final/verification.json": "beff29a10073a2d4e0b524680768c43ae2e2d65175a87160480bbc59f155bb6b",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/publication-pointer-gates.json": "6988eacf8444251492ca968d4a874d0993f55f9d6330baa7ef9f9061450d9e48",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/rollback-live.json": "d6903c1f97cb7ed3f84dcb00699e285ef9f5cb1eab949fc1d216d51200af7a63",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/restore-live.json": "b0ca8cc6b159d2ec322d5e795db5d90d0d55e71cf05fd3bf822e59ee2fc5081e",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/prior-routes-regression.json": "3e8e3b35f1561815eb0e2e39c68fe253e5e6f319c066c839c5fbc98f84fa9386",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/final-verified-tests.log": "a1b42dfb3bcb39e3a89b88700d828eaf95e1d8e6504b1df9f5c3c6a442d24c5a",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/basin-prepared/prepared.json": "0f3ed1fc1b97ea729c68a411a4344ba34dd08739c863375bd9c12b399f90c331",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/basin-prepared/registered.json": "2b38b175b3ed27f676b0c751483c5d10abece5091382e6a47dc2e6b485ebffed",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/basin-prepared/sql-validation.json": "5ea29e4593109be65322e4a6062ef962606001ee94c16abe2e94ad4456b2d5dc",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint-update/publication.json": "389d9ab2b3ccf530d0eb6c44c5bf2b46ae5acd0afaa790b5a4d37ac3d97593ae",
+    "/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/basin-prepared/final-budget-reconciliation.json": "5225bc59a13ae54a5833d4b965a0c331672dc57fbb5b3894843de9899c6bce31"
+  }
+}

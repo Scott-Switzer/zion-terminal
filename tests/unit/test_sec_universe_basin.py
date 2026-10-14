@@ -201,6 +201,7 @@ def test_source_gate_separate_publication_identity_and_partial_stop(monkeypatch,
         "attempted": 1,
         "discovered": 1,
         "usable": 1,
+        "normalized_revisions": 2,
         "fully_certified_companies": 0,
         "cloud_bytes_written": 7000000000,
         "cloud_create_calls": 30000,
@@ -214,12 +215,29 @@ def test_source_gate_separate_publication_identity_and_partial_stop(monkeypatch,
         "cik": "0000789019",
         "status": "USABLE",
         "verification": {"status": "PASS"},
-        "ref": {"key": f"gold/sec-engine/releases/{run}/companies/0000789019.json", "bytes": 100},
+        "ref": {
+            "key": f"gold/sec-engine/releases/{run}/companies/0000789019.json",
+            "bytes": 100,
+            "normalized_revisions": 2,
+        },
     }
     (checkpoints / "0000789019.json.gz").write_bytes(gzip.compress(basin.canonical(checkpoint)))
+    publication = hashlib.sha256(
+        basin.canonical({"run_id": run, "checkpoints": {"0000789019": checkpoint}})
+    ).hexdigest()
+    root["release_id"] = publication
+    root_raw = basin.canonical(root)
+    (tmp_path / "serving-manifest.json").write_bytes(root_raw)
+    receipt.update(release_id=publication, root={"sha256": hashlib.sha256(root_raw).hexdigest()})
+    receipt_path.write_bytes(basin.canonical(receipt))
     records, proof = basin.source_inventory(receipt_path, checkpoints, run)
     assert len(records) == 1 and proof["native_publication_release_id"] == publication
-    assert proof["estimated_first_month_ceiling_usd"] < 5
+    assert proof["estimated_first_month_ceiling_usd"] <= 5
+    assert proof["checkpoint_set_publication_identity_verified"] is True
+    checkpoint["ref"]["bytes"] = 101
+    (checkpoints / "0000789019.json.gz").write_bytes(gzip.compress(basin.canonical(checkpoint)))
+    with pytest.raises(ValueError, match="CHECKPOINT_SET_PUBLICATION_HASH"):
+        basin.source_inventory(receipt_path, checkpoints, run)
     receipt["resource_stop"] = "STORAGE_BUDGET"
     receipt_path.write_bytes(basin.canonical(receipt))
     with pytest.raises(ValueError, match="SOURCE_RELEASE_NOT_COMPLETE"):
@@ -262,3 +280,34 @@ def test_quality_aggregates_inspected_counts_once_without_certification():
     assert quality["companies_inspected"] == 2
     with pytest.raises(ValueError, match="SOURCE_QUALITY_COUNT_SCHEMA"):
         basin.aggregate_quality(quality, {"rejections": {"UNKNOWN": -1}})
+
+
+def test_full_join_halves_cover_every_company_once_with_safe_limits():
+    companies = [{"cik": str(i).zfill(10), "rows": i + 1} for i in range(15136)]
+    halves = basin.full_join_halves(companies, "n")
+    assert len(halves) == 2
+    covered = [row for _, _, expected, _ in halves for row in expected]
+    assert sorted(covered) == sorted([[item["cik"], item["rows"]] for item in companies])
+    assert len({row[0] for row in covered}) == len(companies)
+    assert halves[0][3] == list(range(8)) and halves[1][3] == list(range(8, 16))
+    for _, query, expected, groups in halves:
+        assert len(expected) < 10000 and int(query.split(" LIMIT ")[1]) == len(expected) + 1
+        assert "f.cik=i.cik" in query and "f.cik_group IN" in query and "i.cik_group IN" in query
+        assert all(basin.group(cik) in groups for cik, _ in expected)
+    with pytest.raises(ValueError, match="DUPLICATE_COMPANY_IDENTITY"):
+        basin.full_join_halves(companies + [companies[0]], "n")
+
+
+def test_full_join_half_refuses_truncation(monkeypatch):
+    monkeypatch.setattr(basin, "group", lambda _: 0)
+    with pytest.raises(ValueError, match="FULL_JOIN_HALF_RESPONSE_LIMIT"):
+        basin.full_join_halves([{"cik": str(i).zfill(10), "rows": 1} for i in range(10000)], "n")
+
+
+def test_storage_ceiling_reserves_whole_gb_month_units_exactly():
+    assert basin.first_month_ceiling(7_384_736_954) == (8, 5.0)
+    assert basin.first_month_ceiling(8_000_000_000) == (8, 5.0)
+    assert basin.first_month_ceiling(8_000_000_001) == (9, 5.015)
+    assert basin.first_month_ceiling(9_000_000_000)[1] > 5
+    with pytest.raises(ValueError, match="RETAINED_BYTES_SCHEMA"):
+        basin.first_month_ceiling(-1)

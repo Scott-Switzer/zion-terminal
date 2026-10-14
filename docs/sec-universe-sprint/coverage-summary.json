@@ -1,0 +1,230 @@
+{
+  "discovered": 20396,
+  "attempted": 20396,
+  "usable": 15136,
+  "quarantined": 5260,
+  "quarantine_reasons": {
+    "NO_VALID_MAPPED_FINANCIAL_HISTORY": 5190,
+    "SOURCE_IDENTITY_MISMATCH": 70
+  },
+  "source_eligibility_counts": {
+    "eligible": 15224,
+    "ineligible": 5172
+  },
+  "source_eligibility_reasons": {
+    "ELIGIBLE_US_PERIODIC_SOURCE": 15224,
+    "NO_US_GAAP_TAXONOMY": 3778,
+    "NO_US_PERIODIC_CONTEXTS": 1324,
+    "SOURCE_IDENTITY_MISMATCH": 70
+  },
+  "normalized_revisions": 8576461,
+  "independently_reconciled_outputs": 4151549,
+  "fully_certified_companies": 0,
+  "native_release_id": "0f0fa0be29d822e3b25e913239845c4702cddbfb7f60d2e0cf1661a8cea1a388",
+  "serving_release_id": "b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb",
+  "metric_frequency_coverage_at_archive_cutoff": {
+    "annual": {
+      "capital_expenditures": {
+        "companies_with_observations": 7492,
+        "observations": 58684,
+        "explicit_gaps": 79054
+      },
+      "cash": {
+        "companies_with_observations": 12743,
+        "observations": 100877,
+        "explicit_gaps": 18477
+      },
+      "diluted_shares": {
+        "companies_with_observations": 9298,
+        "observations": 74106,
+        "explicit_gaps": 51407
+      },
+      "free_cash_flow": {
+        "companies_with_observations": 7192,
+        "observations": 52550,
+        "explicit_gaps": 74906
+      },
+      "net_income": {
+        "companies_with_observations": 13217,
+        "observations": 105929,
+        "explicit_gaps": 52688
+      },
+      "operating_cash_flow": {
+        "companies_with_observations": 13185,
+        "observations": 100273,
+        "explicit_gaps": 22928
+      },
+      "operating_income": {
+        "companies_with_observations": 10567,
+        "observations": 82157,
+        "explicit_gaps": 79073
+      },
+      "revenue": {
+        "companies_with_observations": 9262,
+        "observations": 67822,
+        "explicit_gaps": 105506
+      },
+      "total_debt": {
+        "companies_with_observations": 1,
+        "observations": 4,
+        "explicit_gaps": 148309
+      }
+    },
+    "quarterly": {
+      "capital_expenditures": {
+        "companies_with_observations": 7788,
+        "observations": 202868,
+        "explicit_gaps": 267421
+      },
+      "cash": {
+        "companies_with_observations": 13856,
+        "observations": 379716,
+        "explicit_gaps": 70032
+      },
+      "diluted_shares": {
+        "companies_with_observations": 10500,
+        "observations": 222779,
+        "explicit_gaps": 235109
+      },
+      "free_cash_flow": {
+        "companies_with_observations": 7528,
+        "observations": 176412,
+        "explicit_gaps": 283978
+      },
+      "net_income": {
+        "companies_with_observations": 14684,
+        "observations": 378668,
+        "explicit_gaps": 112595
+      },
+      "operating_cash_flow": {
+        "companies_with_observations": 14178,
+        "observations": 373976,
+        "explicit_gaps": 80028
+      },
+      "operating_income": {
+        "companies_with_observations": 11654,
+        "observations": 289333,
+        "explicit_gaps": 204579
+      },
+      "revenue": {
+        "companies_with_observations": 10199,
+        "observations": 243150,
+        "explicit_gaps": 263371
+      },
+      "total_debt": {
+        "companies_with_observations": 1,
+        "observations": 5,
+        "explicit_gaps": 483042
+      }
+    },
+    "ttm": {
+      "capital_expenditures": {
+        "companies_with_observations": 6571,
+        "observations": 162727,
+        "explicit_gaps": 309517
+      },
+      "cash": {
+        "companies_with_observations": 0,
+        "observations": 0,
+        "explicit_gaps": 482952
+      },
+      "diluted_shares": {
+        "companies_with_observations": 0,
+        "observations": 0,
+        "explicit_gaps": 484908
+      },
+      "free_cash_flow": {
+        "companies_with_observations": 6226,
+        "observations": 136023,
+        "explicit_gaps": 326318
+      },
+      "net_income": {
+        "companies_with_observations": 12687,
+        "observations": 271812,
+        "explicit_gaps": 222123
+      },
+      "operating_cash_flow": {
+        "companies_with_observations": 12770,
+        "observations": 313700,
+        "explicit_gaps": 143054
+      },
+      "operating_income": {
+        "companies_with_observations": 9803,
+        "observations": 197760,
+        "explicit_gaps": 298872
+      },
+      "revenue": {
+        "companies_with_observations": 8475,
+        "observations": 160218,
+        "explicit_gaps": 348651
+      },
+      "total_debt": {
+        "companies_with_observations": 0,
+        "observations": 0,
+        "explicit_gaps": 498184
+      }
+    }
+  },
+  "raw_inventory_inspected_not_certified": {
+    "candidate_us_periodic_records": 118202926,
+    "source_records": 119784879
+  },
+  "updated_company_cutoffs": {
+    "0000320187": "2026-10-14T04:31:55.606405+00:00",
+    "0000909832": "2026-10-14T04:31:56.123627+00:00"
+  },
+  "updated_company_output_counts": {
+    "0000320187": {
+      "annual": {
+        "company_cutoff": 129,
+        "parent_cutoff": 129
+      },
+      "quarterly": {
+        "company_cutoff": 489,
+        "parent_cutoff": 482
+      },
+      "ttm": {
+        "company_cutoff": 341,
+        "parent_cutoff": 336
+      }
+    },
+    "0000909832": {
+      "annual": {
+        "company_cutoff": 147,
+        "parent_cutoff": 140
+      },
+      "quarterly": {
+        "company_cutoff": 518,
+        "parent_cutoff": 512
+      },
+      "ttm": {
+        "company_cutoff": 345,
+        "parent_cutoff": 340
+      }
+    }
+  },
+  "coverage_qualification": "ANY_VALID_SUPPORTED_METRIC;NOT_COMPLETE_FINANCIAL_STATEMENTS;UNMAPPED_RAW_CONCEPTS_REMAIN_IN_ARCHIVE",
+  "archive_cutoff": "2026-09-24T00:00:00Z",
+  "serving_reconciled_output_count": 4151579,
+  "record_quality": {
+    "companies_inspected": 15136,
+    "companies_missing_source_inventory": 0,
+    "mapped_record_rejections_by_reason": {
+      "PERIOD_END_AFTER_SOURCE_FILING_DATE": 503,
+      "UNSUPPORTED_FORM": 89398,
+      "UNSUPPORTED_NATIVE_UNIT": 16476
+    },
+    "mapped_record_rejections_total": 106377,
+    "policy_family_company_counts": {
+      "financial_statement_evidence": 1738,
+      "general_us_gaap_unclassified": 13398
+    },
+    "qualification": "INSPECTED_NOT_FINANCIALLY_CERTIFIED",
+    "rejection_scope": "MAPPED_CONCEPT_SOURCE_ROWS_ONLY;UNMAPPED_RAW_CONCEPTS_NOT_CLASSIFIED",
+    "source_inventory_counts_INSPECTED": {
+      "candidate_us_periodic_records": 118202926,
+      "source_records": 119784879
+    },
+    "source_inventory_scope": "ALL_RAW_CONCEPTS_IN_USABLE_COMPANY_PAYLOAD_INVENTORY;QUARANTINED_ISSUERS_EXCLUDED"
+  }
+}

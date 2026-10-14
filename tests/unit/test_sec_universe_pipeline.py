@@ -68,3 +68,11 @@ def test_source_eligibility_distinguishes_us_reporting_from_unsupported_scope():
         u.classify_source(json.dumps(native).encode(), "0000000002")["classification"]
         == "SOURCE_IDENTITY_MISMATCH"
     )
+
+
+def test_storage_billing_unit_rounding_stops_before_write():
+    ledger = u.Budget(4.88)
+    with pytest.raises(u.ResourceStop, match="SPEND"):
+        ledger.reserve_write(1_100_000_000)
+    assert ledger.bytes == 0
+    assert ledger.writes == 0

@@ -71,3 +71,26 @@ match the issuer CIK. Invalid identifiers and absent source records display
 explicit missing-link reasons. Links are format-validated; the CLI does not fetch
 or launch the destination. See the SEC's official
 [Accessing EDGAR Data: Paths and directory structure](https://www.sec.gov/search-filings/edgar-search-assistance/accessing-edgar-data).
+
+## Final live verification
+
+On release `b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb`,
+the native `zion research` entry point worked with the configured origin and no
+`--base-url` override. A bounded screen scanned all 15,136 served companies:
+2,986 matched annual revenue growth of at least `0.1`; 7,411 had explicit missing
+revenue-growth inputs. The screen retained its `2026-09-24T00:00:00Z` cutoff and
+read 21,792,748 metric-index bytes, below its 32 MiB cap.
+
+Hershey/Mattel provided four exactly aligned annual and six quarterly rows in
+2024; 43 issuer values/differences were checked with exact rational arithmetic.
+Updated NIKE and Costco histories defaulted to their individual October 14
+retrieval cutoffs. NIKE's quarterly export contained two newly available
+post-archive observations, and Costco's annual export contained six. A comparison
+with different default cutoffs failed before export; an explicit shared cutoff
+succeeded. NIKE/Costco fiscal periods differ, so those rows remain separate.
+
+Costco's 2026 annual revenue remained explicitly unavailable under the current
+native mapping; the fresh cutoff does not imply every metric is supported.
+Provenance leaf IDs, the versioned accounting policy, SEC link format, and JSON
+exports were verified. Protected evidence and exact commands are stored at
+`/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-universe-sprint/terminal/final/verification.json`.
