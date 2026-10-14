@@ -115,6 +115,7 @@ def validate_company(body, companion, research_release, financial_release):
         observations=len(observations),
         status_counts=dict(statuses),
         expected_observations=len(expected_rows),
+        expected_status_counts=dict(Counter(r["status"] for r in expected_rows.values())),
         source_ids=len(referenced),
         errors=sorted(set(errors)),
         status="PASS" if not errors else "FAIL",
@@ -133,7 +134,16 @@ def audit(publication_dir, certification_dir, output, request):
     ):
         raise ValueError("ROOT_HASH_MISMATCH")
     root = json.loads(root_raw)
-    summary = json.loads((certification_dir / "companion-summary.json").read_bytes())
+    summary_path = publication_dir / "companion-summary.json"
+    if not summary_path.exists():
+        summary_path = certification_dir / "companion-summary.json"
+    summary_raw = summary_path.read_bytes()
+    if (
+        hashlib.sha256(summary_raw).hexdigest() != root["certification_summary"]["sha256"]
+        or len(summary_raw) != root["certification_summary"]["bytes"]
+    ):
+        raise ValueError("SUMMARY_HASH_MISMATCH")
+    summary = json.loads(summary_raw)
     if set(root["certifications"]) != {r["cik"] for r in summary["companies"]}:
         raise ValueError("EXPECTED_COHORT_MISMATCH")
     output.mkdir(parents=True, exist_ok=True)
@@ -173,6 +183,10 @@ def audit(publication_dir, certification_dir, output, request):
                 status="FAIL",
                 errors=["HTTP_" + str(measurement["http_status"])],
                 observations=0,
+                expected_observations=len(companion["certification"]["observations"]),
+                expected_status_counts=dict(
+                    Counter(r["status"] for r in companion["certification"]["observations"])
+                ),
                 status_counts={},
                 source_ids=0,
                 measurement=measurement,
@@ -191,10 +205,21 @@ def audit(publication_dir, certification_dir, output, request):
     errors = []
     if any(r["status"] != "PASS" for r in companies):
         errors.append("COMPANY_VERIFICATION_FAILURE")
-    if observations != summary["union_current_series_observations"]:
+    expected_unique_rows = sum(r.get("expected_observations", 0) for r in companies)
+    expected_statuses = Counter()
+    for company in companies:
+        expected_statuses.update(company.get("expected_status_counts", {}))
+    if observations != expected_unique_rows:
         errors.append("AGGREGATE_ROW_COUNT_MISMATCH")
-    if totals["ACCOUNTING_CERTIFIED"] != summary["union_accounting_certified_observations"]:
-        errors.append("AGGREGATE_ACCOUNTING_COUNT_MISMATCH")
+    if totals != expected_statuses:
+        errors.append("AGGREGATE_CERTIFICATION_STATUS_MISMATCH")
+    declared_rows = summary["union_current_series_observations"]
+    declared_accounting = summary["union_accounting_certified_observations"]
+    if (
+        declared_rows != expected_unique_rows
+        or declared_accounting != expected_statuses["ACCOUNTING_CERTIFIED"]
+    ):
+        errors.append("DECLARED_SUMMARY_UNION_COUNT_MISMATCH")
     if after_measure["http_status"] != 200 or after.get("worker_version_id") != initial_version:
         errors.append("DEPLOYMENT_CHANGED_DURING_AUDIT")
     latencies = sorted(r["measurement"]["latency_ms"] for r in companies)
@@ -207,8 +232,10 @@ def audit(publication_dir, certification_dir, output, request):
         companies_checked=len(companies),
         observations=observations,
         status_counts=dict(totals),
-        expected_observations=summary["union_current_series_observations"],
-        expected_accounting_certified=summary["union_accounting_certified_observations"],
+        expected_observations=expected_unique_rows,
+        expected_accounting_certified=expected_statuses["ACCOUNTING_CERTIFIED"],
+        declared_summary_observations=declared_rows,
+        declared_summary_accounting_certified=declared_accounting,
         resolved_source_id_references=sum(r["source_ids"] for r in companies),
         latency_p50_ms=statistics.median(latencies),
         latency_p95_ms=latencies[int(0.95 * (len(latencies) - 1))],

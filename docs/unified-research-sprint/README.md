@@ -2,7 +2,7 @@
 
 This sprint adds a separately pinned research release over the existing immutable SEC service. It connects verified public SEC financial history to authorized owner-only historical Alpaca prices at exact source-backed filing points. It does not expand the SEC universe or enable licensed datasets.
 
-The research release is `0a78d635c0f01a3c584ae344d3b86cc6e351a499a8770439140619de46854184`; SEC remains `b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb`. There are 31 metric-certification companions and 21 unambiguous historical issuer/price joins. The demo uses 20 companies from healthcare, banking, payments, retail, consumer goods, semiconductors and industrials; NIKE is an additional supported point.
+The research release is `358ea45de35af6003347dc163fe31eebd09988d1b3715c3386e5ab8c0dfee72e`; SEC remains `b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb`. There are 31 metric-certification companions and 21 unambiguous historical issuer/price joins. The demo uses 20 companies from healthcare, banking, payments, retail, consumer goods, semiconductors and industrials; NIKE is an additional supported point.
 
 The selected historical price archive primarily covers 2019. Provider publication times are unavailable, so these are retrospective joins rather than point-in-time trading data. Identity validity is limited to literal filing dates. Financial date-only availability follows the conservative next-day midnight New York policy. Common-stock and debt symbols are separated through the approved market manifest; multiple covered classes still fail ambiguously.
 

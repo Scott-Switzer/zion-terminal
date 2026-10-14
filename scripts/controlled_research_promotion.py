@@ -235,8 +235,7 @@ def main():
         return body.get("worker_version_id")
 
     def verify():
-        if active_version() != args.candidate_version:
-            raise RuntimeError("CANDIDATE_VERSION_NOT_ACTIVE")
+        wait_for_version(active_version, args.candidate_version)
         wait_for_version(edge_version, args.candidate_version)
         report = []
         for name, route, params in (
@@ -325,8 +324,7 @@ def main():
         )
 
     def verify_previous():
-        if active_version() != args.previous_version:
-            raise RuntimeError("ROLLBACK_VERSION_NOT_ACTIVE")
+        wait_for_version(active_version, args.previous_version)
         wait_for_version(edge_version, args.previous_version)
         actual = current_history(baseline["release_id"])
         if actual != baseline:
