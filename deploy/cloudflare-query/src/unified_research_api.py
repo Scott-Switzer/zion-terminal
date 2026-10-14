@@ -563,6 +563,14 @@ async def execute(original, request):
                     continue
                 result["market_release_id"] = market["release_id"]
                 if len(prices) != 1:
+                    result["coverage_gaps"].append(
+                        {
+                            "cik": cik,
+                            "symbol": a["symbol"],
+                            "date": a["observed_on"],
+                            "reason": "EXACT_PRICE_POINT_UNAVAILABLE",
+                        }
+                    )
                     continue
                 cutoff = a["observed_on"] + "T00:00:00Z"
                 data, h, cert, q = await financial(
@@ -592,6 +600,15 @@ async def execute(original, request):
                 rows = formula_rows(h, [p.get("fundamental_metric", "revenue_growth")], cutoff, cik)
                 rows = [r for r in rows if r.get("value_numerator") is not None]
                 if not rows:
+                    result["coverage_gaps"].append(
+                        {
+                            "cik": cik,
+                            "symbol": a["symbol"],
+                            "date": a["observed_on"],
+                            "metric": p.get("fundamental_metric", "revenue_growth"),
+                            "reason": "VERIFIED_FUNDAMENTAL_METRIC_UNAVAILABLE",
+                        }
+                    )
                     continue
                 value = rows[-1]
                 number = Fraction(int(value["value_numerator"]), int(value["value_denominator"]))

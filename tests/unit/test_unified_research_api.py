@@ -547,3 +547,15 @@ def test_indexed_financial_entry_rejects_member_substitution():
     }
     with pytest.raises(Exception, match="FINANCIAL_INDEX_SOURCE_MISMATCH"):
         api.indexed_entry(root, manifest, "0000001800")
+
+
+def test_screen_missing_fundamental_is_an_explicit_gap_not_an_invented_match(fixture):
+    _, query, _, _, _, _, data, _ = fixture
+    cik = "0000078003"
+    data[cik]["observations"] = [r for r in data[cik]["observations"] if r["metric"] != "revenue"]
+    result, status = query("screen", {"ciks": "0000104169,0000078003"})
+    assert status == 200 and result["total_matches"] == 1
+    assert any(
+        r["cik"] == cik and r["reason"] == "VERIFIED_FUNDAMENTAL_METRIC_UNAVAILABLE"
+        for r in result["coverage_gaps"]
+    )

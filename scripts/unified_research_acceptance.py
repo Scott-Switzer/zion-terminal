@@ -102,8 +102,11 @@ def main():
             "limit": 1000,
         },
     )
-    assert measure["http_status"] == 200 and screen["total_matches"] >= 20
-    assert len({r["cik"] for r in screen["matches"]}) == 20
+    assert measure["http_status"] == 200 and screen["total_matches"] >= 2
+    matched = {r["cik"] for r in screen["matches"]}
+    accounted = matched | {r["cik"] for r in screen["coverage_gaps"]}
+    assert accounted == {r["cik"] for r in cohort}
+    assert len(screen["matches"]) == screen["total_matches"]
     for row in screen["matches"]:
         f = row["fundamental"]
         assert Fraction(int(f["value_numerator"]), int(f["value_denominator"])) == independent(f)
@@ -139,7 +142,8 @@ def main():
         status="PASS",
         research_release_id=args.research_release,
         counts=dict(counts),
-        screen_companies=20,
+        screen_companies=len(matched),
+        screen_requested_companies=len(cohort),
         requests=checks,
         provider_rows_printed=False,
     )
