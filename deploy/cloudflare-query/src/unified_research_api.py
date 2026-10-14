@@ -319,13 +319,20 @@ async def market_data(env, root, p, anchors):
             date.fromisoformat(p[field])
     if p.get("date_from", "0000") > p.get("date_to", "9999"):
         fail("INVALID_DATE_RANGE", 422)
+    market = await artifact(env, root["market"])
+    if market.get("rights") != "PRIVATE_OWNER_ALPACA_RESEARCH_ONLY":
+        fail("SOURCE_POLICY_NOT_PERMITTED", 403)
     symbol = p.get("symbol")
     point = None
     if p.get("cik"):
         if not p.get("date_to"):
             fail("EXACT_IDENTITY_DATE_REQUIRED", 422)
         candidates = [
-            a for a in anchors if a.get("cik") == p["cik"] and a.get("observed_on") == p["date_to"]
+            a
+            for a in anchors
+            if a.get("cik") == p["cik"]
+            and a.get("observed_on") == p["date_to"]
+            and a.get("symbol") in market.get("symbols", {})
         ]
         symbols = {a["symbol"] for a in candidates}
         if len(symbols) != 1:
@@ -334,9 +341,6 @@ async def market_data(env, root, p, anchors):
         point = resolve_point(anchors, symbol, p["date_to"], as_of=None)
         if point["cik"] != p["cik"]:
             fail("DATED_IDENTITY_NOT_ESTABLISHED", 422)
-    market = await artifact(env, root["market"])
-    if market.get("rights") != "PRIVATE_OWNER_ALPACA_RESEARCH_ONLY":
-        fail("SOURCE_POLICY_NOT_PERMITTED", 403)
     if not symbol and p.get("security_id"):
         symbol = p["security_id"].split(":")[-1]
     if not symbol or symbol not in market.get("symbols", {}):
@@ -511,8 +515,13 @@ async def execute(original, request):
             fail("PEER_LIMIT", 422)
         result["as_of"] = None
         matches = []
+        covered_market = await artifact(env, root["market"])
         for cik in ciks:
-            points = {(x["symbol"], x["observed_on"]): x for x in anchors if x.get("cik") == cik}
+            points = {
+                (x["symbol"], x["observed_on"]): x
+                for x in anchors
+                if x.get("cik") == cik and x.get("symbol") in covered_market["symbols"]
+            }
             for a in points.values():
                 try:
                     market, payload, prices, _ = await market_data(

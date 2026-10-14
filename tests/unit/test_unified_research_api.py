@@ -462,3 +462,43 @@ def test_valuation_flow_periods_do_not_sort_instant_balance_rows():
     assert len(result) == 1
     assert result[0]["value_numerator"] == "1"
     assert result[0]["value_denominator"] == "5"
+
+
+def test_uncovered_debt_symbol_does_not_mask_or_duplicate_covered_common_stock(
+    fixture, monkeypatch
+):
+    api, query, root, _, _, _, _, _ = fixture
+    original = api.artifact
+
+    async def with_debt(env, ref):
+        value = await original(env, ref)
+        if ref["key"] == root["identity"]["key"]:
+            common = next(a for a in value["identity_anchors"] if a["symbol"] == "WMT")
+            value["identity_anchors"].append(dict(common, symbol="WMT-DEBT"))
+        return value
+
+    monkeypatch.setattr(api, "artifact", with_debt)
+    result, status = query("prices", {"cik": "0000104169", "date_to": "2019-12-04"})
+    assert status == 200
+    result, status = query("screen", {"ciks": "0000104169,0000078003"})
+    assert status == 200
+    assert len(result["matches"]) == 2
+    assert {r["symbol"] for r in result["matches"]} == {"WMT", "PFE"}
+
+
+def test_two_covered_symbols_for_one_issuer_remain_ambiguous(fixture, monkeypatch):
+    api, query, root, _, _, _, _, _ = fixture
+    original = api.artifact
+
+    async def with_class(env, ref):
+        value = await original(env, ref)
+        if ref["key"] == root["identity"]["key"]:
+            common = next(a for a in value["identity_anchors"] if a["symbol"] == "WMT")
+            value["identity_anchors"].append(dict(common, symbol="WMT-B"))
+        if ref["key"] == root["market"]["key"]:
+            value["symbols"]["WMT-B"] = value["symbols"]["WMT"]
+        return value
+
+    monkeypatch.setattr(api, "artifact", with_class)
+    result, status = query("prices", {"cik": "0000104169", "date_to": "2019-12-04"})
+    assert status == 422 and result["error"]["code"] == "DATED_IDENTITY_NOT_ESTABLISHED"
