@@ -11,6 +11,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import duckdb
+import pyarrow as pa
 
 OUT = Path("/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-engine-scale")
 
@@ -46,6 +47,8 @@ def main():
         assert hashlib.sha256(raw).hexdigest() == entry["member_sha256"]
         company = json.loads(raw, parse_float=Decimal)
         records = {}
+        latest_contexts = {}
+        availability_cache = {}
         for tag, definition in company["facts"]["us-gaap"].items():
             for unit, rows in definition.get("units", {}).items():
                 for row in rows:
@@ -111,21 +114,33 @@ def main():
                     cutoff = datetime.fromisoformat(expected["as_of"].replace("Z", "+00:00"))
                     assert availability <= cutoff
                     # Verify that no later eligible record for this exact native context supersedes it.
-                    eligible = [
-                        x
-                        for x in company["facts"]["us-gaap"][tag]["units"][unit]
-                        if x.get("form") in ("10-K", "10-K/A", "10-Q", "10-Q/A")
-                        and x.get("start") == row.get("start")
-                        and x.get("end") == row["end"]
-                        and x.get("filed")
-                        and datetime.combine(
-                            date.fromisoformat(x["filed"]) + timedelta(days=1),
-                            day_time.min,
-                            ZoneInfo("America/New_York"),
-                        ).astimezone(timezone.utc)
-                        <= cutoff
-                    ]
-                    latest = max(x["filed"] for x in eligible)
+                    cache_key = (tag, unit, cutoff)
+                    if cache_key not in latest_contexts:
+                        contexts = {}
+                        invalid = set()
+                        for native in company["facts"]["us-gaap"][tag]["units"][unit]:
+                            if native.get("form") not in ("10-K", "10-K/A", "10-Q", "10-Q/A") or not native.get("filed"):
+                                continue
+                            context = (native.get("start"), native.get("end"))
+                            filed = native["filed"]
+                            if filed not in availability_cache:
+                                try:
+                                    availability_cache[filed] = datetime.combine(
+                                        date.fromisoformat(filed) + timedelta(days=1),
+                                        day_time.min, ZoneInfo("America/New_York")
+                                    ).astimezone(timezone.utc)
+                                except ValueError:
+                                    availability_cache[filed] = None
+                            available = availability_cache[filed]
+                            if available is None:
+                                invalid.add(context)
+                            elif available <= cutoff:
+                                contexts[context] = max(contexts.get(context, filed), filed)
+                        latest_contexts[cache_key] = (contexts, invalid)
+                    contexts, invalid = latest_contexts[cache_key]
+                    context = (row.get("start"), row["end"])
+                    assert context not in invalid, "INVALID_NATIVE_FILING_DATE"
+                    latest = contexts[context]
                     assert row["filed"] == latest
                 all_outputs[rid] = actual
                 count += 1
@@ -137,8 +152,20 @@ def main():
                     "status": "PASS",
                 }
             )
-        for offset in range(0, len(terms), 10000):
-            con.executemany("INSERT INTO terms VALUES (?,?,?)", terms[offset : offset + 10000])
+        if terms:
+            # Vectorized insertion preserves text decimals and integer coefficients.
+            # executemany imposed one Python/SQL round trip per source term.
+            columns = list(zip(*terms))
+            table = pa.table(
+                {
+                    "result_id": pa.array(columns[0], type=pa.string()),
+                    "value_text": pa.array(columns[1], type=pa.string()),
+                    "coefficient": pa.array(columns[2], type=pa.int64()),
+                }
+            )
+            con.register("_source_terms", table)
+            con.execute("INSERT INTO terms SELECT * FROM _source_terms")
+            con.unregister("_source_terms")
         rows = con.execute(
             "SELECT result_id,SUM(CAST(value_text AS DECIMAL(38,9))*coefficient) FROM terms GROUP BY result_id"
         ).fetchall()

@@ -140,7 +140,28 @@ async def root(env):
         or m.get("licensed_sources_allowed") is not False
     ):
         fail("SOURCE_POLICY_NOT_PERMITTED", 403)
+    m["_manifest_sha256"] = env.SEC_ENGINE_MANIFEST_SHA256
     return m
+
+
+async def approved_release(env, current, release_id):
+    if release_id == current["release_id"]:
+        return current
+    if not re.fullmatch(r"[a-f0-9]{64}", release_id):
+        fail("INVALID_RELEASE_ID", 422)
+    ref = current.get("previous_releases", {}).get(release_id)
+    if not ref:
+        fail("RELEASE_NOT_APPROVED", 404)
+    value = await artifact(env, ref, 1048576)
+    if (
+        value.get("release_id") != release_id
+        or value.get("schema_version") != VERSION
+        or value.get("rights") != "PUBLIC_SEC_ONLY"
+        or value.get("licensed_sources_allowed") is not False
+    ):
+        fail("SOURCE_POLICY_NOT_PERMITTED", 403)
+    value["_manifest_sha256"] = ref["sha256"]
+    return value
 
 
 def parameters(url, allowed):
@@ -151,6 +172,7 @@ def parameters(url, allowed):
 
 
 HISTORY_PARAMETERS = {
+    "release_id",
     "cik",
     "ciks",
     "metrics",
@@ -167,6 +189,8 @@ HISTORY_PARAMETERS = {
 
 def validate(p, m):
     p = dict(p)
+    if p.pop("release_id", m["release_id"]) != m["release_id"]:
+        fail("SOURCE_VERSION_CHANGED", 409)
     if not re.fullmatch(r"\d{10}", p.get("cik", "")):
         fail("INVALID_CIK")
     if p.get("recipient", "human_research") != "human_research":
@@ -265,8 +289,14 @@ async def company(env, m, cik, e):
         )
         if data is None:
             return None
+    source_release = e.get("materialized", {}).get("source_release_id", m["release_id"])
+    if source_release != m["release_id"] and (
+        source_release not in m.get("source_releases", [])
+        or not re.fullmatch(r"[a-f0-9]{64}", source_release)
+    ):
+        fail("SOURCE_CONTEXT_INVALID", 503)
     if (
-        data.get("release_id") != m["release_id"]
+        data.get("release_id") != source_release
         or data.get("registry_sha256") != m["registry_sha256"]
         or data.get("cik") != cik
         or data.get("rights") != "PUBLIC_SEC_ONLY"
@@ -337,7 +367,8 @@ async def financial_history(env, m, p, allow_queue=True):
             "engine": "NATIVE_IMMUTABLE_SEC_ENGINE_V2",
             "release_id": m["release_id"],
             "registry_sha256": m["registry_sha256"],
-            "manifest_sha256": env.SEC_ENGINE_MANIFEST_SHA256,
+            "manifest_sha256": m.get("_manifest_sha256", env.SEC_ENGINE_MANIFEST_SHA256),
+            "materialization_release_id": data["release_id"],
             "source_lineage": data["source_lineage"],
             "concept_definitions": data["concept_definitions"],
             "licensed_sources_used": False,
@@ -377,6 +408,9 @@ async def execute(env, request):
     if request.method != "GET":
         fail("READ_ONLY", 405)
     m = await root(env)
+    release_values = parse_qs(urlparse(request.url).query, keep_blank_values=True).get("release_id")
+    if release_values and len(release_values) == 1:
+        m = await approved_release(env, m, release_values[0])
     if path == "/private/v1/financial-history":
         return await financial_history(
             env, m, parameters(request.url, HISTORY_PARAMETERS - {"ciks"})

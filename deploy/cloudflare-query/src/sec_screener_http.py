@@ -5,7 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 from private_financials import PrivateFinancialsError
 from private_http import authenticate
-from sec_screener import handle as screen
+from sec_universe_screen import handle as screen
 
 
 async def handle(env, request):
