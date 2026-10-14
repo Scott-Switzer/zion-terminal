@@ -9,6 +9,7 @@ import hashlib
 import json
 import re
 import subprocess
+import time
 from pathlib import Path
 
 WORKER = "zion-financial-serving-v2-thin-staging"
@@ -38,7 +39,9 @@ def run_controlled(*, preflight, activate, verify, rollback, verify_previous, re
     try:
         preflight()
     except Exception as exc:
-        report.update(status="PREFLIGHT_FAILED", error_class=type(exc).__name__)
+        report.update(
+            status="PREFLIGHT_FAILED", error_class=type(exc).__name__, error_code=str(exc)
+        )
         record(report)
         return report
     stage("ACTIVATING")
@@ -49,6 +52,7 @@ def run_controlled(*, preflight, activate, verify, rollback, verify_previous, re
         stage("PASS")
     except Exception as exc:
         report["error_class"] = type(exc).__name__
+        report["error_code"] = str(exc)
         stage("ROLLING_BACK")
         try:
             rollback()
@@ -57,6 +61,7 @@ def run_controlled(*, preflight, activate, verify, rollback, verify_previous, re
             stage("ROLLED_BACK")
         except Exception as restore_error:
             report["rollback_error_class"] = type(restore_error).__name__
+            report["rollback_error_code"] = str(restore_error)
             stage("ROLLBACK_UNVERIFIED")
     record(report)
     return report
@@ -103,13 +108,25 @@ def main():
             raise RuntimeError("WRANGLER_OPERATION_FAILED")
 
     def active_version():
-        result = subprocess.run(
-            [str(args.wrangler), "deployments", "list", "--json", "--config", str(args.config)],
-            cwd=repo, capture_output=True, text=True, timeout=45,
-        )
-        if result.returncode:
-            raise RuntimeError("ACTIVE_DEPLOYMENT_UNAVAILABLE")
-        return single_active_version(json.loads(result.stdout))
+        for attempt in range(3):
+            result = subprocess.run(
+                [str(args.wrangler), "deployments", "list", "--json", "--config", str(args.config)],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                timeout=45,
+            )
+            try:
+                if result.returncode:
+                    raise RuntimeError("ACTIVE_DEPLOYMENT_UNAVAILABLE")
+                return single_active_version(json.loads(result.stdout))
+            except (json.JSONDecodeError, RuntimeError):
+                diagnostic = args.output.with_suffix(f".state-{attempt}.log")
+                diagnostic.write_text(result.stdout + "\nSTDERR\n" + result.stderr)
+                diagnostic.chmod(0o600)
+                if attempt == 2:
+                    raise RuntimeError("ACTIVE_DEPLOYMENT_UNAVAILABLE") from None
+                time.sleep(1)
 
     def record(report):
         report = dict(
@@ -215,7 +232,14 @@ def main():
                 )
                 != root["release_id"]
             ):
-                raise RuntimeError("LIVE_CANDIDATE_VERIFICATION_FAILED")
+                raise RuntimeError(
+                    "LIVE_CANDIDATE_VERIFICATION_FAILED:"
+                    + name
+                    + ":"
+                    + str(measure["http_status"])
+                    + ":"
+                    + str(body.get("error", {}).get("code", "RELEASE_MISMATCH"))
+                )
             report.append(dict(name=name, status="PASS", **measure))
         old = current_history(baseline["release_id"])
         if old != baseline:

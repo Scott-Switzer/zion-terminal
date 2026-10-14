@@ -2,7 +2,7 @@
 
 The final repair provides **21 unambiguous 2019 issuer/security points**, selected from existing provider-symbol coverage and literal official SEC filing covers. Two additional candidates, JNJ and PG, remain explicitly ambiguous because their repeated ticker observations have different class-dimension scopes. The resolver does not relax that ambiguity to meet a numerical target.
 
-The complete public source fixture contains 36 issuers, 117 listing observations and 54 DEI outstanding-share facts across the initial and historical repair phases. Those totals include other dates and debt listings; they are not 117 equity joins. The market and certification workstreams separately validate exact stored session membership and source-bound financial histories at each selected historical point.
+The complete public source fixture contains 36 issuers, 117 listing observations and 54 DEI outstanding-share facts across the initial and historical repair phases. Those totals include other dates and debt listings; they are not 117 equity joins. The market workstream verified exact stored price-session membership and unique identity resolution for all 21 passing points. The certification workstream verified 710 exact historical-cutoff checks, bound to the actual served source members, across those 21 companies. Its 31-company companion union preserves the original financial cohort.
 
 ## Final evidence
 
@@ -10,6 +10,8 @@ All artifacts below are protected local files in `/Users/scottthomasswitzer/Docu
 
 - `security-identity-anchors-final.json`: complete PUBLIC_SEC_ONLY source fixture; SHA-256 `151c1243fc1a40fee4e60be35796611a875ac3db53cca8fc66585bf452ff9413`.
 - `historical-identity-resolver-final.json`: 21 PASS and two AMBIGUOUS_SECURITY_IDENTITY failures across 23 tested issuer/date candidates; exact symbol, CIK, date and original source hash are retained.
+- `historical-identity-price-membership-final.json`: all 21 unambiguous points have an actual stored session.
+- `demo-cohort.json`: exactly 20 validated `{cik, symbol, observed_on}` companies, with NKE retained as a valid spare. SHA-256 `4803573fbe6fb4780966cd13abfe4e0b352f27612dcf59a28977a8dc82db9c9e`. The selected 20 have 668 exact historical financial checks. Companion bytes/hashes and zero identity failures were independently checked against the union summary before creating this cohort.
 - `public-identity-repair*/receipt.json`: acquisition receipts and literal accession-specific official source URLs. Exact original HTML is retained as protected `.html.gz`; fixture SHA-256 values bind decompressed source bytes.
 - `security-review-incident.json`: separate disclosure of incidental potentially licensed derived output from an earlier broad artifact search. Its provenance remains unconfirmed. No affected values are copied into these source fixtures or this report. Artifact text searches stopped; subsequent work used explicit metadata projections and approved public SEC bytes.
 
