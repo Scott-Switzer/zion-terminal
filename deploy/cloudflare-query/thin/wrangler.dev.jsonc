@@ -1,13 +1,23 @@
 {
   // Local multi-Worker development harness for the thin financial-data Worker.
   //
-  // It mirrors `wrangler.jsonc` exactly, except that the three R2 bindings read the real
-  // buckets instead of the empty local simulator, so a locally running DCF Worker can pull
-  // source-pinned SEC claims through a genuine service binding without deploying anything.
+  // It mirrors `wrangler.jsonc`, with one deliberate difference: `MARKET_DATA` reads a
+  // local simulator seeded with a verified copy of the immutable published releases
+  // (`scripts/seed_dev_market_data.py`), while the two source-archive buckets stay on
+  // their real, read-only bindings.
+  //
+  // `MARKET_DATA` cannot be remote here. The engine's derived query cache authenticates
+  // every stored envelope with the deployment's private credential, so a local run with a
+  // local credential cannot read what a deployment wrote -- it is refused with
+  // `CACHE_INTEGRITY_FAILURE` -- and writing local envelopes into a bucket deployments
+  // read would break them in turn. A local copy of the read-only releases keeps both
+  // directions honest.
+  //
   // Nothing here changes a staging or production route; `wrangler.jsonc` remains the only
   // deployment configuration.
   //
-  //   wrangler dev -c thin/wrangler.dev.jsonc -c {dcf}/wrangler.dev.jsonc
+  //   python3 scripts/seed_dev_market_data.py --ciks 0000320193 --persist-to /tmp/zion-dev-r2
+  //   wrangler dev -c thin/wrangler.dev.jsonc --port 8790 --persist-to /tmp/zion-dev-r2
   "$schema": "../../../node_modules/wrangler/config-schema.json",
   "name": "zion-financial-serving-v2-thin-staging",
   "main": "../src/thin_worker.py",
@@ -23,8 +33,7 @@
   "r2_buckets": [
     {
       "binding": "MARKET_DATA",
-      "bucket_name": "financial-system-datasets",
-      "remote": true
+      "bucket_name": "financial-system-datasets"
     },
     {
       "binding": "SEC_CORPUS",
@@ -53,6 +62,10 @@
     "SEC_ENGINE_MANIFEST_KEY": "gold/sec-engine/releases/b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb/manifest.json",
     "SEC_ENGINE_MANIFEST_SHA256": "4e0d6b9eac28ea2352dd255c4f8323f1fd4d486796063921cec691942660be7b",
     "SEC_ENGINE_ENABLED": "true",
+    // Companion Company Facts source: the immutable release whose members are the raw
+    // archive bytes the engine release pinned. Claims cannot be served without it.
+    "SEC_COMPANYFACTS_MANIFEST_KEY": "gold/sec-companyfacts/releases/f4f81944fbf79e2cac8b119b457fd8e45b92f2171e783ecd36f85b18df80b25b/manifest.json",
+    "SEC_COMPANYFACTS_MANIFEST_SHA256": "032d432d6a0478c146ce9c1a62c0565f9a2e725826ce3a2ed323c395b6ff850f",
     "UNIFIED_RESEARCH_MANIFEST_KEY": "gold/unified-research/releases/358ea45de35af6003347dc163fe31eebd09988d1b3715c3386e5ab8c0dfee72e/manifest.json",
     "UNIFIED_RESEARCH_MANIFEST_SHA256": "de3957597bb0575d845b47edb3495f4018918be6c6136fd14d9bef827579c344",
     "OWNER_ONLY_MARKET_DATA": "true"
