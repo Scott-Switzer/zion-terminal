@@ -131,6 +131,67 @@ def decimal_token(value):
     return format(number.normalize(), "f")
 
 
+AVAILABILITY_POLICY = "DATE_ONLY_END_OF_DAY_UTC_V1"
+AVAILABILITY_RULE = (
+    "SEC companyfacts carries a filing date but no acceptance time, so a filing dated D is "
+    "treated as available once day D has ended in UTC. A request inside day D therefore "
+    "excludes filings dated D rather than assuming an intraday acceptance time."
+)
+
+
+def end_of_day_utc(day):
+    """Epoch nanoseconds of the last instant of a UTC calendar day."""
+    if not isinstance(day, date):
+        raise ValueError("INVALID_FILING_DATE")
+    return ((day - date(1970, 1, 1)).days * 86400 + 86399) * 1_000_000_000 + 999_999_999
+
+
+def restrict_to_available(facts, cutoff_ns, *, policy=AVAILABILITY_POLICY):
+    """A facts mapping holding only rows whose filing date had ended by the cutoff instant.
+
+    This is the serving-side availability filter. A row without a usable filing date cannot
+    be proven available and is dropped, so a missing date can never look like current
+    evidence. Claims for concepts that drop out are re-classified by the contract itself
+    (absent, unavailable) instead of failing the request.
+    """
+    if policy != AVAILABILITY_POLICY:
+        raise ValueError("UNSUPPORTED_AVAILABILITY_POLICY")
+    if isinstance(cutoff_ns, bool) or not isinstance(cutoff_ns, int):
+        raise ValueError("INVALID_AVAILABILITY_CUTOFF")
+    if not isinstance(facts, dict):
+        raise ValueError("COMPANY_FACTS_REQUIRED")
+    kept = {}
+    for taxonomy, definitions in facts.items():
+        if not isinstance(definitions, dict):
+            kept[taxonomy] = definitions
+            continue
+        kept_definitions = {}
+        for tag, definition in definitions.items():
+            if not isinstance(definition, dict) or not isinstance(definition.get("units"), dict):
+                kept_definitions[tag] = definition
+                continue
+            units = {}
+            for unit, rows in definition["units"].items():
+                if not isinstance(rows, list):
+                    units[unit] = rows
+                    continue
+                available = []
+                for row in rows:
+                    filed = row.get("filed") if isinstance(row, dict) else None
+                    if not isinstance(filed, str):
+                        continue
+                    try:
+                        day = date.fromisoformat(filed)
+                    except ValueError:
+                        continue
+                    if end_of_day_utc(day) <= cutoff_ns:
+                        available.append(row)
+                units[unit] = available
+            kept_definitions[tag] = {**definition, "units": units}
+        kept[taxonomy] = kept_definitions
+    return kept
+
+
 def eligible(facts, concept, valuation_date, unit="USD", taxonomy="us-gaap", max_age_days=MAX_AGE_DAYS):
     """Eligible point-in-time instants: no duration, no dimension, on or before the date."""
     body = (facts or {}).get(taxonomy, {}).get(concept)
@@ -1047,8 +1108,14 @@ def build_claims(facts, valuation_date, *, cik=None, preferred_terms=None):
     else:
         aggregate = {
             "status": "AVAILABLE",
-            "deduct_claims_decimal": format(sum(v for _, v in deduct).normalize(), "f"),
-            "add_claims_decimal": format(sum(v for _, v in add).normalize(), "f"),
+            # A reviewed-absent claim is a verified zero, so every add claim can legitimately be
+            # absent at once. Start the sums from Decimal(0): summing an empty sequence returns
+            # the integer 0, which has no .normalize() and would turn a correct zero into an
+            # infrastructure failure.
+            "deduct_claims_decimal": format(
+                sum((v for _, v in deduct), Decimal(0)).normalize(), "f"
+            ),
+            "add_claims_decimal": format(sum((v for _, v in add), Decimal(0)).normalize(), "f"),
             "deduct_components": {name: format(v.normalize(), "f") for name, v in sorted(deduct)},
             "add_components": {name: format(v.normalize(), "f") for name, v in sorted(add)},
             "verified_absent": sorted(verified_absent),
@@ -1086,6 +1153,8 @@ def build_claims(facts, valuation_date, *, cik=None, preferred_terms=None):
             "max_age_days": MAX_AGE_DAYS,
             "dimensional_and_duration_facts_excluded": True,
             "class_level_share_counts_available": False,
+            "availability_policy": AVAILABILITY_POLICY,
+            "availability_rule": AVAILABILITY_RULE,
         },
         "certification": "FILING_BACKED_CLAIMS;NOT_A_MARKET_OR_ACCOUNTING_ATTESTATION",
     }

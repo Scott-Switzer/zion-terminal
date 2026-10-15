@@ -7,6 +7,7 @@ scoped internal service credential widen access to the bearer-only private API.
 
 import asyncio
 import hashlib
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -47,6 +48,16 @@ PREFERRED_SHARES = 19_000_000
 DEBT_TOTAL = DEBT_CURRENT + DEBT_NONCURRENT
 DEDUCT_TOTAL = DEBT_TOTAL + FINANCE_LEASE_TOTAL + PREFERRED_CARRYING + NONCONTROLLING_VIE
 ADD_TOTAL = CASH + CASH  # cash is also the only nonoperating asset in this fixture
+
+# The companion Company Facts release: a second immutable release, published from the same
+# pinned bulk archive, that carries the raw member the engine release pinned the digest of.
+SOURCE_RELEASE = "e" * 64
+SOURCE_PREFIX = "gold/sec-companyfacts/releases/" + SOURCE_RELEASE + "/"
+SOURCE_MANIFEST_KEY = SOURCE_PREFIX + "manifest.json"
+SOURCE_MEMBER_KEY = SOURCE_PREFIX + "companies/" + CIK + ".json"
+SOURCE_SCHEMA = "sec-companyfacts-source-v1"
+SOURCE_MAXIMUM_AS_OF_DATE = "2025-09-30"
+NORMALIZED_MEMBER_SHA = "f" * 64
 
 
 def fact(value, end="2025-06-30", filed="2025-07-25", form="10-Q", accn="0001652044-25-000050"):
@@ -89,16 +100,43 @@ class Bucket:
         return SimpleNamespace(size=len(raw), text=text)
 
 
-def fixture(*, member=None, cik=CIK, maximum_as_of=ENTRY_MAXIMUM_AS_OF, service_token=None):
+def fixture(
+    *,
+    member=None,
+    cik=CIK,
+    maximum_as_of=ENTRY_MAXIMUM_AS_OF,
+    service_token=None,
+    source_member=None,
+    source_release_id=SOURCE_RELEASE,
+    source_maximum_as_of_date=SOURCE_MAXIMUM_AS_OF_DATE,
+    engine_pins_raw_member=True,
+    engine_member_sha256=None,
+    source_engine_member_sha256=None,
+    source_policy=None,
+):
+    """One eligible filer in both releases: the engine entry and the Company Facts member.
+
+    ``member`` is the engine release's normalized projection (the route never reads it),
+    and ``source_member`` is the raw Company Facts member the claims are extracted from.
+    """
     member = facts_body(cik) if member is None else member
+    source_member = member if source_member is None else source_member
     member_body = encoded(member)
+    source_body = encoded(source_member)
+    raw_sha = hashlib.sha256(source_body).hexdigest()
+    materialized = {
+        "key": MEMBER_KEY,
+        "sha256": NORMALIZED_MEMBER_SHA,
+        "bytes": len(member_body),
+    }
+    if engine_pins_raw_member:
+        materialized["member_sha256"] = engine_member_sha256 or raw_sha
+        materialized["source_release_id"] = RELEASE
     item = {
         "cik": cik,
-        "materialized": {
-            "key": MEMBER_KEY,
-            "sha256": hashlib.sha256(member_body).hexdigest(),
-            "bytes": len(member_body),
-        },
+        "label": "Test Filer Inc.",
+        "source_eligibility": {"classification": "ELIGIBLE_US_PERIODIC_SOURCE", "eligible": True},
+        "materialized": materialized,
     }
     if maximum_as_of is not None:
         item["maximum_as_of"] = maximum_as_of
@@ -115,11 +153,63 @@ def fixture(*, member=None, cik=CIK, maximum_as_of=ENTRY_MAXIMUM_AS_OF, service_
         "shards": {cik[-2:]: {"key": SHARD_KEY, "sha256": hashlib.sha256(shard_body).hexdigest()}},
     }
     manifest_body = encoded(manifest)
-    bucket = Bucket({MANIFEST_KEY: manifest_body, SHARD_KEY: shard_body, MEMBER_KEY: member_body})
+    source_manifest = {
+        "schema_version": SOURCE_SCHEMA,
+        "release_id": source_release_id,
+        "index_sha256": source_release_id,
+        "extraction_version": "sec-companyfacts-member-v1",
+        "scope": "CONSOLIDATED_PUBLIC_SEC_COMPANY_FACTS",
+        "rights": "PUBLIC_SEC_ONLY",
+        "licensed_sources_allowed": False,
+        "source": {
+            "bucket": "financial-data-wrds-private",
+            "key": "sec/bulk/sec-nightly-20250925/companyfacts.zip",
+            "etag": "abc-1",
+            "declared_sha256": "d" * 64,
+            "snapshot_date": source_maximum_as_of_date,
+        },
+        "engine_releases": {"manifest": RELEASE, "raw_member_pins": [RELEASE]},
+        "date_from": "2015-01-01",
+        "date_to": source_maximum_as_of_date,
+        "maximum_as_of": source_maximum_as_of_date + "T00:00:00Z",
+        "maximum_as_of_date": source_maximum_as_of_date,
+        "member_count": 1,
+        "members": {
+            cik: {
+                "key": SOURCE_MEMBER_KEY,
+                "sha256": raw_sha,
+                "bytes": len(source_body),
+                "engine_member_sha256": source_engine_member_sha256
+                or materialized.get("member_sha256", raw_sha),
+                "engine_release_id": RELEASE,
+                "engine_member_key": MEMBER_KEY,
+                "archive_entry": {"name": "CIK" + cik + ".json", "crc": 1},
+                "label": "Test Filer Inc.",
+                "entity_name": "Test Filer Inc.",
+            }
+        },
+        "previous_releases": {},
+        "policy": "IMMUTABLE_COMPANION_SOURCE;DUAL_RELEASE_PINNING",
+        "reconciliation": "Every companion member digest equals the engine pin.",
+    }
+    if source_policy:
+        source_manifest.update(source_policy)
+    source_body_encoded = encoded(source_manifest)
+    bucket = Bucket(
+        {
+            MANIFEST_KEY: manifest_body,
+            SHARD_KEY: shard_body,
+            MEMBER_KEY: member_body,
+            SOURCE_MANIFEST_KEY: source_body_encoded,
+            SOURCE_MEMBER_KEY: source_body,
+        }
+    )
     env = SimpleNamespace(
         MARKET_DATA=bucket,
         SEC_ENGINE_MANIFEST_KEY=MANIFEST_KEY,
         SEC_ENGINE_MANIFEST_SHA256=hashlib.sha256(manifest_body).hexdigest(),
+        SEC_COMPANYFACTS_MANIFEST_KEY=SOURCE_MANIFEST_KEY,
+        SEC_COMPANYFACTS_MANIFEST_SHA256=hashlib.sha256(source_body_encoded).hexdigest(),
         ZION_PRIVATE_API_TOKEN=PRIVATE_TOKEN,
         ZION_SERVICE_TOKEN=service_token,
     )
@@ -150,11 +240,31 @@ def test_source_pinned_claims_response_with_private_bearer():
     assert result["release_id"] == RELEASE
     assert result["registry_sha256"] == REGISTRY_SHA
     assert result["manifest_sha256"] == env.SEC_ENGINE_MANIFEST_SHA256
-    assert result["member_sha256"] == hashlib.sha256(bucket.bodies[MEMBER_KEY]).hexdigest()
+    # The member digest names the Company Facts bytes the claims were extracted from, and
+    # both releases must name the same bytes for the bundle to be usable.
+    assert result["member_sha256"] == hashlib.sha256(bucket.bodies[SOURCE_MEMBER_KEY]).hexdigest()
     assert result["company_label"] == "Test Filer Inc."
     assert result["valuation_date"] == "2025-08-01"
+    assert result["source_release_id"] == SOURCE_RELEASE
+    assert result["source_schema_version"] == SOURCE_SCHEMA
+    assert result["source_manifest_sha256"] == env.SEC_COMPANYFACTS_MANIFEST_SHA256
+    assert result["source_bundle"]["reconciliation"] == {
+        "status": "MEMBER_SHA256_AGREES_WITH_ENGINE_PINNED_MEMBER",
+        "engine_raw_member_sha256": result["member_sha256"],
+        "companion_member_sha256": result["member_sha256"],
+        "bulk_archive": "abc-1",
+        "bulk_archive_declared_sha256": "d" * 64,
+    }
+    assert result["source_bundle"]["engine_release"]["release_id"] == RELEASE
+    assert result["source_bundle"]["engine_release"]["normalized_member_sha256"] == NORMALIZED_MEMBER_SHA
+    assert result["source_bundle"]["companyfacts_release"]["release_id"] == SOURCE_RELEASE
+    assert result["source_bundle"]["companyfacts_release"]["member_sha256"] == result["member_sha256"]
+    assert result["source_bundle"]["issuer"]["cik"] == CIK
+    assert result["source_bundle"]["extraction"]["availability_policy"] == "DATE_ONLY_END_OF_DAY_UTC_V1"
     assert result["provenance"]["extraction_version"] == VERSION
-    assert result["provenance"]["member"] == MEMBER_KEY
+    assert result["provenance"]["member"] == SOURCE_MEMBER_KEY
+    assert result["provenance"]["engine_member"] == MEMBER_KEY
+    assert result["provenance"]["source_release_id"] == SOURCE_RELEASE
     assert result["provenance"]["archive_bytes_read_interactively"] == 0
     assert result["provenance"]["source_lineage"] == {
         "rights": "PUBLIC_SEC_ONLY",
@@ -166,8 +276,9 @@ def test_source_pinned_claims_response_with_private_bearer():
         "scope": "PRIVATE_API",
     }
     assert result["limits"]["max_age_days"] == 400
-    # Only the pinned archive is read, and nothing is fetched at request time.
-    assert bucket.reads == [MANIFEST_KEY, SHARD_KEY, MEMBER_KEY]
+    # Only the two pinned releases are read, the engine projection is never loaded, and
+    # nothing is fetched at request time.
+    assert bucket.reads == [MANIFEST_KEY, SHARD_KEY, SOURCE_MANIFEST_KEY, SOURCE_MEMBER_KEY]
 
 
 def test_claims_reflect_reported_filing_facts():
@@ -388,7 +499,8 @@ def test_invalid_identifiers_parameters_and_methods_are_rejected_before_archive_
         (request(cik="1652044"), 400, "INVALID_CIK"),
         (request(cik=""), 400, "INVALID_CIK"),
         (request(as_of=""), 422, "CUTOFF_REQUIRED"),
-        (request(as_of="2025-08-01"), 400, "INVALID_AVAILABILITY_CUTOFF"),
+        (request(as_of="2025-13-01"), 400, "INVALID_AVAILABILITY_CUTOFF"),
+        (request(as_of="2025-08-01T00:00:00"), 400, "INVALID_AVAILABILITY_CUTOFF"),
         (request(as_of="not-an-instant"), 400, "INVALID_AVAILABILITY_CUTOFF"),
         (request(extra="&sql=SELECT+1"), 400, "INVALID_PARAMETER"),
         (request(extra="&cik=" + CIK), 400, "INVALID_PARAMETER"),
@@ -429,6 +541,180 @@ def test_company_facts_member_identity_or_payload_mismatch_is_rejected():
 
 def test_tampered_archive_member_is_rejected_by_digest():
     env, bucket = fixture()
-    bucket.bodies[MEMBER_KEY] = bucket.bodies[MEMBER_KEY].replace(b"7100000000", b"9999999999")
+    bucket.bodies[SOURCE_MEMBER_KEY] = bucket.bodies[SOURCE_MEMBER_KEY].replace(
+        b"7100000000", b"9999999999"
+    )
     result, status = asyncio.run(handle(env, request()))
     assert (status, result["error"]["code"]) == (409, "SOURCE_VERSION_CHANGED")
+
+
+def test_company_facts_member_that_is_not_a_company_facts_document_is_rejected():
+    env, _ = fixture(source_member={"cik": int(CIK), "entityName": "Test Filer Inc."})
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (503, "SOURCE_CONTEXT_INVALID")
+    env, _ = fixture(source_member=facts_body(cik=OTHER_CIK))
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (503, "SOURCE_CONTEXT_INVALID")
+
+
+def test_releases_that_pin_different_bytes_for_one_filer_are_a_conflict():
+    env, _ = fixture(engine_member_sha256="9" * 64)
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (409, "SOURCE_BUNDLE_MEMBER_MISMATCH")
+
+
+def test_companion_release_that_contradicts_its_own_engine_pin_is_refused():
+    env, _ = fixture(source_engine_member_sha256="9" * 64)
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (409, "SOURCE_BUNDLE_MEMBER_MISMATCH")
+
+
+def test_engine_entry_without_a_raw_member_pin_is_served_and_labelled():
+    env, _ = fixture(engine_pins_raw_member=False)
+    result, status = asyncio.run(handle(env, request()))
+    assert status == 200, result
+    assert result["source_bundle"]["reconciliation"]["status"] == (
+        "ENGINE_RELEASE_DOES_NOT_PIN_A_RAW_MEMBER;COMPANION_VOUCHES_FOR_ITSELF"
+    )
+    assert result["source_bundle"]["reconciliation"]["engine_raw_member_sha256"] is None
+
+
+def test_filer_absent_from_the_company_facts_release_is_not_found():
+    env, bucket = fixture()
+    source = json.loads(bucket.bodies[SOURCE_MANIFEST_KEY])
+    source["members"] = {}
+    body = encoded(source)
+    bucket.bodies[SOURCE_MANIFEST_KEY] = body
+    env.SEC_COMPANYFACTS_MANIFEST_SHA256 = hashlib.sha256(body).hexdigest()
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (503, "COMPANY_FACTS_SOURCE_INVALID")
+    # A release with no members at all is an unusable release, not a missing filer.
+    assert bucket.reads == [MANIFEST_KEY, SHARD_KEY, SOURCE_MANIFEST_KEY]
+
+
+def test_filer_missing_from_a_populated_companion_release_is_not_found():
+    env, bucket = fixture()
+    source = json.loads(bucket.bodies[SOURCE_MANIFEST_KEY])
+    source["members"] = {"0000000001": source["members"][CIK]}
+    body = encoded(source)
+    bucket.bodies[SOURCE_MANIFEST_KEY] = body
+    env.SEC_COMPANYFACTS_MANIFEST_SHA256 = hashlib.sha256(body).hexdigest()
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (404, "COMPANY_FACTS_MEMBER_NOT_IN_SOURCE")
+
+
+def test_unpinned_or_foreign_companion_manifest_key_is_refused():
+    env, bucket = fixture()
+    env.SEC_COMPANYFACTS_MANIFEST_KEY = "gold/sec-engine/releases/" + SOURCE_RELEASE + "/manifest.json"
+    env.SEC_COMPANYFACTS_MANIFEST_SHA256 = env.SEC_COMPANYFACTS_MANIFEST_SHA256
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (503, "SOURCE_REFERENCE_INVALID")
+
+
+def test_companion_release_policy_must_be_public_sec_only():
+    env, _ = fixture(source_policy={"rights": "LICENSED_VENDOR_DATA"})
+    result, status = asyncio.run(handle(env, request()))
+    assert (status, result["error"]["code"]) == (403, "SOURCE_POLICY_NOT_PERMITTED")
+
+
+def test_expected_source_release_id_mismatch_is_a_source_release_conflict():
+    env, bucket = fixture()
+    result, status = asyncio.run(
+        handle(env, request(extra="&expected_source_release_id=" + "d" * 64))
+    )
+    assert (status, result["error"]["code"]) == (409, "SOURCE_RELEASE_CHANGED")
+    matching, status = asyncio.run(
+        handle(env, request(extra="&expected_source_release_id=" + SOURCE_RELEASE))
+    )
+    assert status == 200, matching
+
+
+def test_named_source_release_must_be_an_approved_previous_release():
+    env, _ = fixture()
+    result, status = asyncio.run(handle(env, request(extra="&source_release_id=" + "a" * 64)))
+    assert (status, result["error"]["code"]) == (404, "SOURCE_RELEASE_NOT_APPROVED")
+    result, status = asyncio.run(handle(env, request(extra="&source_release_id=not-a-release")))
+    assert (status, result["error"]["code"]) == (422, "INVALID_SOURCE_RELEASE_ID")
+
+
+def test_approved_previous_source_release_can_be_replayed():
+    env, bucket = fixture()
+    older_id = "a" * 64
+    older_prefix = "gold/sec-companyfacts/releases/" + older_id + "/"
+    older_member_key = older_prefix + "companies/" + CIK + ".json"
+    older_manifest_key = older_prefix + "manifest.json"
+    current = json.loads(bucket.bodies[SOURCE_MANIFEST_KEY])
+    older = dict(
+        current,
+        release_id=older_id,
+        index_sha256=older_id,
+        previous_releases={},
+        members={CIK: dict(current["members"][CIK], key=older_member_key)},
+    )
+    older_body = encoded(older)
+    current["previous_releases"] = {
+        older_id: {"key": older_manifest_key, "sha256": hashlib.sha256(older_body).hexdigest()}
+    }
+    current_body = encoded(current)
+    bucket.bodies[SOURCE_MANIFEST_KEY] = current_body
+    bucket.bodies[older_manifest_key] = older_body
+    bucket.bodies[older_member_key] = bucket.bodies[SOURCE_MEMBER_KEY]
+    env.SEC_COMPANYFACTS_MANIFEST_SHA256 = hashlib.sha256(current_body).hexdigest()
+    live, status = asyncio.run(handle(env, request()))
+    assert status == 200 and live["source_release_id"] == SOURCE_RELEASE
+    replayed, status = asyncio.run(
+        handle(env, request(extra="&source_release_id=" + older_id))
+    )
+    assert status == 200, replayed
+    assert replayed["source_release_id"] == older_id
+    # The claims and the engine pin are identical; only the named source release differs.
+    assert replayed["claims"] == live["claims"]
+    assert replayed["release_id"] == live["release_id"]
+    assert replayed["source_manifest_sha256"] == hashlib.sha256(older_body).hexdigest()
+    assert replayed["source_bundle"]["companyfacts_release"]["member_key"] == older_member_key
+
+
+def test_cutoff_beyond_the_company_facts_snapshot_is_rejected():
+    env, _ = fixture()
+    result, status = asyncio.run(handle(env, request(as_of="2025-10-01")))
+    assert (status, result["error"]["code"]) == (422, "CUTOFF_EXCEEDS_SOURCE_RELEASE")
+    # The snapshot day itself is inside the release.
+    inside, status = asyncio.run(handle(env, request(as_of=SOURCE_MAXIMUM_AS_OF_DATE)))
+    assert status == 200, inside
+
+
+def test_date_only_cutoff_is_an_end_of_day_request():
+    env, _ = fixture()
+    result, status = asyncio.run(handle(env, request(as_of="2025-08-01")))
+    assert status == 200, result
+    assert result["cutoff"] == {
+        "requested": "2025-08-01",
+        "precision": "date",
+        "policy": "DATE_ONLY_END_OF_DAY_UTC_V1",
+        "resolved_utc": "2025-08-01T23:59:59.999999999Z",
+        "valuation_date": "2025-08-01",
+        "day_complete": True,
+        "source_availability_rule": result["cutoff"]["source_availability_rule"],
+        "source_ceiling_utc": "2025-09-30T23:59:59.999999999Z",
+    }
+    assert result["valuation_date"] == "2025-08-01"
+    # A filing dated the valuation day itself is available to an end-of-day request.
+    assert result["claims"]["cash"]["value_decimal"] == str(CASH)
+
+
+def test_same_day_filing_is_excluded_from_an_intraday_cutoff():
+    same_day = facts_body(CashAndCashEquivalentsAtCarryingValue={
+        "units": {"USD": [fact(CASH, filed="2025-08-01")]}
+    })
+    env, _ = fixture(source_member=same_day)
+    end_of_day, status = asyncio.run(handle(env, request(as_of="2025-08-01")))
+    assert status == 200, end_of_day
+    assert end_of_day["claims"]["cash"]["evidence_state"] == "REPORTED"
+    intraday, status = asyncio.run(handle(env, request(as_of="2025-08-01T12:00:00Z")))
+    assert status == 200, intraday
+    assert intraday["cutoff"]["day_complete"] is False
+    assert intraday["cutoff"]["policy"] == "EXPLICIT_INSTANT"
+    # The same-day filing is not assumed available mid-day, so the claim is classified
+    # rather than served as current evidence.
+    assert intraday["claims"]["cash"]["evidence_state"] != "REPORTED"
+    assert intraday["valuation_date"] == "2025-08-01"

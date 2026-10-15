@@ -16,6 +16,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[2] / "deploy/cloudflare-query/src"))
 
 from equity_claims import (  # noqa: E402
+    AVAILABILITY_POLICY,
     MAX_AGE_DAYS,
     PREFERRED_SHARE_ROUNDING_TOLERANCE,
     VERSION,
@@ -24,11 +25,13 @@ from equity_claims import (  # noqa: E402
     common_shares_claim,
     debt_claim,
     eligible,
+    end_of_day_utc,
     finance_lease_claim,
     noncontrolling_claim,
     nonoperating_asset_claim,
     operating_lease_claim,
     preferred_claim,
+    restrict_to_available,
     selected,
 )
 
@@ -597,3 +600,67 @@ def test_reported_equity_total_is_reconciliation_evidence_not_a_claim():
     assert claims["reconciliation"]["double_count_guards"]
     assert claims["reconciliation"]["separately_classified"]["operating_leases"]
     assert claims["limits"]["class_level_share_counts_available"] is False
+
+
+def test_availability_filter_keeps_only_rows_whose_filing_day_had_ended():
+    facts = companyfacts(
+        us_gaap={
+            "CashAndCashEquivalentsAtCarryingValue": {
+                "USD": [quarter(10), row(11, "2026-06-30", "2026-10-14", accn="late")]
+            },
+            "MarketableSecuritiesCurrent": {"USD": [row(5, "2026-06-30", None)]},
+        },
+        dei={"EntityCommonStockSharesOutstanding": {"shares": [quarter(9)]}},
+    )
+    def rows(mapping, tag):
+        return mapping["us-gaap"][tag]["units"]["USD"]
+
+    intraday = restrict_to_available(facts, end_of_day_utc(date(2026, 10, 14)) - 1)
+    assert [r["val"] for r in rows(intraday, "CashAndCashEquivalentsAtCarryingValue")] == [10]
+    # A row with no usable filing date can never be proven available.
+    assert rows(intraday, "MarketableSecuritiesCurrent") == []
+    assert intraday["dei"]["EntityCommonStockSharesOutstanding"]["units"]["shares"][0]["val"] == 9
+    end_of_day = restrict_to_available(facts, end_of_day_utc(date(2026, 10, 14)))
+    assert [r["val"] for r in rows(end_of_day, "CashAndCashEquivalentsAtCarryingValue")] == [10, 11]
+    # The filter never mutates the source mapping.
+    assert len(rows(facts, "CashAndCashEquivalentsAtCarryingValue")) == 2
+
+
+def test_availability_filter_rejects_an_unsupported_policy_or_cutoff():
+    with pytest.raises(ValueError, match="UNSUPPORTED_AVAILABILITY_POLICY"):
+        restrict_to_available(companyfacts(), 0, policy="WHATEVER")
+    with pytest.raises(ValueError, match="INVALID_AVAILABILITY_CUTOFF"):
+        restrict_to_available(companyfacts(), "not-an-integer")
+
+
+def test_a_filtered_out_fact_is_classified_rather_than_failing_the_contract():
+    facts = bridgeable_facts()
+    late = facts["us-gaap"]["CashAndCashEquivalentsAtCarryingValue"]["units"]["USD"]
+    late[0] = dict(late[0], filed="2026-10-14")
+    claims = build_claims(
+        restrict_to_available(facts, end_of_day_utc(date(2026, 10, 13))), ASOF
+    )
+    assert claims["claims"]["cash"]["evidence_state"] == "REVIEWED_ABSENT"
+    assert claims["claims"]["cash"]["value_decimal"] is None
+    assert claims["aggregate_claims"]["status"] == "AVAILABLE"
+    assert "cash" in claims["aggregate_claims"]["verified_absent"]
+
+
+def test_every_add_claim_absent_at_once_is_a_verified_zero_not_an_error():
+    facts = companyfacts(
+        us_gaap={
+            "LongTermDebtCurrent": {"USD": [quarter(1)]},
+            "StockholdersEquity": {"USD": [quarter(640480000000)]},
+        }
+    )
+    claims = build_claims(facts, ASOF)
+    assert claims["aggregate_claims"]["status"] == "AVAILABLE"
+    assert claims["aggregate_claims"]["add_claims_decimal"] == "0"
+    assert claims["aggregate_claims"]["add_components"] == {}
+    assert {"cash", "nonoperating_assets"} <= set(claims["aggregate_claims"]["verified_absent"])
+
+
+def test_availability_policy_is_part_of_the_published_contract_limits():
+    claims = build_claims(bridgeable_facts(), ASOF)
+    assert claims["limits"]["availability_policy"] == AVAILABILITY_POLICY
+    assert "filing date" in claims["limits"]["availability_rule"]
