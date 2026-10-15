@@ -10,16 +10,20 @@ from private_financials import PrivateFinancialsError
 
 MAXIMUM_BODY = 32768
 
+# Internal callers that may authenticate with the scoped service credential. A
+# service credential is accepted only on the routes named in service_paths, so it
+# can never widen access to the bearer-only private API.
+SERVICE_CALLERS = ("dcf-valuation-engine",)
+
 
 def error(code, message, status):
     raise PrivateFinancialsError(code, message, status)
 
 
-def authenticate(env, request):
+def _bearer(env, supplied):
     expected = getattr(env, "ZION_PRIVATE_API_TOKEN", None)
     if not isinstance(expected, str) or not expected:
         error("PRIVATE_API_UNCONFIGURED", "private API is not configured", 503)
-    supplied = request.headers.get("authorization", "")
     if not isinstance(supplied, str) or len(supplied) > 4096:
         error("UNAUTHORIZED", "valid bearer authentication is required", 401)
     prefix, separator, token = supplied.partition(" ")
@@ -32,6 +36,57 @@ def authenticate(env, request):
         )
     ):
         error("UNAUTHORIZED", "valid bearer authentication is required", 401)
+
+
+def authenticate(env, request):
+    _bearer(env, request.headers.get("authorization", ""))
+
+
+def authorize(env, request, *, service_paths=()):
+    """Authenticate a request and record how it was authenticated.
+
+    The private bearer credential keeps full private-API scope. The internal service
+    credential is scoped to the exact routes passed in service_paths, must name an
+    approved same-account caller, and is compared in constant time. Neither path
+    disables the entitlement checks performed by the route itself.
+    """
+    path = urlparse(request.url).path
+    try:
+        _bearer(env, request.headers.get("authorization", ""))
+        return {
+            "authenticated_via": "BEARER",
+            "caller": "private_bearer_client",
+            "scope": "PRIVATE_API",
+        }
+    except PrivateFinancialsError as bearer_error:
+        # The scoped credential is only considered on the routes that declare it.
+        if path not in service_paths:
+            raise
+        bearer_status = bearer_error.status
+    expected = getattr(env, "ZION_SERVICE_TOKEN", None)
+    if not isinstance(expected, str) or not expected:
+        if bearer_status == 503:
+            error("SERVICE_AUTH_UNCONFIGURED", "internal service authentication is not configured", 503)
+        error("UNAUTHORIZED", "valid bearer or internal service authentication is required", 401)
+    supplied = request.headers.get("x-zion-service-token", "")
+    if (
+        not isinstance(supplied, str)
+        or not supplied
+        or len(supplied) > 4096
+        or not hmac.compare_digest(
+            hashlib.sha256(supplied.encode()).digest(), hashlib.sha256(expected.encode()).digest()
+        )
+    ):
+        error("UNAUTHORIZED", "valid internal service authentication is required", 401)
+    caller = request.headers.get("x-zion-service-caller", "")
+    if caller not in SERVICE_CALLERS:
+        error("SERVICE_CALLER_NOT_PERMITTED", "internal service caller is not permitted", 403)
+    return {
+        "authenticated_via": "SERVICE_CREDENTIAL",
+        "caller": caller,
+        "scope": "SERVICE_BINDING_ROUTE_SCOPE",
+        "authorized_paths": list(service_paths),
+    }
 
 
 def unique_object(pairs):

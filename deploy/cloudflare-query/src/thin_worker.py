@@ -137,6 +137,13 @@ class Default(WorkerEntrypoint):
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
+        if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path == '/private/v1/equity-claims':
+            from equity_claims_api import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
         if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path in {
             '/private/v1/financial-history', '/private/v1/financial-history/batch',
             '/private/v1/financial-companies', '/private/v1/financial-metrics',
