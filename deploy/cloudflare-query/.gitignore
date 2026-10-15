@@ -2,3 +2,5 @@
 python_modules/
 src/vendor/
 .wrangler/
+
+.dev.vars

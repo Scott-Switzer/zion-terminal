@@ -1,0 +1,69 @@
+{
+  // Local multi-Worker development harness for the thin financial-data Worker.
+  //
+  // It mirrors `wrangler.jsonc` exactly, except that the three R2 bindings read the real
+  // buckets instead of the empty local simulator, so a locally running DCF Worker can pull
+  // source-pinned SEC claims through a genuine service binding without deploying anything.
+  // Nothing here changes a staging or production route; `wrangler.jsonc` remains the only
+  // deployment configuration.
+  //
+  //   wrangler dev -c thin/wrangler.dev.jsonc -c {dcf}/wrangler.dev.jsonc
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "zion-financial-serving-v2-thin-staging",
+  "main": "../src/thin_worker.py",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": [
+    "python_workers",
+    "disable_python_external_sdk"
+  ],
+  "workers_dev": true,
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
+  "r2_buckets": [
+    {
+      "binding": "MARKET_DATA",
+      "bucket_name": "financial-system-datasets",
+      "remote": true
+    },
+    {
+      "binding": "SEC_CORPUS",
+      "bucket_name": "ppe-sec-intelligence-prod",
+      "remote": true
+    },
+    {
+      "binding": "SEC_ARCHIVE",
+      "bucket_name": "financial-data-wrds-private",
+      "remote": true
+    }
+  ],
+  "vars": {
+    "SERVING_V2_ENABLED": "true",
+    "SERVING_V2_CURRENT_KEY": "gold/serving/coverage25/CURRENT.json",
+    "CURRENT_POINTER_CACHE_TTL_MS": "0",
+    "DIAGNOSTIC_ISOLATE_TELEMETRY": "true",
+    "SERVICE_VERSION": "3.1.0-zion-financial-data-api-v1",
+    "SYNTHETIC_WORLD_ID": "system-acceptance-v2",
+    "SYNTHETIC_WORLD_IDS": "system-acceptance-v2",
+    "SYNTHETIC_CURRENT_KEY": "control/synthetic-worlds/system-acceptance-v2/CURRENT.json",
+    "SEC_EXPANDED_INDEX_KEY": "gold/sec-expanded/releases/66c116df4860e40b560c3f38cdafba37acae6ae77a7387fc144bb829f3257da0/manifest.json",
+    "SEC_EXPANDED_INDEX_SHA256": "d7d93516a7a2cc18859b749fbb3a5719bc92406452ede3505bfde6536fa3f556",
+    "SEC_HISTORY_MANIFEST_KEY": "gold/sec-financial-history/releases/b2b25814a374cfdc2dfd0a6283b8eaf2c430b24778a2afe94de8c0562be446f4/manifest.json",
+    "SEC_HISTORY_MANIFEST_SHA256": "37d334e20830a43905b7fd39762946e7986004e82df19cd90ca0cbf866b922f8",
+    "SEC_ENGINE_MANIFEST_KEY": "gold/sec-engine/releases/b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb/manifest.json",
+    "SEC_ENGINE_MANIFEST_SHA256": "4e0d6b9eac28ea2352dd255c4f8323f1fd4d486796063921cec691942660be7b",
+    "SEC_ENGINE_ENABLED": "true",
+    "UNIFIED_RESEARCH_MANIFEST_KEY": "gold/unified-research/releases/358ea45de35af6003347dc163fe31eebd09988d1b3715c3386e5ab8c0dfee72e/manifest.json",
+    "UNIFIED_RESEARCH_MANIFEST_SHA256": "de3957597bb0575d845b47edb3495f4018918be6c6136fd14d9bef827579c344",
+    "OWNER_ONLY_MARKET_DATA": "true"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "head_sampling_rate": 1
+    }
+  },
+  "limits": {
+    "cpu_ms": 30000
+  }
+}
