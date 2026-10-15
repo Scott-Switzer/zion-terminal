@@ -570,6 +570,22 @@ def test_aggregate_is_unavailable_when_a_mandatory_claim_is_conflicting():
     assert {entry["claim"] for entry in claims["unresolved"]} == {"debt"}
 
 
+def test_a_filed_zero_carrying_amount_is_reported_rather_than_reviewed_absent():
+    # A filer that files a zero preferred carrying amount has a reported zero, which is evidence,
+    # not an absence: it must not be collapsed into REVIEWED_ABSENT or dropped from the aggregate.
+    facts = companyfacts(
+        us_gaap={
+            "PreferredStockValueOutstanding": {"USD": [quarter(0)]},
+            "CashAndCashEquivalentsAtCarryingValue": {"USD": [quarter(10)]},
+        }
+    )
+    claim = preferred_claim(facts, ASOF)
+    assert claim["evidence_state"] == "REPORTED"
+    assert claim["value_decimal"] == "0"
+    assert claim["verified_absent"] is False
+    assert claim["permitted_for_valuation"] is True
+
+
 def test_reported_equity_total_is_reconciliation_evidence_not_a_claim():
     claims = build_claims(bridgeable_facts(), ASOF)
     totals = claims["reconciliation"]["reported_equity_totals"]
