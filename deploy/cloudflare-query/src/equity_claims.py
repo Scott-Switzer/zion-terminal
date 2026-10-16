@@ -494,13 +494,28 @@ def debt_claim(facts, valuation_date):
                     + fact["period_end"]
                     + "; components are used."
                 )
-        elif same and "us-gaap:" + sorted(current_total)[0] in {
-            "us-gaap:" + name for name in current_total
-        }:
+        elif same and current_total:
+            # The condition used to compare the first key of `current_total` against the set of
+            # its own keys, which is true whenever the mapping is not empty and raises IndexError
+            # when it is. A filer that files a combined long-term total and a noncurrent portion
+            # but no current-debt total and no current portion reaches exactly that state: the
+            # same-period comparison exists, and there is no filer-stated total to explain it.
             notes.append(
                 concept
                 + " is reported alongside a filer-stated current-debt total, which is a different "
                 + "scope; the total is not used as a component comparison."
+            )
+        elif same:
+            # Same-period noncurrent components only, so the combined total is directly comparable
+            # to them and the components still win.
+            gap = Decimal(fact["value_decimal"]) - sum(Decimal(f["value_decimal"]) for f in same)
+            notes.append(
+                concept
+                + (" differs from its same-period component by " + format(gap.normalize(), "f")
+                   if gap else " matches its same-period component")
+                + " at "
+                + fact["period_end"]
+                + "; the component is used."
             )
         else:
             notes.append(

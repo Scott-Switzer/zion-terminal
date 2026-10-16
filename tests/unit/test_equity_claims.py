@@ -200,6 +200,57 @@ def test_combined_total_at_another_period_is_ignored_and_same_period_gap_is_reco
     assert any("components are used." in n for n in claim["notes"])
 
 
+def test_combined_total_without_a_current_portion_or_total_is_compared_not_crashed():
+    """A filer that files a combined long-term total and a noncurrent portion only.
+
+    This combination raised IndexError inside the same-period comparison: the guard inspected
+    the first key of an empty filer-stated current-debt total. Nothing here is contradictory,
+    so the noncurrent component stays the claim and the disagreement is disclosed.
+    """
+
+    facts = companyfacts(
+        us_gaap={
+            "LongTermDebt": {"USD": [row(900, "2026-06-30", "2026-08-01", form="10-K")]},
+            "LongTermDebtNoncurrent": {
+                "USD": [row(500, "2026-06-30", "2026-08-01", form="10-K")]},
+        }
+    )
+    claim = debt_claim(facts, ASOF)
+    assert claim["evidence_state"] == "REPORTED"
+    assert claim["value_decimal"] == "500"
+    assert any("differs from its same-period component by 400" in n for n in claim["notes"])
+    assert any("the component is used." in n for n in claim["notes"])
+
+
+def test_combined_total_matching_its_same_period_component_says_so():
+    facts = companyfacts(
+        us_gaap={
+            "LongTermDebt": {"USD": [row(500, "2026-06-30", "2026-08-01", form="10-K")]},
+            "LongTermDebtNoncurrent": {
+                "USD": [row(500, "2026-06-30", "2026-08-01", form="10-K")]},
+        }
+    )
+    claim = debt_claim(facts, ASOF)
+    assert claim["value_decimal"] == "500"
+    assert any("matches its same-period component" in n for n in claim["notes"])
+
+
+def test_combined_total_alongside_a_filer_total_is_not_a_component_comparison():
+    facts = companyfacts(
+        us_gaap={
+            "DebtCurrent": {"USD": [row(100, "2026-06-30", "2026-08-01", form="10-K")]},
+            "LongTermDebt": {"USD": [row(900, "2026-06-30", "2026-08-01", form="10-K")]},
+            "LongTermDebtNoncurrent": {
+                "USD": [row(500, "2026-06-30", "2026-08-01", form="10-K")]},
+        }
+    )
+    claim = debt_claim(facts, ASOF)
+    assert claim["evidence_state"] == "REPORTED"
+    assert claim["value_decimal"] == "600"
+    assert any("different scope; the total is not used as a component comparison." in n
+               for n in claim["notes"])
+
+
 def test_component_larger_than_the_reported_current_total_is_conflicting():
     facts = companyfacts(
         us_gaap={
