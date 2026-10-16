@@ -121,6 +121,69 @@ def test_jobs_parameter_and_bounded_pagination(monkeypatch):
     assert "expected_release_id=fixed" in calls[-1]
 
 
+def test_readiness_screen_route_and_table(monkeypatch):
+    """The readiness action is the existing command's fourth shape: filters in, a screen out."""
+    calls = []
+
+    def opened(request, timeout):
+        calls.append(request.full_url)
+        return Response(
+            {
+                "index_id": "a" * 64,
+                "release_id": "b" * 64,
+                "availability_cutoff": "2026-09-24T00:00:00Z",
+                "universe": 20396,
+                "total_matches": 2765,
+                "counts": {"methods": {"operating_dcf": 2765}},
+                "matches": [
+                    {
+                        "cik": "0000320193",
+                        "label": "Apple Inc.",
+                        "methods": ["operating_dcf"],
+                        "missing": [],
+                    }
+                ],
+                "next_cursor": None,
+                "qualification": "COMPANY_SIDE_INPUT_ELIGIBILITY",
+            }
+        )
+
+    monkeypatch.setattr(cli, "open_request", opened)
+    runner = CliRunner()
+    result = runner.invoke(
+        cli.research,
+        ["readiness", "--method", "operating_dcf", "--limit", "2"],
+        env={"ZION_PRIVATE_API_TOKEN": "secret"},
+    )
+    assert result.exit_code == 0, result.output
+    assert calls[-1].endswith("/private/v1/readiness?method=operating_dcf&limit=2")
+    assert "0000320193" in result.output
+    result = runner.invoke(
+        cli.research,
+        ["readiness", "--missing", "MISSING_DATED_OUTSTANDING_SHARES", "--format", "table"],
+        env={"ZION_PRIVATE_API_TOKEN": "secret"},
+    )
+    assert result.exit_code == 0, result.output
+    assert "operating_dcf=2765" in result.output and "Apple Inc." in result.output
+    assert "COMPANY_SIDE_INPUT_ELIGIBILITY" in result.output
+    # A filter the published index cannot answer, and an option the action does not accept, are
+    # both refused before any request is made.
+    before = len(calls)
+    result = runner.invoke(
+        cli.research,
+        ["readiness", "--method", "not_a_method"],
+        env={"ZION_PRIVATE_API_TOKEN": "secret"},
+    )
+    assert result.exit_code != 0
+    result = runner.invoke(
+        cli.research,
+        ["readiness", "--symbol", "AAPL"],
+        env={"ZION_PRIVATE_API_TOKEN": "secret"},
+    )
+    assert result.exit_code != 0 and "OPTION_NOT_SUPPORTED_FOR_ACTION" in result.output
+    assert len(calls) == before
+
+
 def test_no_redirect_handler_and_dotenv_no_interpolation(tmp_path):
     import pytest
 
