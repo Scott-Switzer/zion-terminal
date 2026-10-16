@@ -418,6 +418,12 @@ def method_eligibility(history, claims, shares, capabilities):
     methods = {}
 
     def rule(name, required, missing, note):
+        if financial and name in ("operating_dcf", "fcfe", "apv"):
+            # The industrial lanes do not apply to a financial-statement filer, so their
+            # evidence gaps are the same applicability statement rather than separate missing
+            # concepts. Reporting them as evidence would make every bank look like it is
+            # missing cash-flow mappings it does not need for its own lane.
+            missing = ["INDUSTRIAL_DCF_NOT_APPLICABLE_TO_FINANCIAL_FILER"]
         methods[name] = {"eligible": not missing, "missing": sorted(set(missing)),
                          "required": required, "note": note}
 

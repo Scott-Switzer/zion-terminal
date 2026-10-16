@@ -137,10 +137,11 @@ def test_an_absent_claim_is_a_verified_zero_and_not_a_missing_input():
 
 
 def test_missing_financial_history_is_reported_as_quarantined_not_as_zero():
-    history = financial_history({"status": "QUARANTINED", "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"})
-    claims = {name: {"evidence_state": "REPORTED"} for name in
-              ("debt", "finance_leases", "preferred_equity", "noncontrolling_interests",
-               "cash", "nonoperating_assets", "common_shares")}
+    quarantined = {"status": "QUARANTINED", "reason": "NO_VALID_MAPPED_FINANCIAL_HISTORY"}
+    history = financial_history(quarantined)
+    listed = ("debt", "finance_leases", "preferred_equity", "noncontrolling_interests",
+              "cash", "nonoperating_assets", "common_shares")
+    claims = {name: {"evidence_state": "REPORTED"} for name in listed}
     methods = method_eligibility(history, claims, {"evidence_state": "REPORTED"}, {
         "equity_totals_reported": False, "dividends_reported": False})
     assert history["status"] == "QUARANTINED"
@@ -221,7 +222,8 @@ def test_published_records_agree_with_an_independent_read_of_the_archive():
                 for rows in facts.get("us-gaap", {}).get(concept, {}).get("units", {}).values()
                 for row in rows
                 if row.get("form") in FORMS
-                and cutoff - timedelta(days=WINDOW_DAYS) <= date.fromisoformat(row["end"]) <= cutoff)
+                and cutoff - timedelta(days=WINDOW_DAYS)
+                <= date.fromisoformat(row["end"]) <= cutoff)
             state = record["equity_claims"]["claims"]["debt"]["evidence_state"]
             # A reviewed absence is a claim about the whole candidate list, so an eligible fact
             # anywhere in it contradicts the record.
