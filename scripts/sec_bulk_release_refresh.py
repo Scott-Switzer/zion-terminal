@@ -126,7 +126,20 @@ def member_index(source, client, key):
     return index, requests
 
 
+def normalize(index):
+    """Key a member index by bare CIK.
+
+    The archived index is keyed by CIK while a ZIP member is named `CIK##########.json`, so a
+    raw key comparison reports every member as both added and removed. Keying both sides by CIK
+    is what makes the difference a statement about issuers.
+    """
+    import re
+    return {(re.fullmatch(r"CIK(\d{10})\.json", name).group(1) if name.startswith("CIK")
+             else name): entry for name, entry in index.items()}
+
+
 def difference(previous, current):
+    previous, current = normalize(previous), normalize(current)
     added = sorted(set(current) - set(previous))
     removed = sorted(set(previous) - set(current))
     changed = sorted(
@@ -143,10 +156,56 @@ def difference(previous, current):
     }
 
 
+def recheck_diff(client, snapshot, previous_entries):
+    """Correct a manifest whose issuer comparison compared different key names.
+
+    The archive bytes, their readback hash and the member index are unchanged; only the
+    difference calculation was wrong, so the correction is published beside the original
+    instead of overwriting it.
+    """
+    base = PREFIX + snapshot.replace("-", "")
+    index_object = client.get_object(Bucket=BUCKET, Key=base + "/member-index.json")
+    try:
+        index_raw = index_object["Body"].read()
+    finally:
+        index_object["Body"].close()
+    index = json.loads(index_raw)
+    corrected = difference(previous_entries, index)
+    manifest_object = client.get_object(Bucket=BUCKET, Key=base + "/manifest.json")
+    try:
+        manifest = json.loads(manifest_object["Body"].read())
+    finally:
+        manifest_object["Body"].close()
+    manifest["difference_from_pinned_snapshot"] = corrected
+    manifest["difference_correction"] = (
+        "The first manifest compared the archived CIK-keyed index with filename-keyed members "
+        "and reported every issuer as added and removed. This corrected difference keys both "
+        "by CIK; the archive hash, member index and publication receipts are unchanged.")
+    manifest["member_index_sha256_observed"] = digest(index_raw)
+    raw = encoded(manifest)
+    key = base + "/manifest-corrected.json"
+    client.put_object(Bucket=BUCKET, Key=key, Body=raw, IfNoneMatch="*")
+    head = client.head_object(Bucket=BUCKET, Key=key)
+    manifest["publication_receipt"] = {
+        "manifest_key": key, "bytes": len(raw), "sha256": digest(raw),
+        "readback": "HEAD_ETAG_MD5_MATCH"
+        if head["ETag"].strip('"') == hashlib.md5(raw).hexdigest() else "MISMATCH"}
+    directory = OUT / snapshot
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "manifest.json").write_bytes(raw + b"\n")
+    (directory / "member-index.json").write_bytes(index_raw + b"\n")
+    print(json.dumps({"key": key, "difference": corrected,
+                      "issuers_added": corrected["members_added"],
+                      "issuers_removed": corrected["members_removed"],
+                      "issuers_changed": corrected["members_changed"]}, indent=1))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--publish", action="store_true")
     parser.add_argument("--probe", action="store_true", help="report the source only")
+    parser.add_argument("--recheck-diff", action="store_true",
+                        help="recompute the issuer difference from the published member index")
     parser.add_argument("--url", default=URL)
     args = parser.parse_args()
 
@@ -164,6 +223,9 @@ def main():
 
     from reconcile_financial_inventory import client
     s = client()
+    if args.recheck_diff:
+        recheck_diff(s, snapshot, previous_entries)
+        return
     directory = OUT / snapshot
     directory.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
