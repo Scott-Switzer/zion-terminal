@@ -62,6 +62,11 @@
     "SEC_ENGINE_MANIFEST_KEY": "gold/sec-engine/releases/b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb/manifest.json",
     "SEC_ENGINE_MANIFEST_SHA256": "4e0d6b9eac28ea2352dd255c4f8323f1fd4d486796063921cec691942660be7b",
     "SEC_ENGINE_ENABLED": "true",
+    // Valuation-readiness index: a derived screening view of the record release pinned below
+    // by its own manifest digest. Readiness is not eligibility-by-record: see
+    // docs/sec-readiness/README.md.
+    "SEC_READINESS_INDEX_KEY": "gold/sec-readiness/index/87f6bb816976417c89d6047386dc6696c18305212fb4aee4200c350f7c986d67/manifest.json",
+    "SEC_READINESS_INDEX_SHA256": "9c5c548b9c9cba3dd12a9604143656d25f27831a689550fa2d1a16250f5a953b",
     // Companion Company Facts source: the immutable release whose members are the raw
     // archive bytes the engine release pinned. Claims cannot be served without it.
     "SEC_COMPANYFACTS_MANIFEST_KEY": "gold/sec-companyfacts/releases/f4f81944fbf79e2cac8b119b457fd8e45b92f2171e783ecd36f85b18df80b25b/manifest.json",

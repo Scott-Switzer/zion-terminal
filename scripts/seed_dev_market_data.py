@@ -42,11 +42,12 @@ def wrangler(*args):
 
 
 def pins():
-    """The two pinned release pointers, read from the dev harness that uses them."""
+    """The pinned release pointers, read from the dev harness that uses them."""
     text = DEV_CONFIG.read_text()
     values = {}
     for name in ('SEC_ENGINE_MANIFEST_KEY', 'SEC_ENGINE_MANIFEST_SHA256',
-                 'SEC_COMPANYFACTS_MANIFEST_KEY', 'SEC_COMPANYFACTS_MANIFEST_SHA256'):
+                 'SEC_COMPANYFACTS_MANIFEST_KEY', 'SEC_COMPANYFACTS_MANIFEST_SHA256',
+                 'SEC_READINESS_INDEX_KEY', 'SEC_READINESS_INDEX_SHA256'):
         match = re.search(r'"%s"\s*:\s*"([^"]+)"' % name, text)
         if not match:
             raise SystemExit(f'{DEV_CONFIG} does not pin {name}')
@@ -83,6 +84,15 @@ def require(condition, message):
         raise SystemExit(message)
 
 
+def published(index, name):
+    """One artifact the readiness index names: the key is derived, the digest is asserted."""
+    node = (index.get('artifacts') or {}).get(name)
+    require(isinstance(node, dict) and re.fullmatch('[a-f0-9]{64}', node.get('sha256') or '')
+            and type(node.get('bytes')) is int,
+            f'the readiness index does not publish {name}: {json.dumps(node)[:200]}')
+    return node
+
+
 def reference(node, what):
     require(isinstance(node, dict) and isinstance(node.get('key'), str)
             and isinstance(node.get('sha256'), str),
@@ -98,6 +108,12 @@ def main():
                         help='the local state directory the dev server is started with')
     parser.add_argument('--receipt', type=Path,
                         help='where to write the sanitised seed receipt')
+    parser.add_argument('--readiness', action='store_true',
+                        help='also seed the pinned readiness screening index: its manifest,\n'
+                             'its summary, the CIK shards of --ciks, and every filter\n'
+                             'artifact small enough to be worth copying locally')
+    parser.add_argument('--readiness-max-bytes', type=int, default=1048576,
+                        help='widest filter artifact to copy locally (default 1 MiB)')
     args = parser.parse_args()
     ciks = [cik.strip() for cik in args.ciks.split(',') if cik.strip()]
     for cik in ciks:
@@ -152,6 +168,34 @@ def main():
                     f'{cik} is not a dual-release member: the companion release and the '
                     'engine release do not name the same bytes')
             copy(member['key'], member['sha256'], f'companyfacts_companies_{cik}')
+
+        if args.readiness:
+            # The readiness index is copied by declared size and never by editing its manifest: a
+            # filter artifact wider than the local budget is simply not copied, and a query for
+            # it is refused by the route as outside its declared budget -- the refusal a
+            # deployment gives for an object it does not hold. The manifest and the summary are
+            # always copied, so the counts a local run reports are the published counts.
+            index_key = config['SEC_READINESS_INDEX_KEY']
+            copy(index_key, config['SEC_READINESS_INDEX_SHA256'], 'readiness_index_manifest')
+            index = json.loads(fetch(index_key, scratch))
+            prefix = index_key[: -len('manifest.json')]
+            for cik in ciks:
+                name = 'cik/%02d.json' % (int(cik) % 100)
+                shard = published(index, name)
+                copy(prefix + name, shard['sha256'], 'readiness_' + name.replace('/', '_'))
+            # The summary is named by the manifest it belongs to rather than by a digest of its
+            # own, so it is copied against the digest of the bytes that were actually fetched.
+            summary_key = prefix + 'summary.json'
+            copy(summary_key, hashlib.sha256(fetch(summary_key, scratch)).hexdigest(),
+                 'readiness_summary')
+            for name in sorted(index['artifacts']):
+                if not name.startswith('buckets/'):
+                    continue
+                declared = published(index, name)
+                if declared['bytes'] > args.readiness_max_bytes:
+                    continue
+                copy(prefix + name, declared['sha256'],
+                     'readiness_' + name[len('buckets/'): -len('.json')])
 
     summary = dict(schema_version='zion-dev-market-data-seed-v1',
                    bucket=BUCKET, local_only=True, persist_to=str(persist_to),

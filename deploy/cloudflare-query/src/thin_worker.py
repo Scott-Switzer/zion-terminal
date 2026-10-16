@@ -137,6 +137,15 @@ class Default(WorkerEntrypoint):
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
+        # Valuation readiness is a separate published index with its own pin, so the route
+        # answers whether or not the valuation engine is enabled.
+        if path in {'/private/v1/readiness', '/private/v1/readiness/screen'}:
+            from sec_readiness_api import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
         if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path == '/private/v1/equity-claims':
             from equity_claims_api import handle
             value, status = await handle(self.env, request)
