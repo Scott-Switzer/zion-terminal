@@ -36,7 +36,8 @@ def request_options(action, *, dataset_id, store, prefix, path, columns, offset,
     }
     if any(value is not None and key not in allowed[action] for key, value in supplied.items()):
         raise click.ClickException("OPTION_NOT_APPLICABLE_TO_DATASET_ACTION")
-    if cursor is not None and (not cursor or len(cursor) > 8192):
+    cursor_budget = 16384 if action == "rows" else 8192
+    if cursor is not None and (not cursor or len(cursor) > cursor_budget):
         raise click.ClickException("INVALID_CURSOR")
     if action == "describe":
         if not dataset_id or not re.fullmatch(r"[a-f0-9]{32}", dataset_id):

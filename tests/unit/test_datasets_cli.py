@@ -138,3 +138,24 @@ def test_missing_or_malformed_credentials_refuse_before_transport(monkeypatch, t
     assert result.exit_code != 0
     assert not calls
     assert "Injected" not in result.output
+
+
+def test_native_row_cursor_matches_existing_16384_source_budget(monkeypatch, tmp_path):
+    # Parser compatibility only; actual public URLs remain subject to edge limits.
+    cursor = "x" * 16384
+    result, calls = invoke(monkeypatch, tmp_path, [
+        "rows", "--store", "research", "--path", "data.parquet", "--cursor", cursor
+    ])
+    assert result.exit_code == 0, result.output
+    assert calls[0][3]["cursor"] == cursor
+    assert "offset" not in calls[0][3]
+
+
+@pytest.mark.parametrize(("action", "length"), [("rows", 16385), ("objects", 8193)])
+def test_cursor_budgets_still_refuse_before_transport(monkeypatch, tmp_path, action, length):
+    args = [action, "--store", "research", "--cursor", "x" * length]
+    if action == "rows":
+        args.extend(["--path", "data.parquet"])
+    result, calls = invoke(monkeypatch, tmp_path, args)
+    assert result.exit_code != 0
+    assert not calls
