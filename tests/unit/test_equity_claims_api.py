@@ -718,3 +718,133 @@ def test_same_day_filing_is_excluded_from_an_intraday_cutoff():
     # rather than served as current evidence.
     assert intraday["claims"]["cash"]["evidence_state"] != "REPORTED"
     assert intraday["valuation_date"] == "2025-08-01"
+
+
+CURRENT_RELEASE = "a" * 64
+CURRENT_MANIFEST_KEY = "gold/sec-engine/releases/" + CURRENT_RELEASE + "/manifest.json"
+
+
+def historical_fixture(**kwargs):
+    """Promote a separate root which explicitly approves the original engine fixture."""
+    env, bucket = fixture(**kwargs)
+    historical = json.loads(bucket.bodies[MANIFEST_KEY])
+    historical_sha = env.SEC_ENGINE_MANIFEST_SHA256
+    current = dict(
+        historical,
+        release_id=CURRENT_RELEASE,
+        registry_sha256="1" * 64,
+        shards={},
+        previous_releases={RELEASE: {"key": MANIFEST_KEY, "sha256": historical_sha}},
+    )
+    current_body = encoded(current)
+    bucket.bodies[CURRENT_MANIFEST_KEY] = current_body
+    env.SEC_ENGINE_MANIFEST_KEY = CURRENT_MANIFEST_KEY
+    env.SEC_ENGINE_MANIFEST_SHA256 = hashlib.sha256(current_body).hexdigest()
+    return env, bucket
+
+
+def historical_pins():
+    return "&release_id=" + RELEASE + "&expected_release_id=" + RELEASE
+
+
+def test_approved_historical_engine_release_preserves_selected_identity_and_current_pointer():
+    env, bucket = historical_fixture()
+    original_bodies = dict(bucket.bodies)
+    result, status = asyncio.run(handle(env, request(extra=historical_pins())))
+    assert status == 200, result
+    historical_sha = hashlib.sha256(bucket.bodies[MANIFEST_KEY]).hexdigest()
+    assert result["release_id"] == RELEASE
+    assert result["registry_sha256"] == REGISTRY_SHA
+    assert result["manifest_sha256"] == historical_sha
+    assert result["source_bundle"]["engine_release"]["manifest_sha256"] == historical_sha
+    assert result["source_release_id"] == SOURCE_RELEASE
+    assert claim(result, "debt")["value_decimal"] == str(DEBT_TOTAL)
+    assert bucket.reads == [
+        CURRENT_MANIFEST_KEY, MANIFEST_KEY, SHARD_KEY, SOURCE_MANIFEST_KEY, SOURCE_MEMBER_KEY
+    ]
+    assert bucket.bodies == original_bodies
+    assert env.SEC_ENGINE_MANIFEST_KEY == CURRENT_MANIFEST_KEY
+
+
+@pytest.mark.parametrize("release_id,status,code", [
+    ("d" * 64, 404, "RELEASE_NOT_APPROVED"),
+    ("../../manifest.json", 422, "INVALID_RELEASE_ID"),
+])
+def test_historical_engine_selection_rejects_unapproved_or_invalid_release(release_id, status, code):
+    env, bucket = historical_fixture()
+    result, actual_status = asyncio.run(handle(env, request(extra="&release_id=" + release_id)))
+    assert (actual_status, result["error"]["code"]) == (status, code)
+    assert bucket.reads == [CURRENT_MANIFEST_KEY]
+
+
+def test_historical_engine_selection_checks_expected_pin_after_selecting_release():
+    env, bucket = historical_fixture()
+    result, status = asyncio.run(handle(env, request(
+        extra="&release_id=" + RELEASE + "&expected_release_id=" + CURRENT_RELEASE
+    )))
+    assert (status, result["error"]["code"]) == (409, "SOURCE_VERSION_CHANGED")
+    assert bucket.reads == [CURRENT_MANIFEST_KEY, MANIFEST_KEY]
+
+
+def test_historical_engine_selection_rejects_tampered_approved_manifest():
+    env, bucket = historical_fixture()
+    bucket.bodies[MANIFEST_KEY] += b" "
+    result, status = asyncio.run(handle(env, request(extra=historical_pins())))
+    assert (status, result["error"]["code"]) == (409, "SOURCE_VERSION_CHANGED")
+
+
+def test_historical_engine_selection_preserves_public_sec_policy():
+    env, bucket = historical_fixture()
+    historical = json.loads(bucket.bodies[MANIFEST_KEY])
+    historical["licensed_sources_allowed"] = True
+    historical_body = encoded(historical)
+    bucket.bodies[MANIFEST_KEY] = historical_body
+    current = json.loads(bucket.bodies[CURRENT_MANIFEST_KEY])
+    current["previous_releases"][RELEASE]["sha256"] = hashlib.sha256(historical_body).hexdigest()
+    current_body = encoded(current)
+    bucket.bodies[CURRENT_MANIFEST_KEY] = current_body
+    env.SEC_ENGINE_MANIFEST_SHA256 = hashlib.sha256(current_body).hexdigest()
+    result, status = asyncio.run(handle(env, request(extra=historical_pins())))
+    assert (status, result["error"]["code"]) == (403, "SOURCE_POLICY_NOT_PERMITTED")
+
+
+@pytest.mark.parametrize("kwargs,as_of,extra,status,code", [
+    ({"engine_member_sha256": "0" * 64}, AS_OF, "", 409, "SOURCE_BUNDLE_MEMBER_MISMATCH"),
+    ({}, AS_OF, "&expected_source_release_id=" + "0" * 64, 409, "SOURCE_RELEASE_CHANGED"),
+    ({}, AS_OF, "&source_release_id=" + "0" * 64, 404, "SOURCE_RELEASE_NOT_APPROVED"),
+    ({}, "2099-01-01", "", 422, "CUTOFF_EXCEEDS_SOURCE_RELEASE"),
+    ({"maximum_as_of": "2025-07-01"}, AS_OF, "", 422, "CUTOFF_EXCEEDS_SOURCE_RELEASE"),
+    ({"source_maximum_as_of_date": "2025-07-01"}, AS_OF, "", 422, "CUTOFF_EXCEEDS_SOURCE_RELEASE"),
+    ({"source_member": facts_body(cik=OTHER_CIK)}, AS_OF, "", 503, "SOURCE_CONTEXT_INVALID"),
+])
+def test_historical_engine_selection_preserves_source_and_cutoff_guards(kwargs, as_of, extra, status, code):
+    env, _ = historical_fixture(**kwargs)
+    result, actual_status = asyncio.run(handle(env, request(as_of=as_of, extra=historical_pins() + extra)))
+    assert (actual_status, result["error"]["code"]) == (status, code)
+
+
+def test_historical_engine_selection_preserves_available_at_filtering():
+    env, _ = historical_fixture()
+    result, status = asyncio.run(handle(env, request(
+        as_of="2025-07-25T12:00:00Z", extra=historical_pins()
+    )))
+    assert status == 200, result
+    assert claim(result, "debt")["value_decimal"] is None
+    assert claim(result, "debt")["sources"] == []
+
+
+def test_historical_engine_selection_accepts_only_scoped_authenticated_service_caller():
+    env, bucket = historical_fixture(service_token=SERVICE_TOKEN)
+    result, status = asyncio.run(handle(env, request(
+        token=None, extra=historical_pins(),
+        headers={"x-zion-service-token": SERVICE_TOKEN, "x-zion-service-caller": "unknown"},
+    )))
+    assert (status, result["error"]["code"]) == (403, "SERVICE_CALLER_NOT_PERMITTED")
+    assert bucket.reads == []
+    result, status = asyncio.run(handle(env, request(
+        token=None, extra=historical_pins(),
+        headers={"x-zion-service-token": SERVICE_TOKEN, "x-zion-service-caller": CALLER},
+    )))
+    assert status == 200, result
+    assert result["release_id"] == RELEASE
+    assert result["audit"]["authorized_paths"] == [PATH]

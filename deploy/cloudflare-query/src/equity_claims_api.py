@@ -35,12 +35,13 @@ from sec_companyfacts import (
     member as source_member,
     root as source_root,
 )
-from sec_engine_api import artifact, entry, root
+from sec_engine_api import approved_release, artifact, entry, root
 from temporal_core import normalize_date_only, parse_instant
 
 PATH = "/private/v1/equity-claims"
 PARAMETERS = {
     "cik",
+    "release_id",
     "as_of",
     "expected_release_id",
     "expected_source_release_id",
@@ -146,6 +147,8 @@ async def execute(env, request):
     if instant.epoch_ns > parse_instant(datetime.now(timezone.utc).isoformat()).epoch_ns:
         fail("CUTOFF_EXCEEDS_SOURCE_RELEASE", 422)
     manifest = await root(env)
+    if p.get("release_id"):
+        manifest = await approved_release(env, manifest, p["release_id"])
     if p.get("expected_release_id", manifest["release_id"]) != manifest["release_id"]:
         fail("SOURCE_VERSION_CHANGED", 409)
     item = await entry(env, manifest, cik)
