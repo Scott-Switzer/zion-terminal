@@ -1,4 +1,4 @@
-// Owner data release verified 2026-10-19; existing shared source Worker, no CURRENT writes.
+// CRSP historical backbone and existing owner data sources; no CURRENT overrides.
 {
   "$schema": "../../../node_modules/wrangler/config-schema.json",
   "name": "zion-financial-serving-v2-thin-staging",
@@ -54,7 +54,9 @@
     "STOCK_HISTORY_KEY": "gold/stock-history/releases/12bf477467e295cdad65a3a50fea80b93c084334d4f49e241eb6d340aaff76ec/manifest.json",
     "STOCK_HISTORY_SHA256": "cc7ce29b53d35e1d9ed0f07918d7c8265cf23081f51bf66f442ce5f51f82ce6f",
     "HISTORICAL_COVERAGE_KEY": "gold/historical-series/coverage/a573c7ea3b4951c108e2675541a818be3e72a4e5655cfe81947950155989c369.json",
-    "HISTORICAL_COVERAGE_SHA256": "a573c7ea3b4951c108e2675541a818be3e72a4e5655cfe81947950155989c369"
+    "HISTORICAL_COVERAGE_SHA256": "a573c7ea3b4951c108e2675541a818be3e72a4e5655cfe81947950155989c369",
+    "CRSP_HISTORY_KEY": "gold/crsp-stock-history/releases/5a99de3beb22767c59d540212016a8b08c17d997d43762e3bd8f34534aebd63d/manifest.json",
+    "CRSP_HISTORY_SHA256": "c95b65d7ad79236eba0e91c6b650a753374bc6210fe9751141c8047ff30663c6"
   },
   "observability": {
     "enabled": true,
