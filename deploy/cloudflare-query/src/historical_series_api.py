@@ -55,6 +55,90 @@ async def verified(env, key, sha):
     return value
 
 
+async def coverage(env, root):
+    """Verify optional metadata against the pinned immutable release and every packet."""
+    key = getattr(env, "HISTORICAL_COVERAGE_KEY", None)
+    sha = getattr(env, "HISTORICAL_COVERAGE_SHA256", None)
+    if key is None and sha is None:
+        return None
+    if (
+        not re.fullmatch(r"[a-f0-9]{64}", str(sha))
+        or key != "gold/historical-series/coverage/" + str(sha) + ".json"
+    ):
+        fail("HISTORY_COVERAGE_REFERENCE_INVALID", 503)
+    obj = await env.MARKET_DATA.get(key)
+    if not obj or obj.size > MAX_BYTES:
+        fail("HISTORY_COVERAGE_UNAVAILABLE", 503)
+    raw = (await obj.text()).encode()
+    if len(raw) > MAX_BYTES or hashlib.sha256(raw).hexdigest() != sha:
+        fail("HISTORY_COVERAGE_INTEGRITY_FAILURE", 503)
+    side = json.loads(raw)
+    if (
+        side.get("schema_version") != "zion-historical-coverage-v1"
+        or side.get("release_id") != root["release_id"]
+        or side.get("manifest_sha256") != getattr(env, "HISTORICAL_SERIES_SHA256", None)
+        or side.get("denominator") != "STORED_SOURCE_CELLS_NOT_EXPECTED_CALENDAR"
+        or side.get("series_count") != root["series_count"]
+        or set(side.get("series", {})) != set(root["series"])
+    ):
+        fail("HISTORY_COVERAGE_RELEASE_MISMATCH", 503)
+    fields = (
+        "total_cells",
+        "populated_cells",
+        "missing_cells",
+        "before_first_value",
+        "after_last_value",
+        "interior_missing",
+        "all_missing_cells",
+        "source_error_cells",
+    )
+    totals = {field: 0 for field in fields}
+    for sid, entry in root["series"].items():
+        c = side["series"][sid]
+        if (
+            any(type(c.get(f)) is not int or c[f] < 0 for f in fields)
+            or c.get("packet_sha256") != entry["sha256"]
+            or c["populated_cells"] != entry["observations"]
+            or c["missing_cells"] != entry["missing"]
+            or c["total_cells"] != entry["rows"]
+            or c["total_cells"] != c["populated_cells"] + c["missing_cells"]
+            or c["missing_cells"]
+            != sum(
+                c[f]
+                for f in (
+                    "before_first_value",
+                    "after_last_value",
+                    "interior_missing",
+                    "all_missing_cells",
+                )
+            )
+            or c["source_error_cells"] > c["missing_cells"]
+        ):
+            fail("HISTORY_COVERAGE_PACKET_MISMATCH", 503)
+        lo, hi = c.get("valid_date_min"), c.get("valid_date_max")
+        if c["populated_cells"]:
+            if (
+                not isinstance(lo, str)
+                or not isinstance(hi, str)
+                or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", lo)
+                or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", hi)
+                or not entry["date_min"] <= lo <= hi <= entry["date_max"]
+                or c["all_missing_cells"] != 0
+            ):
+                fail("HISTORY_COVERAGE_WINDOW_INVALID", 503)
+        elif lo is not None or hi is not None or c["all_missing_cells"] != c["missing_cells"]:
+            fail("HISTORY_COVERAGE_WINDOW_INVALID", 503)
+        for field in fields:
+            totals[field] += c[field]
+    if (
+        totals != side.get("summary")
+        or totals["populated_cells"] != root["observation_count"]
+        or totals["missing_cells"] != root["missing_count"]
+    ):
+        fail("HISTORY_COVERAGE_COUNTS_MISMATCH", 503)
+    return side
+
+
 def iso(value):
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
         fail("INVALID_DATE")
@@ -99,6 +183,7 @@ async def execute(env, request):
         fail("HISTORY_REFERENCE_INVALID", 503)
     if p.get("expected_release_id", release) != release:
         fail("HISTORY_RELEASE_CHANGED", 409)
+    sidecar = await coverage(env, root)
     fingerprint = hashlib.sha256(
         encoded({k: v for k, v in p.items() if k not in ("cursor", "expected_release_id")})
     ).hexdigest()
@@ -135,6 +220,12 @@ async def execute(env, request):
             "rights",
         )
     }
+    if sidecar is not None:
+        result.update(
+            coverage_denominator=sidecar["denominator"],
+            coverage_summary=sidecar["summary"],
+            coverage_sha256=getattr(env, "HISTORICAL_COVERAGE_SHA256"),
+        )
     if p.get("view") == "sources":
         result.update(sources=root["sources"], discovery=root.get("discovery", []))
         return result
@@ -168,6 +259,8 @@ async def execute(env, request):
             ],
             source_lineage={r[3]: root["sources"][r[3]] for r in rows},
         )
+        if sidecar is not None:
+            result["coverage"] = sidecar["series"][series]
     else:
         selected = [
             dict(
@@ -190,6 +283,9 @@ async def execute(env, request):
             if (not p.get("asset_class") or v["asset_class"] == p["asset_class"])
             and (not p.get("search") or p["search"].lower() in (k + " " + v["label"]).lower())
         ]
+        if sidecar is not None:
+            for row in selected:
+                row["coverage"] = sidecar["series"][row["series_id"]]
         result.update(total_matches=len(selected), series=selected[offset : offset + limit])
     result["next_cursor"] = (
         base64.urlsafe_b64encode(
