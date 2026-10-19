@@ -8,7 +8,7 @@ releases agree on:
 * the companion Company Facts release carries those exact bytes in the shape the claims
   contract consumes.
 
-Neither archive is mutated, nothing is fetched at request time, and no caller-supplied
+Neither archive is mutated, no external provider is fetched at request time, and no caller-supplied
 object key is accepted. Authentication is either the private bearer credential or a scoped
 internal service credential that only this route accepts.
 """
@@ -211,6 +211,7 @@ async def execute(env, request):
                 "schema_version": source["schema_version"],
                 "manifest_sha256": source["_manifest_sha256"],
                 "member_key": member["key"],
+                "storage": member.get("storage", "IMMUTABLE_COMPANION_MEMBER"),
                 "member_sha256": member["sha256"],
                 "member_bytes": member["bytes"],
                 "archive_member": member.get("archive_entry"),
@@ -247,7 +248,7 @@ async def execute(env, request):
                 "rights": "PUBLIC_SEC_ONLY",
                 "licensed_sources_used": False,
             },
-            "archive_bytes_read_interactively": 0,
+            "archive_bytes_read_interactively": member.get("_archive_bytes_read", 0),
         },
     )
     if len(json.dumps(result, separators=(",", ":"), allow_nan=False).encode()) > MAX_RESPONSE:

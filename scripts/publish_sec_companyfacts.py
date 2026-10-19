@@ -29,11 +29,15 @@ object can never be overwritten.
     python3 scripts/publish_sec_companyfacts.py --ciks 0000320193,0000789019,0001652044 --dry-run
     python3 scripts/publish_sec_companyfacts.py --ciks ... --publish
     python3 scripts/publish_sec_companyfacts.py --verify-remote
+
+Use --archive-references to publish only a manifest that reuses the pinned SEC archive.
+Repeat --approve-previous RELEASE_ID:SHA256 to preserve explicit historical approvals.
+Use --reuse-extracted-members DIR to recheck existing local bytes without re-extraction.
 """
 
 import argparse
-import json
 import hashlib
+import json
 import re
 import struct
 import subprocess
@@ -123,13 +127,80 @@ def read_json(bucket, key, *, expect_sha256=None):
     return json.loads(raw), raw
 
 
+def approved_previous(references):
+    """Validate exact immutable companion approvals without accepting caller object keys."""
+    pins = {}
+    for reference in references:
+        if not re.fullmatch(r"[a-f0-9]{64}:[a-f0-9]{64}", reference):
+            raise ValueError("INVALID_PREVIOUS_RELEASE")
+        release_id, digest = reference.split(":")
+        if release_id in pins:
+            raise ValueError("DUPLICATE_PREVIOUS_RELEASE")
+        pins[release_id] = digest
+    approvals = {}
+    for release_id, digest in sorted(pins.items()):
+        key = PREFIX + release_id + "/manifest.json"
+        value, raw = read_json(WORKSPACE_BUCKET, key, expect_sha256=digest)
+        members = value.get("members")
+        invalid = "PREVIOUS_RELEASE_POLICY_OR_MEMBERS_INVALID"
+        if (
+            len(raw) > 1048576
+            or value.get("release_id") != release_id
+            or value.get("schema_version") != SCHEMA_VERSION
+            or value.get("scope") != SCOPE
+            or value.get("rights") != "PUBLIC_SEC_ONLY"
+            or value.get("licensed_sources_allowed") is not False
+            or not isinstance(members, dict)
+            or not members
+            or type(value.get("member_count")) is not int
+            or value["member_count"] != len(members)
+        ):
+            raise ValueError(invalid)
+        for cik, member in members.items():
+            if (
+                not re.fullmatch(r"\d{10}", cik)
+                or not isinstance(member, dict)
+                or not re.fullmatch(r"[a-f0-9]{64}", str(member.get("sha256", "")))
+                or member.get("sha256") != member.get("engine_member_sha256")
+                or type(member.get("bytes")) is not int
+                or not 0 < member["bytes"] <= MAX_MEMBER
+            ):
+                raise ValueError(invalid)
+            storage = member.get("storage", "IMMUTABLE_COMPANION_MEMBER")
+            if storage == "IMMUTABLE_COMPANION_MEMBER":
+                if member.get("key") != PREFIX + release_id + "/companies/" + cik + ".json":
+                    raise ValueError(invalid)
+            elif storage == "PINNED_SEC_ARCHIVE_MEMBER":
+                source = value.get("source") or {}
+                entry = member.get("archive_entry") or {}
+                if (
+                    source.get("bucket") != SOURCE_BUCKET
+                    or source.get("key") != "sec/bulk/sec-nightly-20260924/companyfacts.zip"
+                    or member.get("key") != source.get("key")
+                    or entry.get("name") != f"CIK{cik}.json"
+                    or entry.get("uncompressed_bytes") != member["bytes"]
+                    or type(entry.get("offset")) is not int or entry["offset"] < 0
+                    or type(entry.get("compressed_bytes")) is not int
+                    or not 0 < entry["compressed_bytes"] <= 8 * 1048576
+                    or type(entry.get("flags")) is not int or entry["flags"] & 1
+                    or entry.get("compression") not in (0, 8)
+                    or type(entry.get("crc")) is not int or not 0 <= entry["crc"] <= 0xffffffff
+                ):
+                    raise ValueError(invalid)
+            else:
+                raise ValueError(invalid)
+        approvals[release_id] = {"key": key, "sha256": digest}
+    return approvals
+
+
 def extract_member(source, entry):
     """Re-extract one zip member from the pinned bulk archive with ranged reads only."""
     if entry["compression"] != 8 or entry["flags"] & 1:
         raise RuntimeError("MEMBER_BUDGET_OR_FORMAT")
     header = read_object(source["bucket"], source["key"], offset=entry["offset"], count=30)
     fields = struct.unpack("<4s5H3I2H", header)
-    if fields[0] != b"PK\x03\x04" or fields[2] != entry["flags"] or fields[3] != entry["compression"]:
+    if (fields[0] != b"PK\x03\x04"
+            or fields[2] != entry["flags"] or fields[3] != entry["compression"]):
         raise RuntimeError("ZIP_HEADER_MISMATCH")
     name = read_object(
         source["bucket"], source["key"], offset=entry["offset"] + 30, count=fields[-2]
@@ -153,17 +224,26 @@ def extract_member(source, entry):
 
 def load_catalog(engine):
     """CIK -> engine catalog entry, read from the pinned catalog shards only."""
-    entries = {}
     shards = {}
     for suffix, ref in engine["shards"].items():
         shards[suffix] = read_json(WORKSPACE_BUCKET, ref["key"], expect_sha256=ref["sha256"])[0]
     return shards
 
 
-def build_member(cik, engine, catalog, *, verify_local=True):
+def build_member(cik, engine, catalog, *, verify_local=True, reuse_extracted=None):
     entry = catalog[cik[-2:]][cik]
     pin = entry["materialized"]
-    raw = extract_member(engine["source"], entry["archive_entry"])
+    if reuse_extracted is None:
+        raw = extract_member(engine["source"], entry["archive_entry"])
+    else:
+        local_member = reuse_extracted / f"{cik}.companyfacts.json"
+        if local_member.stat().st_size > MAX_MEMBER:
+            raise RuntimeError("MEMBER_BUDGET_OR_FORMAT")
+        raw = local_member.read_bytes()
+        archive_entry = entry["archive_entry"]
+        if (len(raw) != archive_entry["uncompressed_bytes"]
+                or zlib.crc32(raw) != archive_entry["crc"]):
+            raise RuntimeError("ZIP_CRC_SIZE_MISMATCH")
     digest = sha(raw)
     if digest != pin["member_sha256"]:
         raise RuntimeError(
@@ -198,7 +278,7 @@ def build_member(cik, engine, catalog, *, verify_local=True):
 LOCAL_ONLY = ("local_extraction",)
 
 
-def index_identity(engine, members):
+def index_identity(engine, members, *, previous_releases=None, archive_references=False):
     return encoded(
         {
             "schema_version": SCHEMA_VERSION,
@@ -206,6 +286,10 @@ def index_identity(engine, members):
             "scope": SCOPE,
             "source": engine["source"],
             "engine_release_id": engine["release_id"],
+            # Approval changes alter manifest bytes and must name a distinct immutable
+            # release. Preserve legacy identities when no approval is requested.
+            **({"previous_releases": previous_releases} if previous_releases else {}),
+            **({"storage": "PINNED_SEC_ARCHIVE_MEMBER"} if archive_references else {}),
             "source_ceiling_date": engine["source"]["snapshot_date"],
             "engine_member_pins": {
                 cik: m["engine_member_sha256"] for cik, m in sorted(members.items())
@@ -229,9 +313,25 @@ def main():
     parser.add_argument("--engine-manifest-sha256")
     parser.add_argument("--out", type=Path, default=Path("/tmp/sec-companyfacts-release"))
     parser.add_argument("--publish", action="store_true", help="upload create-only to R2")
-    parser.add_argument("--dry-run", action="store_true", help="verify everything, write nothing")
-    parser.add_argument("--verify-remote", action="store_true", help="re-read and re-hash the release")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="verify and write local artifacts; no R2 uploads"
+    )
+    parser.add_argument(
+        "--verify-remote", action="store_true", help="re-read and re-hash the release"
+    )
     parser.add_argument("--skip-local-compare", action="store_true")
+    parser.add_argument(
+        "--archive-references", action="store_true",
+        help="publish only a manifest referencing verified members in the pinned SEC archive",
+    )
+    parser.add_argument(
+        "--reuse-extracted-members", type=Path,
+        help="reuse local bytes after checking engine SHA256, archive CRC32, size and issuer",
+    )
+    parser.add_argument(
+        "--approve-previous", action="append", default=[], metavar="RELEASE_ID:SHA256",
+        help="retain a rehashed, validated immutable companion release approval (repeatable)",
+    )
     args = parser.parse_args()
     if not (args.publish or args.dry_run or args.verify_remote):
         parser.error("choose --dry-run, --publish or --verify-remote")
@@ -244,11 +344,18 @@ def main():
     if any(not re.fullmatch(r"\d{10}", cik) for cik in ciks):
         raise SystemExit("ciks must be 10-digit zero-padded CIKs")
 
+    if args.archive_references and (
+        engine["source"].get("key") != "sec/bulk/sec-nightly-20260924/companyfacts.zip"
+        or engine["source"].get("bucket") != SOURCE_BUCKET
+    ):
+        raise ValueError("UNAPPROVED_ARCHIVE_MEMBER")
+    previous_releases = approved_previous(args.approve_previous)
     catalog = load_catalog(engine)
     members = {}
     for cik in ciks:
         raw, ref = build_member(
-            cik, engine, catalog, verify_local=not args.skip_local_compare
+            cik, engine, catalog, verify_local=not args.skip_local_compare,
+            reuse_extracted=args.reuse_extracted_members
         )
         members[cik] = ref
         print(
@@ -266,9 +373,13 @@ def main():
             flush=True,
         )
         args.out.mkdir(parents=True, exist_ok=True)
-        (args.out / f"{cik}.companyfacts.json").write_bytes(raw)
+        if not args.archive_references:
+            (args.out / f"{cik}.companyfacts.json").write_bytes(raw)
 
-    index_sha256 = sha(index_identity(engine, members))
+    index_sha256 = sha(index_identity(
+        engine, members, previous_releases=previous_releases,
+        archive_references=args.archive_references,
+    ))
     release_id = index_sha256
     manifest = {
         "schema_version": SCHEMA_VERSION,
@@ -294,12 +405,14 @@ def main():
         "member_count": len(members),
         "members": {
             cik: {
-                "key": PREFIX + release_id + "/companies/" + cik + ".json",
+                "key": engine["source"]["key"] if args.archive_references else
+                    PREFIX + release_id + "/companies/" + cik + ".json",
+                **({"storage": "PINNED_SEC_ARCHIVE_MEMBER"} if args.archive_references else {}),
                 **{k: v for k, v in ref.items() if k not in LOCAL_ONLY},
             }
             for cik, ref in sorted(members.items())
         },
-        "previous_releases": {},
+        "previous_releases": previous_releases,
         "policy": (
             "IMMUTABLE_COMPANION_SOURCE;DUAL_RELEASE_PINNING;RAW_ARCHIVE_MEMBER_BYTES;"
             "NO_REQUEST_TIME_FETCH;NO_CALLER_SUPPLIED_KEYS"
@@ -320,13 +433,17 @@ def main():
         "source_archive": engine["source"]["key"],
         "engine_release_id": engine["release_id"],
         "published": False,
+        "archive_references": args.archive_references,
+        "member_upload_bytes": (
+            0 if args.archive_references else sum(m["bytes"] for m in members.values())
+        ),
         "local_extraction": {
             cik: ref["local_extraction"] for cik, ref in sorted(members.items())
         },
     }
 
     if args.publish:
-        for cik in members:
+        for cik in ([] if args.archive_references else members):
             member_key = PREFIX + release_id + "/companies/" + cik + ".json"
             run(
                 [
@@ -354,7 +471,11 @@ def main():
             raise RuntimeError("remote manifest differs from the published bytes")
         remote = json.loads(remote_manifest_raw)
         for cik, ref in remote["members"].items():
-            raw = read_object(WORKSPACE_BUCKET, ref["key"])
+            raw = (
+                extract_member(remote["source"], ref["archive_entry"])
+                if ref.get("storage") == "PINNED_SEC_ARCHIVE_MEMBER"
+                else read_object(WORKSPACE_BUCKET, ref["key"])
+            )
             if sha(raw) != ref["sha256"] or sha(raw) != ref["engine_member_sha256"]:
                 raise RuntimeError(f"{cik}: remote member digest does not match its pin")
         receipt["remote_verified_members"] = len(remote["members"])

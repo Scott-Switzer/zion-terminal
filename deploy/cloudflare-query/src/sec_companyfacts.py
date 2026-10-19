@@ -22,8 +22,8 @@ Nothing here fetches SEC at request time, accepts a caller-supplied object key, 
 outside the companion release prefix.
 """
 
-import json
 import hashlib
+import json
 import re
 
 from private_financials import PrivateFinancialsError
@@ -73,7 +73,8 @@ def _validate(m, digest):
         fail("SOURCE_POLICY_NOT_PERMITTED", 403)
     if not isinstance(m.get("members"), dict) or not m["members"]:
         fail("COMPANY_FACTS_SOURCE_INVALID", 503)
-    if not isinstance(m.get("release_id"), str) or not re.fullmatch(r"[a-f0-9]{64}", m["release_id"]):
+    if (not isinstance(m.get("release_id"), str)
+            or not re.fullmatch(r"[a-f0-9]{64}", m["release_id"])):
         fail("COMPANY_FACTS_SOURCE_INVALID", 503)
     m["_manifest_sha256"] = digest
     return m
@@ -112,7 +113,36 @@ async def member(env, manifest, cik):
         # The companion release is only publishable when it names the same bytes the
         # engine release pinned; a discrepancy means the release was assembled wrongly.
         fail("SOURCE_BUNDLE_MEMBER_MISMATCH", 409)
-    raw = await _pinned(env, ref.get("key"), ref.get("sha256"), MAX_MEMBER)
+    storage = ref.get("storage", "IMMUTABLE_COMPANION_MEMBER")
+    if storage == "PINNED_SEC_ARCHIVE_MEMBER":
+        from sec_engine_jobs import source_member as archive_member
+
+        archive_entry = ref.get("archive_entry")
+        if (
+            not isinstance(archive_entry, dict)
+            or type(ref.get("bytes")) is not int
+            or not 0 < ref["bytes"] <= MAX_MEMBER
+            or type(archive_entry.get("uncompressed_bytes")) is not int
+            or not 0 < archive_entry["uncompressed_bytes"] <= MAX_MEMBER
+        ):
+            fail("SOURCE_SIZE_BUDGET_OR_MISSING", 503)
+        if (
+            type(archive_entry.get("offset")) is not int
+            or archive_entry["offset"] < 0
+            or type(archive_entry.get("compressed_bytes")) is not int
+            or not 0 < archive_entry["compressed_bytes"] <= 8 * 1048576
+        ):
+            fail("SOURCE_REFERENCE_INVALID", 503)
+        raw = await archive_member(env, manifest["source"], archive_entry, cik)
+        if len(raw) > MAX_MEMBER or len(raw) != ref["bytes"] or sha(raw) != ref["sha256"]:
+            fail("SOURCE_VERSION_CHANGED", 409)
+        ref = dict(ref, _archive_bytes_read=(
+            30 + len(archive_entry["name"].encode()) + archive_entry["compressed_bytes"]
+        ))
+    elif storage == "IMMUTABLE_COMPANION_MEMBER":
+        raw = await _pinned(env, ref.get("key"), ref.get("sha256"), MAX_MEMBER)
+    else:
+        fail("SOURCE_REFERENCE_INVALID", 503)
     data = json.loads(raw)
     if str(data.get("cik")).zfill(10) != cik or not isinstance(data.get("facts"), dict):
         fail("SOURCE_CONTEXT_INVALID", 503)
