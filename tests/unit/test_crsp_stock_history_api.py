@@ -175,3 +175,15 @@ def test_source_wrong_permno_fails_not_false_join(monkeypatch):
     env, _, rows, _ = setup(monkeypatch)
     rows[0]["permno"] = 99999
     assert query(env, {"permno": "10001"})[1] == 503
+
+
+def test_immutable_manifest_is_not_reloaded_for_every_catalog_page(monkeypatch):
+    env, ref, _, _ = setup(monkeypatch)
+    if hasattr(api, "_MANIFEST_CACHE"):
+        monkeypatch.setattr(api, "_MANIFEST_CACHE", None)
+    first, status = query(env, {"limit": 1})
+    assert status == 200
+    query(
+        env, {"limit": 1, "cursor": first["next_cursor"], "expected_release_id": ref["release_id"]}
+    )
+    assert env.SEC_ARCHIVE.reads.count(ref["key"]) == 1

@@ -11,6 +11,7 @@ from crsp_archive import PREFIX, RIGHTS, SCHEMA, digest, encode, native_point
 from private_financials import PrivateFinancialsError
 from private_http import authenticate
 
+_MANIFEST_CACHE = None
 MAX_NATIVE_REQUESTS = 16
 COLUMNS = (
     "permno,dlycaldt,dlyprc,dlyprcflg,dlyret,dlyretx,dlyretmissflg,dlydistretflg,dlydelflg,dlyvol"
@@ -22,13 +23,20 @@ def fail(code, status=400):
 
 
 async def read(env, key, sha, *, size=None, maximum=16 * 1048576):
+    global _MANIFEST_CACHE
+    is_manifest = key.endswith("/manifest.json")
+    if is_manifest and _MANIFEST_CACHE is not None and _MANIFEST_CACHE[:2] == (key, sha):
+        return _MANIFEST_CACHE[2]
     obj = await env.SEC_ARCHIVE.get(key)
     if not obj or obj.size > maximum:
         fail("CRSP_INDEX_UNAVAILABLE", 503)
     raw = (await obj.text()).encode()
     if len(raw) > maximum or digest(raw) != sha or (size is not None and len(raw) != size):
         fail("CRSP_INDEX_INTEGRITY", 503)
-    return json.loads(raw)
+    value = json.loads(raw)
+    if is_manifest:
+        _MANIFEST_CACHE = (key, sha, value)
+    return value
 
 
 async def fetch_rows(env, source, offset, count):
@@ -186,6 +194,7 @@ async def execute(env, request):
         security_count=root["security_count"],
         symbol_count=root["security_count"],
         indexed_security_count=root.get("indexed_security_count"),
+        priced_security_count=sum(bool(e.get("normalized_rows")) for e in catalog),
         coverage=dict(
             stored_normalized_rows=root["indexed_rows"],
             historical_identity="NATIVE_DATED_PERMNO_NAME_INTERVALS",
