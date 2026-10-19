@@ -187,3 +187,45 @@ def test_immutable_manifest_is_not_reloaded_for_every_catalog_page(monkeypatch):
         env, {"limit": 1, "cursor": first["next_cursor"], "expected_release_id": ref["release_id"]}
     )
     assert env.SEC_ARCHIVE.reads.count(ref["key"]) == 1
+
+
+def test_native_transport_accepts_standard_quoted_r2_etag(monkeypatch):
+    import json
+
+    sent = []
+
+    class Request:
+        def __init__(self, url, **kwargs):
+            sent.append(kwargs)
+            self.js_object = self
+
+    source = dict(
+        key="raw/wrds/crsp__stkdlysecurityprimarydata/releases/test/part.parquet",
+        etag='"abc123"',
+        rows=10,
+        bytes=100,
+    )
+
+    class Reply:
+        status = 200
+
+        async def text(self):
+            return json.dumps(
+                {
+                    "source": {
+                        "store": "research",
+                        "path": source["key"],
+                        "etag": "abc123",
+                        "bytes": 100,
+                    },
+                    "data": {"rows": [{"permno": 10001}]},
+                }
+            )
+
+    class Binding:
+        async def fetch(self, req):
+            return Reply()
+
+    monkeypatch.setitem(sys.modules, "workers", SimpleNamespace(Request=Request))
+    rows = asyncio.run(api.fetch_rows(SimpleNamespace(PRIVATE_DATASETS=Binding()), source, 0, 1))
+    assert len(rows) == 1 and sent[0]["headers"]["if-match"] == '"abc123"'

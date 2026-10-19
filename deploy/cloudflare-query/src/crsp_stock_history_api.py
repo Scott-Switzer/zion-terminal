@@ -42,11 +42,14 @@ async def read(env, key, sha, *, size=None, maximum=16 * 1048576):
 async def fetch_rows(env, source, offset, count):
     from workers import Request
 
+    etag = source["etag"]
+    if re.fullmatch(r'"[A-Za-z0-9._-]+"', etag):
+        etag = etag[1:-1]
     if (
         not source["key"].startswith("raw/wrds/")
         or ".." in source["key"]
         or not source["key"].endswith(".parquet")
-        or not re.fullmatch(r"[A-Za-z0-9._-]+", source["etag"])
+        or not re.fullmatch(r"[A-Za-z0-9._-]+", etag)
         or not 1 <= count <= 1000
         or offset < 0
         or offset + count > source["rows"]
@@ -58,9 +61,7 @@ async def fetch_rows(env, source, offset, count):
     target = "https://zion-datasets.internal/v1/datasets/research/rows?" + urlencode(
         dict(path=source["key"], columns=COLUMNS, offset=offset, limit=count)
     )
-    req = Request(
-        target, method="GET", headers={"if-match": '"' + source["etag"] + '"'}, redirect="manual"
-    )
+    req = Request(target, method="GET", headers={"if-match": '"' + etag + '"'}, redirect="manual")
     response = await binding.fetch(req.js_object)
     raw = (await response.text()).encode()
     if response.status != 200:
@@ -78,7 +79,7 @@ async def fetch_rows(env, source, offset, count):
     if (
         actual.get("store") != "research"
         or actual.get("path") != source["key"]
-        or actual.get("etag") != source["etag"]
+        or actual.get("etag") != etag
         or actual.get("bytes") != source["bytes"]
         or not isinstance(rows, list)
         or len(rows) != count
