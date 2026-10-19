@@ -244,13 +244,40 @@ async def execute_alpaca(env, request):
 async def execute(env, request):
     q = parse_qs(urlparse(request.url).query, keep_blank_values=True)
     source = q.get("source", ["crsp" if getattr(env, "CRSP_HISTORY_KEY", None) else "alpaca"])
-    if len(source) != 1 or source[0] not in {"crsp", "alpaca", "alpaca_latest"}:
+    if len(source) != 1 or source[0] not in {
+        "crsp",
+        "alpaca",
+        "alpaca_latest",
+        "yfinance",
+        "simfin",
+        "tiingo",
+        "eodhd",
+        "marketstack",
+        "polygon",
+        "twelve_data",
+        "estate_alpaca",
+    }:
         fail("INVALID_STOCK_SOURCE")
+    if source[0] in {
+        "polygon",
+        "eodhd",
+        "simfin",
+        "tiingo",
+        "marketstack",
+        "yfinance",
+        "estate_alpaca",
+        "twelve_data",
+    }:
+        from archive_stock_history_api import execute as archive_execute
+
+        return await archive_execute(env, request)
     if source[0] == "alpaca_latest":
         from stock_latest_api import execute as latest_execute
+
         return await latest_execute(env, request)
     if source[0] == "crsp":
         from crsp_stock_history_api import execute as crsp_execute
+
         return await crsp_execute(env, request)
     return await execute_alpaca(env, request)
 

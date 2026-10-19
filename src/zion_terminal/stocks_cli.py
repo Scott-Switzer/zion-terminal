@@ -12,7 +12,25 @@ from zion_terminal.private_research import DEFAULT_BASE, emit_dataset, fetch, lo
 
 
 @click.command()
-@click.option("--source", type=click.Choice(["crsp", "alpaca_latest", "alpaca"]))
+@click.option(
+    "--source",
+    type=click.Choice(
+        [
+            "crsp",
+            "alpaca_latest",
+            "alpaca",
+            "yfinance",
+            "simfin",
+            "tiingo",
+            "eodhd",
+            "marketstack",
+            "polygon",
+            "twelve_data",
+            "estate_alpaca",
+        ]
+    ),
+)
+@click.option("--security-id")
 @click.option("--permno", type=click.IntRange(1, 9999999999))
 @click.option("--symbol")
 @click.option("--search")
@@ -35,8 +53,25 @@ def stocks(base_url, credential_file, output, **params):
 
     Observation dates are not publication dates. Historical as-of is intentionally unavailable.
     """
-    if params["permno"] and (params["symbol"] or params["source"] in {"alpaca", "alpaca_latest"}):
+    if params["permno"] and (params["symbol"] or params["source"] not in {None, "crsp"}):
         raise click.ClickException("PERMNO_REQUIRES_CRSP_WITHOUT_SYMBOL")
+    if params["security_id"] and (
+        params["source"]
+        not in {
+            "polygon",
+            "eodhd",
+            "simfin",
+            "tiingo",
+            "marketstack",
+            "yfinance",
+            "estate_alpaca",
+            "twelve_data",
+        }
+        or params["permno"]
+        or params["symbol"]
+        or not re.fullmatch(r"[0-9]{1,20}", params["security_id"])
+    ):
+        raise click.ClickException("SECURITY_ID_REQUIRES_EXPLICIT_ARCHIVE_PROVIDER")
     if params["symbol"] and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.\-]{0,24}", params["symbol"]):
         raise click.ClickException("INVALID_STOCK_SYMBOL")
     for key in ("date_from", "date_to"):
