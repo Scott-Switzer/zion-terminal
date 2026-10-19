@@ -34,13 +34,15 @@ def test_full_history_task_and_discontinued_currency_orientation():
     }
     rows = parse("Date, USD, CYP, LVL,\n1999-01-04,1.1789,0.58231,0.6668,\n")
     assert rows[0] == {
-        "series_id": "ecb:fx:USD:EUR", "observation_date": "1999-01-04",
-        "value_decimal": "1.1789", "missing_reason": None,
-        "unit": "USD per EUR", "asset_class": "fx", "label": "USD per 1 EUR",
+        "series_id": "ecb:fx:USD:EUR",
+        "observation_date": "1999-01-04",
+        "value_decimal": "1.1789",
+        "missing_reason": None,
+        "unit": "USD per EUR",
+        "asset_class": "fx",
+        "label": "USD per 1 EUR",
     }
-    assert {r["series_id"] for r in rows} == {
-        "ecb:fx:USD:EUR", "ecb:fx:CYP:EUR", "ecb:fx:LVL:EUR"
-    }
+    assert {r["series_id"] for r in rows} == {"ecb:fx:USD:EUR", "ecb:fx:CYP:EUR", "ecb:fx:LVL:EUR"}
 
 
 def test_empty_and_na_are_retained_as_explicit_gaps():
@@ -61,26 +63,41 @@ def test_identical_duplicates_are_deduplicated_but_conflicts_refused():
         parse("Date,USD\n1999-01-04,1.1\n1999-01-04,1.2\n")
 
 
-@pytest.mark.parametrize("csv", [
-    "Date,USD\n1999-02-30,1.2\n", "Date,USD\n19990104,1.2\n",
-    "Date,USD\n1999-01-04,0\n", "Date,USD\n1999-01-04,-1\n",
-    "Date,USD\n1999-01-04,NaN\n", "Date,USD\n1999-01-04,Infinity\n",
-    "Date,USD\n1999-01-04,oops\n", "Date,USD\n1999-01-04\n",
-    "Date,USD\n1999-01-04,1.2,7\n", "Date,USD,USD\n1999-01-04,1,1\n",
-    "Date,usd\n1999-01-04,1\n", "Date,EUR\n1999-01-04,1\n",
-    "Time,USD\n1999-01-04,1.2\n", "Date,USD\n", "<html>oops</html>",
-])
+@pytest.mark.parametrize(
+    "csv",
+    [
+        "Date,USD\n1999-02-30,1.2\n",
+        "Date,USD\n19990104,1.2\n",
+        "Date,USD\n1999-01-04,0\n",
+        "Date,USD\n1999-01-04,-1\n",
+        "Date,USD\n1999-01-04,NaN\n",
+        "Date,USD\n1999-01-04,Infinity\n",
+        "Date,USD\n1999-01-04,oops\n",
+        "Date,USD\n1999-01-04\n",
+        "Date,USD\n1999-01-04,1.2,7\n",
+        "Date,USD,USD\n1999-01-04,1,1\n",
+        "Date,usd\n1999-01-04,1\n",
+        "Date,EUR\n1999-01-04,1\n",
+        "Time,USD\n1999-01-04,1.2\n",
+        "Date,USD\n",
+        "<html>oops</html>",
+    ],
+)
 def test_malformed_values_dates_or_schema_refused(csv):
     with pytest.raises(ValueError):
         parse(csv)
 
 
-@pytest.mark.parametrize("raw", [
-    b"<html>gateway error</html>", b"PK broken archive",
-    archive("Date,USD\n1999-01-04,1.2\n", "../eurofxref-hist.csv"),
-    archive("Date,USD\n1999-01-04,1.2\n", extra=("other.csv", "x")),
-    archive("x" * (16 * 1024 * 1024 + 1)),
-])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"<html>gateway error</html>",
+        b"PK broken archive",
+        archive("Date,USD\n1999-01-04,1.2\n", "../eurofxref-hist.csv"),
+        archive("Date,USD\n1999-01-04,1.2\n", extra=("other.csv", "x")),
+        archive("x" * (16 * 1024 * 1024 + 1)),
+    ],
+)
 def test_untrusted_archive_members_and_expansion_refused(raw):
     module = adapter()
     with pytest.raises(ValueError):

@@ -19,11 +19,13 @@ _MEMBER = "eurofxref-hist.csv"
 
 def tasks() -> list[dict]:
     """Return the official full-history download, including retired currencies."""
-    return [{
-        "id": "ecb_fx_full_history",
-        "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip",
-        "dataset": "ecb_fx",
-    }]
+    return [
+        {
+            "id": "ecb_fx_full_history",
+            "url": "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip",
+            "dataset": "ecb_fx",
+        }
+    ]
 
 
 def _csv_bytes(raw: bytes) -> bytes:
@@ -65,9 +67,13 @@ def parse(raw: bytes, task: dict) -> list[dict]:
         if trailing_empty:
             header.pop()
         currencies = header[1:]
-        if (not header or header[0] != "Date" or not currencies
-                or len(set(currencies)) != len(currencies)
-                or any(not re.fullmatch(r"[A-Z]{3}", c) or c == "EUR" for c in currencies)):
+        if (
+            not header
+            or header[0] != "Date"
+            or not currencies
+            or len(set(currencies)) != len(currencies)
+            or any(not re.fullmatch(r"[A-Z]{3}", c) or c == "EUR" for c in currencies)
+        ):
             raise ValueError("Invalid ECB CSV header")
         observations: dict[tuple[str, str], dict] = {}
         for row in reader:
@@ -93,16 +99,20 @@ def parse(raw: bytes, task: dict) -> list[dict]:
                         raise ValueError("ECB FX value must be finite and positive")
                 key = (currency, day)
                 observation = {
-                    "series_id": f"ecb:fx:{currency}:EUR", "observation_date": day,
+                    "series_id": f"ecb:fx:{currency}:EUR",
+                    "observation_date": day,
                     "value_decimal": str(number) if number is not None else None,
-                    "missing_reason": missing, "unit": f"{currency} per EUR",
-                    "asset_class": "fx", "label": f"{currency} per 1 EUR",
+                    "missing_reason": missing,
+                    "unit": f"{currency} per EUR",
+                    "asset_class": "fx",
+                    "label": f"{currency} per 1 EUR",
                 }
                 if key in observations:
                     previous = observations[key]
                     old = previous["value_decimal"]
-                    if ((Decimal(old) if old is not None else None) != number
-                            or previous["missing_reason"] != missing):
+                    if (Decimal(old) if old is not None else None) != number or previous[
+                        "missing_reason"
+                    ] != missing:
                         raise ValueError("Conflicting duplicate ECB observation")
                 else:
                     observations[key] = observation
