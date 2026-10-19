@@ -24,6 +24,7 @@ import click
 from rich.console import Console
 
 from zion_terminal import __version__
+from zion_terminal.claims_cli import claims
 from zion_terminal.config.settings import get_settings
 from zion_terminal.orchestrator.orchestrator import Orchestrator
 from zion_terminal.outputs.formatter import OutputFormat, format_response
@@ -397,6 +398,7 @@ def synthesis(ctx: click.Context, fmt: str) -> None:
 
 
 main.add_command(research)
+main.add_command(claims)
 
 
 if __name__ == "__main__":
