@@ -4,10 +4,11 @@ import base64
 import json
 import re
 from urllib.parse import parse_qs, urlparse
+
 from contract_v2 import ContractError
 from market_api import market_dispatch
-from private_http import authenticate
 from private_financials import PrivateFinancialsError
+from private_http import authenticate
 from stock_archive import digest, encode
 
 
