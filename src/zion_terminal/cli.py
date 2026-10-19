@@ -30,6 +30,7 @@ from zion_terminal.orchestrator.orchestrator import Orchestrator
 from zion_terminal.outputs.formatter import OutputFormat, format_response
 from zion_terminal.providers.base import build_provider
 from zion_terminal.private_research import research
+from zion_terminal.historical_cli import historical
 
 console = Console()
 
@@ -399,6 +400,7 @@ def synthesis(ctx: click.Context, fmt: str) -> None:
 
 main.add_command(research)
 main.add_command(claims)
+main.add_command(historical)
 
 
 if __name__ == "__main__":
