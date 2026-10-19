@@ -113,6 +113,13 @@ class Default(WorkerEntrypoint):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
+        if path == '/private/v1/stock-history':
+            from stock_history_api import handle
+            value, status = await handle(self.env, request)
+            return Response(json.dumps(value, separators=(',', ':')), status=status,
+                            headers={'content-type': 'application/json',
+                                     'cache-control': 'private, no-store',
+                                     'vary': 'Authorization'})
         if path == '/private/v1/historical-series':
             from historical_series_api import handle
             value, status = await handle(self.env, request)
