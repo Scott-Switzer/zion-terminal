@@ -12,6 +12,8 @@ from zion_terminal.private_research import DEFAULT_BASE, emit_dataset, fetch, lo
 
 
 @click.command()
+@click.option("--source", type=click.Choice(["crsp", "alpaca"]))
+@click.option("--permno", type=click.IntRange(1, 9999999999))
 @click.option("--symbol")
 @click.option("--search")
 @click.option("--date-from")
@@ -27,10 +29,14 @@ from zion_terminal.private_research import DEFAULT_BASE, emit_dataset, fetch, lo
 )
 @click.option("--output", type=click.Path(path_type=Path))
 def stocks(base_url, credential_file, output, **params):
-    """Discover all indexed stocks or retrieve source-qualified OHLCV history.
+    """Search CRSP history by default, or select the ongoing Alpaca source.
+
+    Use PERMNO for an unambiguous CRSP security across historical ticker changes.
 
     Observation dates are not publication dates. Historical as-of is intentionally unavailable.
     """
+    if params["permno"] and (params["symbol"] or params["source"] == "alpaca"):
+        raise click.ClickException("PERMNO_REQUIRES_CRSP_WITHOUT_SYMBOL")
     if params["symbol"] and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.\-]{0,24}", params["symbol"]):
         raise click.ClickException("INVALID_STOCK_SYMBOL")
     for key in ("date_from", "date_to"):

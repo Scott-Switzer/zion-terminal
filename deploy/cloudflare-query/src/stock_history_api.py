@@ -27,12 +27,13 @@ async def read(env, key, sha, size=None, maximum=1048576):
     return raw
 
 
-async def execute(env, request):
+async def execute_alpaca(env, request):
     authenticate(env, request)
     if request.method != "GET":
         fail("READ_ONLY", 405)
     q = parse_qs(urlparse(request.url).query, keep_blank_values=True)
     allowed = {
+        "source",
         "symbol",
         "search",
         "date_from",
@@ -45,6 +46,8 @@ async def execute(env, request):
     if set(q) - allowed or any(len(v) != 1 for v in q.values()):
         fail("INVALID_PARAMETER")
     p = {k: v[0] for k, v in q.items()}
+    if p.get("source", "alpaca") != "alpaca":
+        fail("INVALID_STOCK_SOURCE")
     if "as_of" in p:
         fail("STOCK_HISTORICAL_AVAILABILITY_NOT_ESTABLISHED", 422)
     symbol = p.get("symbol", "").upper()
@@ -103,6 +106,7 @@ async def execute(env, request):
             fail("INVALID_CURSOR")
     result = dict(
         schema_version=SCHEMA,
+        source="ALPACA_SIP",
         release_id=release,
         rights=RIGHTS,
         symbol_count=root["symbol_count"],
@@ -235,6 +239,17 @@ async def execute(env, request):
         else None
     )
     return result
+
+
+async def execute(env, request):
+    q = parse_qs(urlparse(request.url).query, keep_blank_values=True)
+    source = q.get("source", ["crsp" if getattr(env, "CRSP_HISTORY_KEY", None) else "alpaca"])
+    if len(source) != 1 or source[0] not in {"crsp", "alpaca"}:
+        fail("INVALID_STOCK_SOURCE")
+    if source[0] == "crsp":
+        from crsp_stock_history_api import execute as crsp_execute
+        return await crsp_execute(env, request)
+    return await execute_alpaca(env, request)
 
 
 async def handle(env, request):
