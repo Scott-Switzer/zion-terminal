@@ -81,6 +81,28 @@ def index(coverage_path, directory, s3, *, publish=False, workers=4):
                 columns=["permno", "ticker", "comnam", "namedt", "nameenddt", "permco"],
             ).to_pylist()
         )
+    security_info = datasets.get("crsp_a_stock__stksecurityinfohist")
+    if security_info:
+        for part in security_info["objects"]:
+            response = s3.get_object(Bucket=BUCKET, Key=part["key"])
+            with response["Body"] as body:
+                raw = body.read(16 * 1048576 + 1)
+            if len(raw) != part["bytes"] or digest(raw) != part["source_sha256"]:
+                raise ValueError("CRSP_SECURITY_INFO_HASH")
+            identity_rows.extend(
+                pq.read_table(
+                    io.BytesIO(raw),
+                    columns=[
+                        "permno",
+                        "ticker",
+                        "issuernm",
+                        "securitynm",
+                        "secinfostartdt",
+                        "secinfoenddt",
+                        "permco",
+                    ],
+                ).to_pylist()
+            )
     entries = catalog(identity_rows)
     sources, locations = {}, {}
 

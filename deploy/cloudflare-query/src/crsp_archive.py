@@ -28,10 +28,15 @@ def catalog(rows):
         )
         interval = dict(
             symbol=(row.get("ticker") or "").strip(),
-            name=(row.get("comnam") or "").strip(),
-            valid_from=str(row["namedt"]) if row.get("namedt") else None,
-            valid_to=str(row["nameenddt"]) if row.get("nameenddt") else None,
+            name=(row.get("comnam") or row.get("issuernm") or row.get("securitynm") or "").strip(),
+            valid_from=str(row.get("namedt") or row.get("secinfostartdt"))
+            if row.get("namedt") or row.get("secinfostartdt")
+            else None,
+            valid_to=str(row.get("nameenddt") or row.get("secinfoenddt"))
+            if row.get("nameenddt") or row.get("secinfoenddt")
+            else None,
             permco=row.get("permco"),
+            identity_dataset="stksecurityinfohist" if "secinfostartdt" in row else "stocknames",
         )
         if interval not in entry["intervals"]:
             entry["intervals"].append(interval)

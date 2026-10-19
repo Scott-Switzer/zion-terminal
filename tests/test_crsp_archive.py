@@ -228,3 +228,23 @@ def test_builder_projects_existing_parquet_and_publishes_verified_year_index(tmp
         ("1991", 1),
     ]
     assert all(x.get("IfMatch") == '"synthetic"' for x in store.calls if "Range" in x)
+
+
+def test_native_security_info_enriches_post_stocknames_identity():
+    entries = c.catalog(
+        [
+            dict(
+                permno=10,
+                ticker="NEW",
+                issuernm="New issuer",
+                securitynm="New shares",
+                secinfostartdt="2025-01-01",
+                secinfoenddt="2025-12-31",
+                permco=20,
+            )
+        ]
+    )
+    assert entries["10"]["symbol"] == "NEW"
+    assert entries["10"]["name"] == "New issuer"
+    assert entries["10"]["intervals"][0]["valid_from"] == "2025-01-01"
+    assert entries["10"]["intervals"][0]["identity_dataset"] == "stksecurityinfohist"
