@@ -74,15 +74,23 @@ def test_provider_api_fetch_uses_financial_store_and_pins_etag(monkeypatch):
     assert rows[0]["security_id"] == 7
 
 
-@pytest.mark.parametrize("native_label", ["yfinance", "YFinance"])
-def test_api_returns_provider_qualified_history(monkeypatch, native_label):
+@pytest.mark.parametrize(
+    "provider,native_label",
+    [
+        ("yfinance", "yfinance"),
+        ("yfinance", "YFinance"),
+        ("twelve_data", "TwelveData"),
+        ("twelve_data", "Twelve Data"),
+    ],
+)
+def test_api_returns_provider_qualified_history(monkeypatch, provider, native_label):
     import asyncio
     import types
 
     import archive_stock_history_api as api
 
     entry = dict(
-        provider="yfinance",
+        provider=provider,
         security_id="7",
         symbol="SYN",
         aliases=["SYN"],
@@ -95,7 +103,7 @@ def test_api_returns_provider_qualified_history(monkeypatch, native_label):
         ],
     )
     objects, ptr = a.build(
-        {"yfinance:7": entry},
+        {provider + ":7": entry},
         {"0": dict(key="estate/synthetic.parquet", etag="abc", bytes=10, rows=1)},
     )
 
@@ -122,10 +130,10 @@ def test_api_returns_provider_qualified_history(monkeypatch, native_label):
         MARKET_DATA=Store(), PROVIDER_HISTORY_KEY=ptr["key"], PROVIDER_HISTORY_SHA256=ptr["sha256"]
     )
     request = types.SimpleNamespace(
-        method="GET", url="https://example/api/v1/stocks?source=yfinance&security_id=7"
+        method="GET", url="https://example/api/v1/stocks?source=" + provider + "&security_id=7"
     )
     result = asyncio.run(api.execute(env, request))
     assert result["prices"][0]["close"] == "4.5"
-    assert result["prices"][0]["provider"] == "yfinance"
+    assert result["prices"][0]["provider"] == provider
     assert result["symbol"] == "SYN"
     assert result["security_id"] == "7"

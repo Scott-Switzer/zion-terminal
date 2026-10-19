@@ -267,10 +267,11 @@ async def execute(env, request):
             for i, native in enumerate(rows):
                 if str(native.get("security_id")) != permno:
                     fail("PROVIDER_SECURITY_SOURCE_MISMATCH", 503)
-                if (
-                    not isinstance(native.get("source_name"), str)
-                    or native["source_name"].casefold() != native_provider.casefold()
-                ):
+                label = native.get("source_name")
+                accepted_labels = {native_provider.casefold()}
+                if native_provider == "twelve_data":
+                    accepted_labels.update({"twelvedata", "twelve data"})
+                if not isinstance(label, str) or label.casefold() not in accepted_labels:
                     fail("PROVIDER_SOURCE_MISMATCH", 503)
                 observation = point(native, native_provider)
                 day = observation["session_date"]
