@@ -267,7 +267,10 @@ async def execute(env, request):
             for i, native in enumerate(rows):
                 if str(native.get("security_id")) != permno:
                     fail("PROVIDER_SECURITY_SOURCE_MISMATCH", 503)
-                if native.get("source_name") != native_provider:
+                if (
+                    not isinstance(native.get("source_name"), str)
+                    or native["source_name"].casefold() != native_provider.casefold()
+                ):
                     fail("PROVIDER_SOURCE_MISMATCH", 503)
                 observation = point(native, native_provider)
                 day = observation["session_date"]
@@ -284,6 +287,7 @@ async def execute(env, request):
                 )
                 observation.update(
                     symbol=selected.get("symbol"),
+                    stored_source_label=native.get("source_name"),
                     identity_status="OBSERVED_STATIC_WAREHOUSE_LABEL_ONLY",
                     source_ids=[sid],
                 )

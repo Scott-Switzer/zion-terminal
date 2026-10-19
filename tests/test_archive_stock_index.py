@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "deploy/cloudflare-query/src"))
 import archive_stock_index as a
 
@@ -72,7 +74,8 @@ def test_provider_api_fetch_uses_financial_store_and_pins_etag(monkeypatch):
     assert rows[0]["security_id"] == 7
 
 
-def test_api_returns_provider_qualified_history(monkeypatch):
+@pytest.mark.parametrize("native_label", ["yfinance", "YFinance"])
+def test_api_returns_provider_qualified_history(monkeypatch, native_label):
     import asyncio
     import types
 
@@ -110,7 +113,7 @@ def test_api_returns_provider_qualified_history(monkeypatch):
 
     async def rows(*args):
         return [
-            dict(security_id=7, source_name="yfinance", price_date="2020-01-01", close_price=4.5)
+            dict(security_id=7, source_name=native_label, price_date="2020-01-01", close_price=4.5)
         ]
 
     monkeypatch.setattr(api, "authenticate", lambda *args: None)
