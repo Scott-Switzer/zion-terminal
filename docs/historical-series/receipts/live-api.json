@@ -1,0 +1,46 @@
+{
+  "status": "PASS",
+  "release_id": "024d7a0ec03fad494eaf5698599b9c8185068bc6dd3bf3b78a3a4bd7d727d62c",
+  "checks": {
+    "anonymous_refused": true,
+    "catalog_exact_release": true,
+    "catalog_all_series": true,
+    "catalog_counts": true,
+    "us_treasury:nominal:10y_first_page": true,
+    "us_treasury:nominal:10y_no_false_availability": true,
+    "us_treasury:nominal:10y_next_page": true,
+    "ecb:fx:USD:EUR_first_page": true,
+    "ecb:fx:USD:EUR_no_false_availability": true,
+    "ecb:fx:USD:EUR_next_page": true,
+    "worldbank:commodity:agriculture_index_first_page": true,
+    "worldbank:commodity:agriculture_index_no_false_availability": true,
+    "worldbank:commodity:agriculture_index_next_page": true,
+    "missing_not_zero": true,
+    "historical_asof_refused": true,
+    "wrong_release_refused": true,
+    "existing_expanded_claims_preserved": true
+  },
+  "series": 147,
+  "observations": 412116,
+  "missing": 77969,
+  "examples": [
+    {
+      "series_id": "us_treasury:nominal:10y",
+      "unit": "percent",
+      "rows_checked": 4
+    },
+    {
+      "series_id": "ecb:fx:USD:EUR",
+      "unit": "USD per EUR",
+      "rows_checked": 4
+    },
+    {
+      "series_id": "worldbank:commodity:agriculture_index",
+      "unit": "index (2010=100)",
+      "rows_checked": 4
+    }
+  ],
+  "provider_calls_at_query_time": 0,
+  "production_pointer_writes": 0,
+  "slack_messages_sent": 0
+}
