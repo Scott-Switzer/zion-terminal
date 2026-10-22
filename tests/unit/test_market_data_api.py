@@ -218,3 +218,45 @@ def test_historical_pagination_rejects_the_current_release_id():
                                          {'session': fixture['prior_session'],
                                           'release_id': pointer['sha256']}, None, 'r')),
             'RELEASE_CHANGED')
+
+
+# --- rollback and pin-bound drills -------------------------------------------
+
+def _without_pin(fixture, *, key=None, size=None):
+    pointer = json.loads(fixture['objects'][CURRENT_KEY])
+    if key is None and size is None:
+        pointer.pop('sessions_index', None)
+    else:
+        if key is not None:
+            pointer['sessions_index']['key'] = key
+        if size is not None:
+            pointer['sessions_index']['bytes'] = size
+    objects = dict(fixture['objects'])
+    objects[CURRENT_KEY] = json.dumps(pointer)
+    return SimpleNamespace(MARKET_DATA=Bucket(objects), SESSION_INDEX_ENABLED='true')
+
+
+def test_rollback_without_pin_degrades_dated_requests_only():
+    fixture, _ = _fixture_env()
+    env = _without_pin(fixture)
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_MISSING')
+    current = asyncio.run(dispatch(env, 'GET', '/v1/market/coverage', {}, None, 'r'))
+    assert current['release']['session'] == fixture['latest_session']
+
+
+def test_oversized_index_pin_is_rejected_before_reading_it():
+    fixture, _ = _fixture_env()
+    env = _without_pin(fixture, size=600000)
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
+
+
+def test_index_pin_key_must_match_its_own_digest():
+    fixture, _ = _fixture_env()
+    env = _without_pin(fixture, key='control/daily-prices/sessions/' + 'c' * 64 + '.json')
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
