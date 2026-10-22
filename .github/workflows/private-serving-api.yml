@@ -43,6 +43,8 @@ jobs:
           python-version: '3.12'
       - name: Install test tools only
         run: python -m pip install 'pytest>=8,<10' 'ruff>=0.3,<1' 'click>=8,<9'
+      - name: Reconciled snapshot and active readiness regression tests
+        run: python -m pytest -q tests/unit/test_snapshot_bundle.py tests/unit/test_sec_readiness_api.py
       - name: Synthetic existing-data and frozen contract tests
         run: >-
           python -m pytest -q -m "not integration"
