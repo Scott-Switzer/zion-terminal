@@ -67,7 +67,9 @@ def authorize(env, request, *, service_paths=()):
     if not isinstance(expected, str) or not expected:
         if bearer_status == 503:
             error(
-                "SERVICE_AUTH_UNCONFIGURED", "internal service authentication is not configured", 503
+                "SERVICE_AUTH_UNCONFIGURED",
+                "internal service authentication is not configured",
+                503,
             )
         error("UNAUTHORIZED", "valid bearer or internal service authentication is required", 401)
     supplied = request.headers.get("x-zion-service-token", "")

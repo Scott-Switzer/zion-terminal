@@ -898,7 +898,8 @@ def fetch(base, token, route, params):
               help="Readiness screen: issuers eligible for this implemented valuation method.")
 @click.option("--flag", type=click.Choice(READINESS_FLAGS),
               help="Readiness screen: issuers carrying this readiness flag.")
-@click.option("--missing", help="Readiness screen: a missing-input code, e.g. MISSING_DATED_OUTSTANDING_SHARES.")
+@click.option("--missing",
+              help="Readiness screen: a missing-input code, e.g. MISSING_DATED_OUTSTANDING_SHARES.")
 @click.option("--status", help="Readiness screen: CLASSIFIED or SOURCE_IDENTITY_MISMATCH.")
 @click.option("--view", type=click.Choice(["summary", "screen"]),
               help="Readiness: counts only, or the matching issuers.")
