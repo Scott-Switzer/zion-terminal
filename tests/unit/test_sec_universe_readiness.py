@@ -176,8 +176,16 @@ def test_fcfe_survives_an_incomplete_bridge_that_stops_the_enterprise_dcf():
 # --------------------------------------------------------------------------------------------------
 # Independent check of a published release against the pinned archive itself
 # --------------------------------------------------------------------------------------------------
-RELEASE = Path("/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-readiness/"
-               "7c69a8ad0d5e33c41b7b9cb0819d4b20db872790458c7df73dca0251aab8202a")
+def pinned_release():
+    """An explicit published release; a missing cache is never an empty dataset."""
+    import os
+    folder = os.environ.get('ZION_READINESS_RELEASE_DIR')
+    release_id = os.environ.get('ZION_READINESS_RELEASE_ID')
+    if not folder or not release_id:
+        pytest.fail('READINESS_FIXTURE_UNCONFIGURED: set ZION_READINESS_RELEASE_DIR and ZION_READINESS_RELEASE_ID; use -m "not integration" for an explicitly offline run', pytrace=False)
+    return Path(folder), release_id
+
+
 DEBT_CANDIDATES = ("DebtCurrent", "LongTermDebtCurrent", "LongTermDebtNoncurrent", "LongTermDebt",
                    "CommercialPaper", "ShortTermBorrowings", "OtherShortTermBorrowings")
 SHARE_CANDIDATES = ("EntityCommonStockSharesOutstanding", "CommonStockSharesOutstanding")
@@ -195,26 +203,26 @@ def test_published_records_agree_with_an_independent_read_of_the_archive():
     from reconcile_financial_inventory import client
     from sec_universe_readiness import RangeReader
 
-    if not (RELEASE / "summary.json").exists():
-        pytest.skip("no recorded readiness release in this checkout")
-    engine = json.loads(Path(str(RELEASE.parent.parent / "sec-engine-scale/engine-manifest.json")
-                            ).read_text())
-    entries = json.loads(Path(str(RELEASE.parent.parent / "sec-engine-scale/full-member-index.json")
-                              ).read_text())
-    records = []
-    for path in sorted(RELEASE.glob("part-*.jsonl.gz")):
-        import gzip
-        with gzip.open(path, "rt") as handle:
-            records += [json.loads(line) for line in handle if line.strip()]
-    classified = [r for r in records if r.get("status") == "CLASSIFIED"]
-    assert len(classified) > 20000
-    sample = classified[::max(len(classified) // 40, 1)][:40]
-    reader = RangeReader(engine["source"], client())
-    cutoff = date.fromisoformat(engine["date_to"])
+    from itertools import islice
+    from tests.readiness_fixture import load_readiness_fixture, load_archive_context, iter_readiness_records
+
+    release, release_id = pinned_release()
+    manifest = load_readiness_fixture(release, release_id)
+    engine, entries = load_archive_context(release, manifest)
+    classified_count = sum(row.get('status') == 'CLASSIFIED' for row in iter_readiness_records(release, manifest))
+    assert classified_count > 20000
+    classified = (row for row in iter_readiness_records(release, manifest) if row.get('status') == 'CLASSIFIED')
+    sample = list(islice(classified, 0, None, max(classified_count // 40, 1)))[:40]
+    reader = RangeReader(engine['source'], client(), block=1048576, cached=4)
+    cutoff = date.fromisoformat(engine['date_to'])
     checked = 0
     with ZipFile(reader) as archive:
         for record in sample:
-            document = json.loads(archive.read(entries[record["cik"]]["name"]))
+            entry = entries[record['cik']]
+            info = archive.getinfo(entry['name'])
+            assert (info.file_size, info.compress_size, info.CRC, info.header_offset, info.compress_type) == (entry['uncompressed_bytes'], entry['compressed_bytes'], entry['crc'], entry['offset'], entry['compression'])
+            member_raw = archive.read(entry['name'])
+            document = json.loads(member_raw)
             assert str(document["cik"]).zfill(10) == record["cik"]
             facts = document["facts"]
             eligible_debt = any(
@@ -237,6 +245,9 @@ def test_published_records_agree_with_an_independent_read_of_the_archive():
             verified = record["readiness"]["dated_share_basis_verified"]
             assert not (verified and not eligible_shares), record["cik"]
             assert record["source"]["member_sha256"] == hashlib.sha256(
-                entries and archive.read(entries[record["cik"]]["name"])).hexdigest()
+                member_raw).hexdigest()
             checked += 1
     assert checked == len(sample)
+    print(json.dumps({'audit': 'readiness_independent_archive', 'release_id': release_id,
+                      'sample_checked': checked, 'classified_records': classified_count,
+                      'archive_range_requests': reader.requests, 'archive_bytes_read': reader.bytes_read}))
