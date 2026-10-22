@@ -117,3 +117,28 @@ def test_old_serving_payload_cannot_be_relabelled_with_current_bundle():
     snapshot = {'bundle_id': 'a'*64, 'source_releases': {'serving': 'current'}}
     with pytest.raises(ValueError, match='RELEASE_MISMATCH'):
         b.stamp({'release': {'serving_release_id': 'old'}, 'observations': []}, snapshot)
+
+
+def test_provider_release_and_digest_are_part_of_snapshot(monkeypatch):
+    b = module()
+    import serving_v2
+    async def serving(env, **kwargs):
+        return {}, {'serving_release_id': 'same-serving'}
+    monkeypatch.setattr(serving_v2, 'load_release', serving)
+    class Bucket:
+        async def get(self, key):
+            return None
+    env = SimpleNamespace(MARKET_DATA=Bucket(),
+        PROVIDER_HISTORY_KEY='gold/provider-history/releases/' + 'a'*64 + '/manifest.json',
+        PROVIDER_HISTORY_SHA256='b'*64)
+    original = asyncio.run(b.load_snapshot(env))
+    env.PROVIDER_HISTORY_SHA256 = 'c'*64
+    assert asyncio.run(b.load_snapshot(env))['bundle_id'] != original['bundle_id']
+    env.PROVIDER_HISTORY_SHA256 = 'b'*64
+    env.PROVIDER_HISTORY_KEY = env.PROVIDER_HISTORY_KEY.replace('a'*64, 'd'*64)
+    assert asyncio.run(b.load_snapshot(env))['bundle_id'] != original['bundle_id']
+
+
+def test_historical_reader_shape_preserves_observation_coverage():
+    assert module().data_as_of({'series': [{'observations': [
+        {'observation_date': '2026-09-30', 'value': '1.2'}]}]}) == '2026-09-30'

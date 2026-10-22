@@ -253,3 +253,25 @@ def test_the_same_release_always_produces_the_same_index_id(index):
         moved["buckets/method-operating_dcf.json"], sha256="a" * 64)
     other = publisher.manifest_for(release, moved, len(RECORDS), index.counts, reference)
     assert other["index_id"] != index.manifest["index_id"]
+
+
+def test_union_within_method_filter_preserves_all_matches_and_deduplicates(index):
+    result, status = index.query({'method': 'operating_dcf,comparables'})
+    assert status == 200
+    assert {row['cik'] for row in result['matches']} == {'0000320193', '0001018724'}
+    assert result['total_matches'] == 2
+
+
+def test_union_within_status_filter_preserves_all_groups(index):
+    result, status = index.query({'status': 'CLASSIFIED,SOURCE_IDENTITY_MISMATCH'})
+    assert status == 200
+    assert result['total_matches'] == 5
+
+
+@pytest.mark.parametrize('kind', ['sector', 'share_absence'])
+def test_multi_group_candidate_selection_uses_the_whole_union(kind):
+    artifacts = {'buckets/' + kind + '-' + name + '.json': {'issuers': 1}
+                 for name in ('first', 'second')}
+    filters = [[], [], [], [], [], []]
+    filters[4 if kind == 'sector' else 5] = ['first', 'second']
+    assert len(route.narrowest({'artifacts': artifacts, 'issuers': 2}, *filters)) == 2
