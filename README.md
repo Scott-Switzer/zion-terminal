@@ -160,8 +160,11 @@ See `docs/decisions/` for full ADR history.
 # All tests
 python -m pytest tests/
 
-# Without benchmarks (faster)
-python -m pytest tests/ -p no:benchmark
+# Fast offline correctness: execute benchmark-backed functions once, without timing
+python -m pytest tests/ -m "not integration" --benchmark-disable
+
+# Measure benchmarks separately (requires the declared dev dependencies)
+python -m pytest tests/benchmarks/ --benchmark-only --benchmark-json=/tmp/zion-benchmarks.json
 
 # Specific area
 python -m pytest tests/unit/test_regression_fixes.py -v
