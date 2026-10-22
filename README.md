@@ -160,14 +160,33 @@ See `docs/decisions/` for full ADR history.
 # All tests
 python -m pytest tests/
 
-# Without benchmarks (faster)
-python -m pytest tests/ -p no:benchmark
+# Fast offline correctness: execute benchmark-backed functions once, without timing
+python -m pytest tests/ -m "not integration" --benchmark-disable
+
+# Measure benchmarks separately (requires the declared dev dependencies)
+python -m pytest tests/benchmarks/ --benchmark-only --benchmark-json=/tmp/zion-benchmarks.json
 
 # Specific area
 python -m pytest tests/unit/test_regression_fixes.py -v
 ```
 
-Current: **447 tests passing, 1 skipped** (v0.9.1).
+The private archive audit is separate from offline correctness. It requires a complete,
+hash-verified fixture from an explicitly selected published release:
+
+```bash
+export ZION_READINESS_RELEASE_DIR=/absolute/path/to/verified/readiness-fixture
+export ZION_READINESS_RELEASE_ID=<published-release-sha256>
+python -m pytest tests/unit/test_sec_universe_readiness.py -m integration -q -s
+# Once configured, run the actual full suite, including measured benchmarks:
+python -m pytest tests/ -q
+```
+
+Use `scripts/materialize_readiness_test_fixture.py --help` to retrieve only the
+existing receipt-listed artifacts and attach a separately pinned engine/member
+index. It does not rebuild or publish data. Missing fixture configuration fails an
+explicitly requested audit; `-m "not integration"` deliberately deselects it and is
+not full archive validation. Benchmark timings and archive audit results should be
+reported separately from offline test counts.
 
 ---
 

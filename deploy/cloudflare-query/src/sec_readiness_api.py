@@ -23,6 +23,7 @@ from private_financials import PrivateFinancialsError
 from private_http import authenticate
 from sec_engine import encoded
 from sec_engine_api import cursor_decode, cursor_encode, fail, parameters, sha
+from sec_sector import IDENTIFIER_ABSENT_GROUPS, SECTOR_GROUPS
 
 PREFIX = "gold/sec-readiness/index/"
 VERSION = "zion-readiness-screen-index-v1"
@@ -38,8 +39,13 @@ FLAGS = ("financial_history_available", "complete_equity_bridge", "dated_share_b
          "specialized_method_required")
 PARAMETERS = {
     "method", "flag", "missing", "status", "cik", "ciks", "limit", "cursor", "view",
-    "expected_index_id", "recipient",
+    "expected_index_id", "recipient", "sector", "share_absence",
 }
+# A sector filter is validated against the shared vocabulary rather than against what happens to
+# be published, so a misspelled group is a bad request and not an empty answer. The share-basis
+# absences are validated the way missing-input codes are: against the published buckets, because
+# the reason codes are written by the classification run, not by this service.
+SECTORS = tuple(sorted(SECTOR_GROUPS + IDENTIFIER_ABSENT_GROUPS))
 
 
 def values(q, name, allowed=None):
@@ -115,34 +121,34 @@ def published(m, name):
     return entry(m, name) if isinstance(declared, dict) else None
 
 
-def narrowest(m, method, flags, missing, status):
-    """The single published artifact that carries the fewest candidates for these filters.
-
-    One artifact is read, not one per filter: the candidates come from the narrowest filter and
-    every other filter is applied to those rows in memory. Reading the union of two filters would
-    silently answer a different question than the one asked.
-    """
-    names = []
-    if method:
-        names += ["buckets/method-" + name + ".json" for name in method]
-    names += ["buckets/missing-" + name + ".json" for name in missing]
-    names += ["buckets/flag-" + name + ".json" for name in flags]
-    names += ["buckets/status-" + name + ".json" for name in status]
-    published = [(m.get("artifacts") or {}).get(name) for name in names]
-    sizes = [(declared.get("issuers", m["issuers"]), name)
-             for name, declared in zip(names, published) if isinstance(declared, dict)]
-    if not sizes:
+def narrowest(m, method, flags, missing, status, sectors, share_absence):
+    """Choose the smallest complete candidate set: union within OR, intersection across filters."""
+    groups = []
+    for prefix, values in (("method", method), ("status", status),
+                           ("sector", sectors), ("share_absence", share_absence)):
+        if values:
+            groups.append(["buckets/" + prefix + "-" + value + ".json" for value in values])
+    groups += [["buckets/missing-" + value + ".json"] for value in missing]
+    groups += [["buckets/flag-" + value + ".json"] for value in flags]
+    artifacts = m.get("artifacts") or {}
+    candidates = [(sum(artifacts[name].get("issuers", m["issuers"]) for name in names), names)
+                  for names in groups if all(isinstance(artifacts.get(name), dict) for name in names)]
+    if not candidates:
         fail("SCREEN_FILTER_NOT_PUBLISHED", 404)
-    return min(sizes)[1]
+    return min(candidates)[1]
 
 
-def matches(item, method, flags, missing, status):
+def matches(item, method, flags, missing, status, sectors, share_absence):
     """Every supplied filter must hold, so filters narrow and never widen."""
     if method and not set(method) & set(item.get("methods") or []):
         return False
     if missing and not set(missing).issubset(set(item.get("missing") or [])):
         return False
     if flags and not set(flags).issubset(set(item.get("flags") or [])):
+        return False
+    if sectors and item.get("sector") not in sectors:
+        return False
+    if share_absence and item.get("share_absence") not in share_absence:
         return False
     return not (status and item.get("status") not in status)
 
@@ -158,6 +164,8 @@ async def execute(env, request):
     flags = values(q, "flag", FLAGS)
     missing = values(q, "missing")
     status = values(q, "status")
+    sectors = values(q, "sector", SECTORS)
+    share_absence = values(q, "share_absence")
     ciks = q["ciks"].split(",") if q.get("ciks") else ([q["cik"]] if q.get("cik") else [])
     if any(not re.fullmatch(r"\d{10}", cik) for cik in ciks):
         fail("INVALID_CIK", 422)
@@ -166,7 +174,8 @@ async def execute(env, request):
     limit = int(q.get("limit", "25"))
     if not 1 <= limit <= MAX_MATCHES:
         fail("INVALID_SCREEN_PARAMETER", 422)
-    view = q.get("view", "screen" if (method or flags or missing or status or ciks) else "summary")
+    view = q.get("view", "screen" if (method or flags or missing or status or ciks or sectors
+                                      or share_absence) else "summary")
     if view not in ("summary", "screen"):
         fail("INVALID_SCREEN_PARAMETER", 422)
     m = await manifest(env)
@@ -183,8 +192,8 @@ async def execute(env, request):
         "qualification": m["qualification"],
         "evidence_states": ["REPORTED", "REVIEWED_ABSENT", "UNAVAILABLE", "CONFLICTING"],
     }
-    filtered = bool(method or flags or missing or status)
-    name = (narrowest(m, method, flags, missing, status)
+    filtered = bool(method or flags or missing or status or sectors or share_absence)
+    name = (narrowest(m, method, flags, missing, status, sectors, share_absence)
             if view == "screen" and filtered else None)
     if view == "summary" or not (name or ciks):
         if view == "screen":
@@ -206,7 +215,7 @@ async def execute(env, request):
         )
         return base, 200
 
-    refs = [entry(m, name)] if name else []
+    refs = [entry(m, item) for item in name] if name else []
     if not refs:
         # A named issuer's row is reachable without reading a whole filter artifact: the shards
         # are the CIK remainder, so one requested issuer costs one shard.
@@ -226,25 +235,31 @@ async def execute(env, request):
         offset = cursor.get("offset")
         if type(offset) is not int or not 0 <= offset <= m["issuers"]:
             fail("INVALID_CURSOR_OFFSET", 422)
-    read_bytes, found, page, seen = 0, 0, [], set()
+    read_bytes, found, page, seen = 0, 0, [], {}
     for ref in refs:
         items = json.loads(await object_at(env, ref, MAX_FILTER_BYTES))
         read_bytes += ref["bytes"]
         if len(items) != ref["issuers"]:
             fail("SCREEN_SOURCE_COUNT_MISMATCH", 409)
+        in_artifact = set()
         for item in items:
             cik = item.get("cik")
-            if not isinstance(cik, str) or not re.fullmatch(r"\d{10}", cik) or cik in seen:
+            if not isinstance(cik, str) or not re.fullmatch(r"\d{10}", cik) or cik in in_artifact:
                 fail("SCREEN_SOURCE_DUPLICATE_OR_INVALID_CIK", 409)
-            seen.add(cik)
+            in_artifact.add(cik)
+            if cik in seen:
+                if seen[cik] != item:
+                    fail("SCREEN_SOURCE_DUPLICATE_OR_INVALID_CIK", 409)
+                continue
+            seen[cik] = item
             if ciks and cik not in ciks:
                 continue
-            if not matches(item, method, flags, missing, status):
+            if not matches(item, method, flags, missing, status, sectors, share_absence):
                 continue
             if offset <= found < offset + limit:
                 page.append(item)
             found += 1
-    if ciks and set(ciks) - seen:
+    if ciks and set(ciks) - set(seen):
         fail("SCREEN_CIK_NOT_MATERIALIZED", 404)
     if offset > found:
         fail("INVALID_CURSOR_OFFSET", 422)
@@ -253,7 +268,8 @@ async def execute(env, request):
         base,
         view="screen",
         filters={"method": method, "flag": flags, "missing": missing, "status": status,
-                 "ciks": ciks},
+                 "sector": sectors, "share_absence": share_absence, "ciks": ciks},
+        sector_evidence_states=["REPORTED", *IDENTIFIER_ABSENT_GROUPS],
         matches=page,
         total_matches=found,
         universe=m["issuers"],

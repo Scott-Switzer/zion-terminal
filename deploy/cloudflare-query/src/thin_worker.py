@@ -9,6 +9,8 @@ from urllib.parse import urlparse, parse_qs
 
 from workers import Response, WorkerEntrypoint
 
+from snapshot_bundle import CURRENT_SNAPSHOT, RESPONSE_DATA_AS_OF, load_snapshot, stamp_current, assert_bundle
+
 from data_api import dispatch as dispatch_data_api, select_screen_rows, evidence_rows
 from temporal_core import TEMPORAL_CONTRACT_SHA256, TEMPORAL_SCHEMA_VERSION
 from serving_v2 import (
@@ -110,27 +112,59 @@ class Default(WorkerEntrypoint):
         await queue_batch(env if env is not None else self.env, batch)
 
     async def fetch(self, request):
+        token = CURRENT_SNAPSHOT.set(None)
+        coverage_token = RESPONSE_DATA_AS_OF.set(None)
+        try:
+            path = urlparse(request.url).path
+            if path.startswith('/private/') or (path.startswith('/v1/market/') and getattr(self.env, 'OWNER_ONLY_MARKET_DATA', 'false') == 'true'):
+                from private_http import authorize
+                authorize(self.env, request, service_paths=('/private/v1/equity-claims',))
+            snapshot = await load_snapshot(self.env)
+            CURRENT_SNAPSHOT.set(snapshot)
+            assert_bundle(request.headers.get('x-zion-bundle-id'), snapshot)
+            if request.method == 'GET' and urlparse(request.url).path == '/private/v1/snapshot':
+                from private_http import authenticate
+                authenticate(self.env, request)
+                return self._response(snapshot)
+            response = await self._fetch(request)
+            # Detect pointer changes during a request rather than relabel old data.
+            assert_bundle(snapshot['bundle_id'], await load_snapshot(self.env))
+            response.headers['x-zion-bundle-id'] = snapshot['bundle_id']
+            response.headers['x-zion-data-as-of'] = RESPONSE_DATA_AS_OF.get() or 'null'
+            response.headers['link'] = '</private/v1/snapshot>; rel="describedby"'
+            return response
+        except Exception as error:
+            from private_financials import PrivateFinancialsError
+            if isinstance(error, PrivateFinancialsError):
+                return self._error(request_id(request), error.code, error.code, error.status)
+            code = 'RELEASE_MISMATCH' if str(error) == 'RELEASE_MISMATCH' else 'BUNDLE_UNAVAILABLE'
+            return self._error(request_id(request), code, code, 409 if code == 'RELEASE_MISMATCH' else 503)
+        finally:
+            CURRENT_SNAPSHOT.reset(token)
+            RESPONSE_DATA_AS_OF.reset(coverage_token)
+
+    async def _fetch(self, request):
         begin_telemetry(self.env)
         rid = request_id(request)
         path = urlparse(request.url).path
         if path == '/private/v1/stock-history':
             from stock_history_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
         if path == '/private/v1/historical-series':
             from historical_series_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
         if path.startswith('/private/v1/research-'):
             from unified_research_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
@@ -147,7 +181,7 @@ class Default(WorkerEntrypoint):
         if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path == '/private/v1/financial-screen':
             from sec_screener_http import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
@@ -156,14 +190,14 @@ class Default(WorkerEntrypoint):
         if path in {'/private/v1/readiness', '/private/v1/readiness/screen'}:
             from sec_readiness_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
         if getattr(self.env, 'SEC_ENGINE_ENABLED', 'false') == 'true' and path == '/private/v1/equity-claims':
             from equity_claims_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
@@ -174,14 +208,14 @@ class Default(WorkerEntrypoint):
         }:
             from sec_engine_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
         if path == '/private/v1/financial-history':
             from sec_history_api import handle
             value, status = await handle(self.env, request)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
@@ -193,7 +227,7 @@ class Default(WorkerEntrypoint):
             from private_http import handle_private
 
             value, status = await handle_private(self.env, request, request_id=rid)
-            return Response(json.dumps(value, separators=(',', ':')), status=status,
+            return Response(json.dumps(stamp_current(value), separators=(',', ':')), status=status,
                             headers={'content-type': 'application/json',
                                      'cache-control': 'private, no-store',
                                      'vary': 'Authorization'})
@@ -623,7 +657,7 @@ class Default(WorkerEntrypoint):
             if method == "tools/call":
                 params = body.get("params") or {}; name = params.get("name"); arguments = dict(params.get("arguments") or {})
                 call_world = arguments.pop("world", {"world_type": "real", "world_id": "us-public-markets"})
-                result = await self._tool_v2(name, {"world": call_world, "arguments": arguments}, rid)
+                result = stamp_current(await self._tool_v2(name, {"world": call_world, "arguments": arguments}, rid))
                 return self._response({"jsonrpc": "2.0", "id": rpc_id, "result": {"content": [{"type": "json", "json": result}], "structuredContent": result}})
             if rpc_id is None:
                 return Response("", status=202, headers={"content-type": "application/json"})
@@ -641,8 +675,8 @@ class Default(WorkerEntrypoint):
 
     def _response(self, value: dict, status: int = 200):
         telemetry = finish_telemetry()
-        headers = {"content-type": "application/json", "x-serving-telemetry": json.dumps(telemetry, separators=(",", ":"))}
-        return Response(json.dumps(value, separators=(",", ":")), status=status, headers=headers)
+        headers = {"content-type": "application/json", "cache-control": "private, no-store", "x-serving-telemetry": json.dumps(telemetry, separators=(",", ":"))}
+        return Response(json.dumps(stamp_current(value), separators=(",", ":")), status=status, headers=headers)
 
     def _error(self, rid: str, code: str, message: str, status: int, retryable: bool = False):
         return self._response({"error": {"request_id": rid, "code": code, "message": message, "retryable": retryable}}, status)

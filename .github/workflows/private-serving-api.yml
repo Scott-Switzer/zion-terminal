@@ -43,9 +43,11 @@ jobs:
           python-version: '3.12'
       - name: Install test tools only
         run: python -m pip install 'pytest>=8,<10' 'ruff>=0.3,<1' 'click>=8,<9'
+      - name: Reconciled snapshot and active readiness regression tests
+        run: python -m pytest -q tests/unit/test_snapshot_bundle.py tests/unit/test_sec_readiness_api.py tests/unit/test_revenue_coverage_diagnosis.py
       - name: Synthetic existing-data and frozen contract tests
         run: >-
-          python -m pytest -q
+          python -m pytest -q -m "not integration"
           tests/unit/test_sec_engine*.py
           tests/unit/test_sec_screener*.py
           tests/unit/test_sec_universe*.py
@@ -103,3 +105,13 @@ jobs:
           python scripts/generate_tool_contract.py
           git diff --exit-code -- contracts/zion-tool-contract-v2.json contracts/zion-tool-contract-v2.sha256
           git diff --check
+
+  full-offline-suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install -e '.[dev]'
+      - run: python -m pytest -q -m 'not integration'

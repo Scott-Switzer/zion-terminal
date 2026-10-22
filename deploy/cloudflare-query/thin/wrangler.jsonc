@@ -26,6 +26,7 @@
     }
   ],
   "vars": {
+    "BUNDLE_SHARED_SNAPSHOT": "true",
     "SERVING_V2_ENABLED": "true",
     "SERVING_V2_CURRENT_KEY": "gold/serving/coverage25/CURRENT.json",
     "CURRENT_POINTER_CACHE_TTL_MS": "0",
@@ -41,13 +42,23 @@
     "SEC_ENGINE_MANIFEST_KEY": "gold/sec-engine/releases/b39a670bad0670449256e59d38bf6b9600503449baded29c25e41d5fb368c6bb/manifest.json",
     "SEC_ENGINE_MANIFEST_SHA256": "4e0d6b9eac28ea2352dd255c4f8323f1fd4d486796063921cec691942660be7b",
     "SEC_ENGINE_ENABLED": "true",
-    "SEC_READINESS_INDEX_KEY": "gold/sec-readiness/index/87f6bb816976417c89d6047386dc6696c18305212fb4aee4200c350f7c986d67/manifest.json",
-    "SEC_READINESS_INDEX_SHA256": "9c5c548b9c9cba3dd12a9604143656d25f27831a689550fa2d1a16250f5a953b",
-    "SEC_COMPANYFACTS_MANIFEST_KEY": "gold/sec-companyfacts/releases/f4f81944fbf79e2cac8b119b457fd8e45b92f2171e783ecd36f85b18df80b25b/manifest.json",
-    "SEC_COMPANYFACTS_MANIFEST_SHA256": "032d432d6a0478c146ce9c1a62c0565f9a2e725826ce3a2ed323c395b6ff850f",
+    "SEC_READINESS_INDEX_KEY": "gold/sec-readiness/index/d17b23f1f788b32242f3bde5048dec4afedf050a7fdee071c1c4501f6592e970/manifest.json",
+    "SEC_READINESS_INDEX_SHA256": "a0985b7912856e0ad41db6ee53e151e165d68c3bb2d06c71f2b7c212918bc0cd",
+    "SEC_COMPANYFACTS_MANIFEST_KEY": "gold/sec-companyfacts/releases/162c3745857617b185579b874a9adcf16e25a0a553ed4277080acdfbc474aebf/manifest.json",
+    "SEC_COMPANYFACTS_MANIFEST_SHA256": "757a4fd7ac516a07ecabade672d9355526779a78ed49764367de2b66dea4f8b7",
     "UNIFIED_RESEARCH_MANIFEST_KEY": "gold/unified-research/releases/358ea45de35af6003347dc163fe31eebd09988d1b3715c3386e5ab8c0dfee72e/manifest.json",
     "UNIFIED_RESEARCH_MANIFEST_SHA256": "de3957597bb0575d845b47edb3495f4018918be6c6136fd14d9bef827579c344",
-    "OWNER_ONLY_MARKET_DATA": "true"
+    "OWNER_ONLY_MARKET_DATA": "true",
+    "CRSP_HISTORY_KEY": "gold/crsp-stock-history/releases/5a99de3beb22767c59d540212016a8b08c17d997d43762e3bd8f34534aebd63d/manifest.json",
+    "CRSP_HISTORY_SHA256": "c95b65d7ad79236eba0e91c6b650a753374bc6210fe9751141c8047ff30663c6",
+    "HISTORICAL_COVERAGE_KEY": "gold/historical-series/coverage/a573c7ea3b4951c108e2675541a818be3e72a4e5655cfe81947950155989c369.json",
+    "HISTORICAL_COVERAGE_SHA256": "a573c7ea3b4951c108e2675541a818be3e72a4e5655cfe81947950155989c369",
+    "HISTORICAL_SERIES_KEY": "gold/historical-series/releases/024d7a0ec03fad494eaf5698599b9c8185068bc6dd3bf3b78a3a4bd7d727d62c/manifest.json",
+    "HISTORICAL_SERIES_SHA256": "6b3f48fd9f27ec2ded4d128c3404959bbf3df725d17562c049eeb262c84f61c9",
+    "PROVIDER_HISTORY_KEY": "gold/provider-stock-history/releases/54f287c014b55477a40436fa83e78cc601f9356bf5819687c64f9f7db2b54efd/manifest.json",
+    "PROVIDER_HISTORY_SHA256": "439b3fb86bfd70fe2c2f1691950fff991323cd232a4ce94bc785d5223b43a0ae",
+    "STOCK_HISTORY_KEY": "gold/stock-history/releases/12bf477467e295cdad65a3a50fea80b93c084334d4f49e241eb6d340aaff76ec/manifest.json",
+    "STOCK_HISTORY_SHA256": "cc7ce29b53d35e1d9ed0f07918d7c8265cf23081f51bf66f442ce5f51f82ce6f"
   },
   "observability": {
     "enabled": true,
