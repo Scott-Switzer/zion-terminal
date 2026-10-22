@@ -68,7 +68,12 @@ REGISTRY = {
         "definition": "Operating cash flow minus positive PP&E payments, with exact matching periods/currency.",
     },
 }
-REVENUE_CONCEPTS = {"0000909832": ["Revenues"]}
+REVENUE_CONCEPTS = {
+    "0000909832": ["Revenues"],
+    # Walmart files total Revenues and ASC-606 contract revenue with different
+    # values for the same period. Revenues is the total the statements present.
+    "0000104169": ["Revenues"],
+}
 
 DEBT = {
     "0000320193": [

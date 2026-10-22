@@ -68,7 +68,12 @@ REGISTRY = {
         "definition": "Operating cash flow minus positive PP&E payments, with exact matching periods/currency.",
     },
 }
-REVENUE_CONCEPTS = {"0000909832": ["Revenues"]}
+REVENUE_CONCEPTS = {
+    "0000909832": ["Revenues"],
+    # Keep this registry in step with sec_engine.py: Walmart's total Revenues is
+    # the statement total; ASC-606 contract revenue is a narrower definition.
+    "0000104169": ["Revenues"],
+}
 
 DEBT = {
     "0000320193": [
