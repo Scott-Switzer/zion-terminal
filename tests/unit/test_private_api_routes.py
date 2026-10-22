@@ -66,6 +66,9 @@ def worker(monkeypatch):
     )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    async def snapshot(env):
+        return {'bundle_id': 'a'*64, 'source_releases': {'fixture': 'original'}, 'data_as_of': None}
+    monkeypatch.setattr(module, 'load_snapshot', snapshot)
     instance = module.Default()
     instance.env = SimpleNamespace(ZION_PRIVATE_API_TOKEN="test-token")
     return instance

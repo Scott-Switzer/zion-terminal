@@ -47,6 +47,7 @@
     }
   ],
   "vars": {
+    "BUNDLE_SHARED_SNAPSHOT": "true",
     "SERVING_V2_ENABLED": "true",
     "SERVING_V2_CURRENT_KEY": "gold/serving/coverage25/CURRENT.json",
     "CURRENT_POINTER_CACHE_TTL_MS": "0",
