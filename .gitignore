@@ -82,3 +82,4 @@ artifacts/registry-m1/
 
 # Private registry canary artifacts (report fields, provenance, baseline history)
 artifacts/registry-m2/
+.dev.vars

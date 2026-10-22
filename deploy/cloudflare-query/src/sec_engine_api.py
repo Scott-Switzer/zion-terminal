@@ -250,8 +250,36 @@ async def entry(env, m, cik):
     return item
 
 
+SCOPE_LABEL = b"zion-engine-derived-cache-scope-v1"
+
+
+def cache_scope(secret):
+    """A stable, one-way namespace for the credential that authenticates a cache.
+
+    Every object `stored`/`persist` manage is a *derived* cache the Worker itself wrote, and
+    each envelope is signed with the deployment credential. Reading one credential's
+    envelope with another can never verify, so without a namespace a rotation (or any reader
+    holding a different credential) would turn every previously cached query into a
+    permanent `CACHE_INTEGRITY_FAILURE` that the create-only writer could not repair.
+
+    Folding a one-way digest of the credential into the key makes that case a cache MISS
+    that recomputes under its own scope. It does not weaken anything: the MAC is still
+    verified, and an envelope signed by another credential is now simply not the object this
+    reader is looking for.
+    """
+    if not isinstance(secret, str) or not secret:
+        fail("PRIVATE_API_UNCONFIGURED", 503)
+    return hashlib.sha256(SCOPE_LABEL + b"\x00" + secret.encode()).hexdigest()
+
+
+def scoped_key(key, secret):
+    """The derived object for one key, namespaced by the authenticating credential."""
+    root, _, rest = key.partition("/")
+    return root + "/cache-scopes/" + cache_scope(secret) + ("/" + rest if rest else "")
+
+
 async def stored(env, key, secret, maximum=MAX_SOURCE):
-    obj = await env.MARKET_DATA.get(key)
+    obj = await env.MARKET_DATA.get(scoped_key(key, secret))
     if not obj:
         return None
     if obj.size > maximum:
@@ -268,7 +296,7 @@ async def persist(env, key, value, secret):
         fail("PERSISTED_RESULT_BUDGET", 413)
     # Create-only output. A replay can only observe identical authenticated bytes.
     await env.MARKET_DATA.put(
-        key,
+        scoped_key(key, secret),
         body.decode(),
         js_options(
             {
@@ -406,6 +434,7 @@ async def financial_history(env, m, p, allow_queue=True):
     result["cache"] = {
         "state": cache_state,
         "query_fingerprint": query,
+        "namespace": "CREDENTIAL_SCOPED",
         "source_payload_bytes": e.get("materialized", {}).get("bytes"),
         "source_validation": "PINNED_PAYLOAD_REHASHED_BEFORE_CACHE_USE",
         "archive_bytes_read_interactively": 0,

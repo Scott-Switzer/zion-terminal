@@ -61,7 +61,39 @@ ALLOWED = {
     "metrics": {"cik", "expected_release_id"},
     "coverage": {"cik", "expected_release_id"},
     "jobs": {"job_id"},
+    # Valuation readiness is a screening question about the issuer universe rather than about one
+    # company's financials, so it is served by its own published index and not by the engine.
+    "readiness": {
+        "method",
+        "flag",
+        "missing",
+        "status",
+        "cik",
+        "ciks",
+        "view",
+        "limit",
+        "cursor",
+        "expected_index_id",
+    },
 }
+ROUTES.update(readiness="readiness")
+READINESS_FLAGS = (
+    "financial_history_available",
+    "complete_equity_bridge",
+    "dated_share_basis_verified",
+    "any_implemented_method_eligible",
+    "operating_dcf_eligible",
+    "specialized_method_required",
+)
+READINESS_METHODS = (
+    "operating_dcf",
+    "fcfe",
+    "apv",
+    "bank_excess_return",
+    "residual_income",
+    "ddm",
+    "comparables",
+)
 
 
 ROUTES.update(compare="financial-history", provenance="financial-history")
@@ -561,6 +593,41 @@ def render_table(value, action):
     return "\n".join(output)
 
 
+def render_readiness(value):
+    """Readable screening output; the exported dataset remains the unchanged JSON.
+
+    A screening answer is a list of issuers and the gates that decided their verdict, so the
+    table prints the verdict and the reason together rather than a score.
+    """
+    lines = [
+        "index %s" % value.get("index_id", "NOT_RETURNED"),
+        "record release %s   archive cutoff %s"
+        % (value.get("release_id", "NOT_RETURNED"), value.get("availability_cutoff")),
+        "issuers %s   matches %s" % (value.get("universe"), value.get("total_matches")),
+    ]
+    counts = value.get("counts") or {}
+    for kind in ("methods", "flags", "missing", "status"):
+        rows = list((counts.get(kind) or {}).items())[:8]
+        if rows:
+            lines.append(
+                "  %-8s %s" % (kind, "  ".join("%s=%s" % item for item in rows))
+            )
+    for row in value.get("matches", []):
+        lines.append(
+            "  %-12s %-34s %-26s %s"
+            % (
+                row.get("cik"),
+                (row.get("label") or "")[:34],
+                ",".join(row.get("methods") or []) or "-",
+                ("missing=" + ",".join(row.get("missing") or [])) if row.get("missing") else "",
+            )
+        )
+    if value.get("next_cursor"):
+        lines.append("  next cursor %s" % value["next_cursor"])
+    lines.append("qualification %s" % value.get("qualification", "NOT_RETURNED"))
+    return "\n".join(lines)
+
+
 def render_price_chart(value):
     """Text chart of returned prices only; exact labels remain unrounded."""
     pages = value.get("pages", [value])
@@ -748,6 +815,8 @@ def emit_dataset(value, output, display_format="json", action="history"):
         rendered = (
             render_valuation_chart(value) if action == "valuation" else render_price_chart(value)
         )
+    elif display_format == "table" and action == "readiness":
+        rendered = render_readiness(value)
     else:
         rendered = render_table(value, action) if display_format == "table" else serialized.rstrip()
     click.echo(rendered)
@@ -825,6 +894,16 @@ def fetch(base, token, route, params):
 @click.option("--cik")
 @click.option("--ciks")
 @click.option("--metrics", help="Comma-separated history metrics; one metric for screen.")
+@click.option("--method", type=click.Choice(READINESS_METHODS),
+              help="Readiness screen: issuers eligible for this implemented valuation method.")
+@click.option("--flag", type=click.Choice(READINESS_FLAGS),
+              help="Readiness screen: issuers carrying this readiness flag.")
+@click.option("--missing",
+              help="Readiness screen: a missing-input code, e.g. MISSING_DATED_OUTSTANDING_SHARES.")
+@click.option("--status", help="Readiness screen: CLASSIFIED or SOURCE_IDENTITY_MISMATCH.")
+@click.option("--view", type=click.Choice(["summary", "screen"]),
+              help="Readiness: counts only, or the matching issuers.")
+@click.option("--expected-index-id", help="Refuse the answer if the published index changed.")
 @click.option("--frequency", type=click.Choice(["annual", "quarterly", "ttm"]))
 @click.option("--date-from")
 @click.option("--date-to")
@@ -969,6 +1048,7 @@ def research(action, base_url, credential_file, all_pages, output, display_forma
         "prices",
         "market-screen",
         "certification",
+        "readiness",
     ):
         raise click.ClickException("ALL_PAGES_UNSUPPORTED_FOR_ACTION")
     export_path = output

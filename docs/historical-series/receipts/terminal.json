@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "command": "zion historical --series-id ecb:fx:USD:EUR --date-from 1999-01-01 --date-to 1999-01-08 --limit 5",
+  "release_id": "024d7a0ec03fad494eaf5698599b9c8185068bc6dd3bf3b78a3a4bd7d727d62c",
+  "rows": 5,
+  "first": "1999-01-04",
+  "last": "1999-01-08",
+  "receipt_sha256": "8ffd0144f165558ed70c85dec357eb4ba0fc08dcda27c266486da171370cb088",
+  "point_in_time_status": "NOT_ESTABLISHED",
+  "exact_first_value": "1.1789"
+}

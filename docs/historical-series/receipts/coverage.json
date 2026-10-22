@@ -1,0 +1,29 @@
+{
+  "release_id": "024d7a0ec03fad494eaf5698599b9c8185068bc6dd3bf3b78a3a4bd7d727d62c",
+  "asset_classes": {
+    "fx": {
+      "series": 41,
+      "reported_values": 221441,
+      "missing": 70356,
+      "date_min": "1999-01-04",
+      "date_max": "2026-10-19"
+    },
+    "rates": {
+      "series": 19,
+      "reported_values": 127408,
+      "missing": 1193,
+      "date_min": "1990-01-02",
+      "date_max": "2026-10-16"
+    },
+    "commodities": {
+      "series": 87,
+      "reported_values": 63267,
+      "missing": 6420,
+      "date_min": "1960-01-01",
+      "date_max": "2026-09-01"
+    }
+  },
+  "point_in_time_status": "NOT_ESTABLISHED",
+  "discovered_sources": 12,
+  "source_files": 63
+}

@@ -24,11 +24,15 @@ import click
 from rich.console import Console
 
 from zion_terminal import __version__
+from zion_terminal.claims_cli import claims
 from zion_terminal.config.settings import get_settings
 from zion_terminal.orchestrator.orchestrator import Orchestrator
 from zion_terminal.outputs.formatter import OutputFormat, format_response
 from zion_terminal.providers.base import build_provider
 from zion_terminal.private_research import research
+from zion_terminal.historical_cli import historical
+from zion_terminal.stocks_cli import stocks
+from zion_terminal.datasets_cli import datasets
 
 console = Console()
 
@@ -397,6 +401,10 @@ def synthesis(ctx: click.Context, fmt: str) -> None:
 
 
 main.add_command(research)
+main.add_command(claims)
+main.add_command(historical)
+main.add_command(stocks)
+main.add_command(datasets)
 
 
 if __name__ == "__main__":
