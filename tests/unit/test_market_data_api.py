@@ -155,3 +155,44 @@ def test_session_parameter_is_rejected_outside_market_routes():
     _expect(lambda: asyncio.run(dispatch(_indexed_env(), 'GET', '/v1/metrics',
                                          {'session': PRIOR_SESSION}, None, 'r')),
             'INVALID_ARGUMENT')
+
+
+# --- producer-generated fixture (cross-language contract) ---------------------
+
+FIXTURE_PATH = Path(__file__).parents[1] / 'fixtures' / 'market-session-index.json'
+
+
+def _fixture_env(flag='true'):
+    fixture = json.loads(FIXTURE_PATH.read_text())
+    env = SimpleNamespace(MARKET_DATA=Bucket(fixture['objects']))
+    if flag is not None:
+        env.SESSION_INDEX_ENABLED = flag
+    return fixture, env
+
+
+def test_producer_generated_index_is_served_by_the_thin_worker():
+    fixture, env = _fixture_env()
+    prior = fixture['prior_session']
+    r = asyncio.run(dispatch(env, 'GET', '/v1/market/prices', {'session': prior}, None, 'r'))
+    assert r['release']['session'] == prior
+    assert r['release']['market_release_id'] == r['page']['release_id']
+    assert r['data']['prices'] and all(p['session_date'] == prior for p in r['data']['prices'])
+    assert r['coverage']['index_status'] == 'SESSION_INDEX_VERIFIED'
+
+
+def test_producer_fixture_current_session_still_serves():
+    fixture, env = _fixture_env()
+    r = asyncio.run(dispatch(env, 'GET', '/v1/market/coverage', {}, None, 'r'))
+    assert r['release']['session'] == fixture['latest_session']
+
+
+def test_producer_fixture_tampered_index_is_rejected():
+    fixture, env = _fixture_env()
+    pointer = json.loads(fixture['objects'][CURRENT_KEY])
+    key = pointer['sessions_index']['key']
+    objects = dict(fixture['objects'])
+    objects[key] = objects[key].replace('"max_sessions":300', '"max_sessions":299', 1)
+    tampered = SimpleNamespace(MARKET_DATA=Bucket(objects), SESSION_INDEX_ENABLED='true')
+    _expect(lambda: asyncio.run(dispatch(tampered, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
