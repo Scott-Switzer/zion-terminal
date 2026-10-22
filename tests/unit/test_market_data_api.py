@@ -196,3 +196,25 @@ def test_producer_fixture_tampered_index_is_rejected():
     _expect(lambda: asyncio.run(dispatch(tampered, 'GET', '/v1/market/prices',
                                          {'session': fixture['prior_session']}, None, 'r')),
             'SESSION_INDEX_CORRUPT')
+
+
+def test_historical_pagination_accepts_the_served_release_id():
+    fixture, env = _fixture_env()
+    prior = fixture['prior_session']
+    first = asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                 {'session': prior, 'limit': 1}, None, 'r'))
+    assert first['page']['next_offset'] == 1
+    second = asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                  {'session': prior, 'limit': 1, 'offset': 1,
+                                   'release_id': first['page']['release_id']}, None, 'r'))
+    assert second['release']['market_release_id'] == first['release']['market_release_id']
+    assert second['page']['offset'] == 1
+
+
+def test_historical_pagination_rejects_the_current_release_id():
+    fixture, env = _fixture_env()
+    pointer = json.loads(fixture['objects'][CURRENT_KEY])
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session'],
+                                          'release_id': pointer['sha256']}, None, 'r')),
+            'RELEASE_CHANGED')

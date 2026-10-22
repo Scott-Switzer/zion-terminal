@@ -56,15 +56,16 @@ async def market_dispatch(env,path,params,rid):
  if obj is None:raise ContractError('SOURCE_LIMITED','whole-market daily publication is not available',status=503)
  pointer=json.loads(await obj.text());sha=pointer.get('sha256','');key=pointer.get('data_key')
  if not re.fullmatch('[a-f0-9]{64}',sha) or pointer.get('version')!=sha or key!='gold/daily-prices/releases/'+sha+'/data.json':raise ContractError('SOURCE_LIMITED','invalid daily publication pointer',status=503)
- if params.get('release_id') and params['release_id']!=sha:raise ContractError('RELEASE_CHANGED','restart pagination against the current market release',status=409)
  requested=params.get('session')
  if requested is not None and (not isinstance(requested,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',requested)):raise ContractError('INVALID_ARGUMENT','session must be YYYY-MM-DD',status=400)
  historical=bool(requested) and requested!=pointer.get('session')
+ if not historical and params.get('release_id') and params['release_id']!=sha:raise ContractError('RELEASE_CHANGED','restart pagination against the current market release',status=409)
  if historical:
   if not _history_enabled(env):raise ContractError('SESSION_INDEX_DISABLED','historical session serving is disabled in this environment',status=503)
   entry=await _index_entry(env,pointer,requested)
   data=await _indexed_release(env,entry,requested)
   sha=entry['release_id'];key=entry['data_key']
+  if params.get('release_id') and params['release_id']!=sha:raise ContractError('RELEASE_CHANGED','restart pagination against the served market release',status=409)
  elif _CACHE is not None and _CACHE[0] is env.MARKET_DATA and _CACHE[1]==sha:data=_CACHE[2]
  else:
   obj=await env.MARKET_DATA.get(key)
