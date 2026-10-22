@@ -55,8 +55,9 @@ def date_range(params):
 
 
 async def dispatch(env,method,path,params,body,rid,*,_release_manifest=None):
- allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","offset","limit"}
+ allowed={"q","period","metrics","metric","start_date","end_date","as_of","release_id","session","offset","limit"}
  if not isinstance(params,dict) or set(params)-allowed or any(not isinstance(v,str) and not (k in {"offset","limit"} and isinstance(v,int) and not isinstance(v,bool)) for k,v in params.items()):raise ContractError("INVALID_ARGUMENT","unsupported or invalid query parameters")
+ if "session" in params and not (path.startswith("/v1/market/") and method=="GET"):raise ContractError("INVALID_ARGUMENT","session is a market-daily parameter")
  if path.startswith("/v1/market/") and method=="GET":
   from market_api import market_dispatch
   date_range(params)
