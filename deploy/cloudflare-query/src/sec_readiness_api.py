@@ -122,26 +122,20 @@ def published(m, name):
 
 
 def narrowest(m, method, flags, missing, status, sectors, share_absence):
-    """The single published artifact that carries the fewest candidates for these filters.
-
-    One artifact is read, not one per filter: the candidates come from the narrowest filter and
-    every other filter is applied to those rows in memory. Reading the union of two filters would
-    silently answer a different question than the one asked.
-    """
-    names = []
-    if method:
-        names += ["buckets/method-" + name + ".json" for name in method]
-    names += ["buckets/missing-" + name + ".json" for name in missing]
-    names += ["buckets/flag-" + name + ".json" for name in flags]
-    names += ["buckets/status-" + name + ".json" for name in status]
-    names += ["buckets/sector-" + name + ".json" for name in sectors]
-    names += ["buckets/share_absence-" + name + ".json" for name in share_absence]
-    published = [(m.get("artifacts") or {}).get(name) for name in names]
-    sizes = [(declared.get("issuers", m["issuers"]), name)
-             for name, declared in zip(names, published) if isinstance(declared, dict)]
-    if not sizes:
+    """Choose the smallest complete candidate set: union within OR, intersection across filters."""
+    groups = []
+    for prefix, values in (("method", method), ("status", status),
+                           ("sector", sectors), ("share_absence", share_absence)):
+        if values:
+            groups.append(["buckets/" + prefix + "-" + value + ".json" for value in values])
+    groups += [["buckets/missing-" + value + ".json"] for value in missing]
+    groups += [["buckets/flag-" + value + ".json"] for value in flags]
+    artifacts = m.get("artifacts") or {}
+    candidates = [(sum(artifacts[name].get("issuers", m["issuers"]) for name in names), names)
+                  for names in groups if all(isinstance(artifacts.get(name), dict) for name in names)]
+    if not candidates:
         fail("SCREEN_FILTER_NOT_PUBLISHED", 404)
-    return min(sizes)[1]
+    return min(candidates)[1]
 
 
 def matches(item, method, flags, missing, status, sectors, share_absence):
@@ -221,7 +215,7 @@ async def execute(env, request):
         )
         return base, 200
 
-    refs = [entry(m, name)] if name else []
+    refs = [entry(m, item) for item in name] if name else []
     if not refs:
         # A named issuer's row is reachable without reading a whole filter artifact: the shards
         # are the CIK remainder, so one requested issuer costs one shard.
@@ -241,17 +235,23 @@ async def execute(env, request):
         offset = cursor.get("offset")
         if type(offset) is not int or not 0 <= offset <= m["issuers"]:
             fail("INVALID_CURSOR_OFFSET", 422)
-    read_bytes, found, page, seen = 0, 0, [], set()
+    read_bytes, found, page, seen = 0, 0, [], {}
     for ref in refs:
         items = json.loads(await object_at(env, ref, MAX_FILTER_BYTES))
         read_bytes += ref["bytes"]
         if len(items) != ref["issuers"]:
             fail("SCREEN_SOURCE_COUNT_MISMATCH", 409)
+        in_artifact = set()
         for item in items:
             cik = item.get("cik")
-            if not isinstance(cik, str) or not re.fullmatch(r"\d{10}", cik) or cik in seen:
+            if not isinstance(cik, str) or not re.fullmatch(r"\d{10}", cik) or cik in in_artifact:
                 fail("SCREEN_SOURCE_DUPLICATE_OR_INVALID_CIK", 409)
-            seen.add(cik)
+            in_artifact.add(cik)
+            if cik in seen:
+                if seen[cik] != item:
+                    fail("SCREEN_SOURCE_DUPLICATE_OR_INVALID_CIK", 409)
+                continue
+            seen[cik] = item
             if ciks and cik not in ciks:
                 continue
             if not matches(item, method, flags, missing, status, sectors, share_absence):
@@ -259,7 +259,7 @@ async def execute(env, request):
             if offset <= found < offset + limit:
                 page.append(item)
             found += 1
-    if ciks and set(ciks) - seen:
+    if ciks and set(ciks) - set(seen):
         fail("SCREEN_CIK_NOT_MATERIALIZED", 404)
     if offset > found:
         fail("INVALID_CURSOR_OFFSET", 422)

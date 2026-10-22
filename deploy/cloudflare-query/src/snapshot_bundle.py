@@ -16,7 +16,7 @@ SCHEMA = 'zion-snapshot-bundle-v1'
 RELEASE_KEYS = ('SEC_EXPANDED_INDEX_KEY', 'SEC_HISTORY_MANIFEST_KEY', 'SEC_ENGINE_MANIFEST_KEY',
                 'SEC_READINESS_INDEX_KEY', 'SEC_COMPANYFACTS_MANIFEST_KEY',
                 'UNIFIED_RESEARCH_MANIFEST_KEY', 'STOCK_HISTORY_KEY', 'CRSP_HISTORY_KEY',
-                'HISTORICAL_SERIES_KEY', 'HISTORICAL_COVERAGE_KEY')
+                'HISTORICAL_SERIES_KEY', 'HISTORICAL_COVERAGE_KEY', 'PROVIDER_HISTORY_KEY')
 BASE = 'staging/security-funnel/2026-10-20/9beaa712e71650a2/'
 
 
@@ -45,7 +45,7 @@ def data_as_of(value) -> str | None:
             for item in node:
                 visit(item)
         elif isinstance(node, dict):
-            for key in ('period_end', 'session_date', 'session', 'date', 'end_date', 'price_as_of', 'period'):
+            for key in ('period_end', 'session_date', 'session', 'date', 'end_date', 'price_as_of', 'period', 'observation_date'):
                 if valid_date(node.get(key)):
                     dates.append(node[key])
             for key in ('data', 'result', 'observations', 'prices', 'rows', 'evidence', 'series', 'historical', 'financials', 'market', 'metric', 'metrics', 'structuredContent'):

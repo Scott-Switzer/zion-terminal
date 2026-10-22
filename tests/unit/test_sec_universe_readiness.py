@@ -182,7 +182,11 @@ def pinned_release():
     folder = os.environ.get('ZION_READINESS_RELEASE_DIR')
     release_id = os.environ.get('ZION_READINESS_RELEASE_ID')
     if not folder or not release_id:
-        pytest.fail('READINESS_FIXTURE_UNCONFIGURED: set ZION_READINESS_RELEASE_DIR and ZION_READINESS_RELEASE_ID; use -m "not integration" for an explicitly offline run', pytrace=False)
+        pytest.fail(
+            'READINESS_FIXTURE_UNCONFIGURED: set ZION_READINESS_RELEASE_DIR and '
+            'ZION_READINESS_RELEASE_ID; use -m "not integration" for an explicitly offline run',
+            pytrace=False,
+        )
     return Path(folder), release_id
 
 
@@ -198,20 +202,30 @@ def test_published_records_agree_with_an_independent_read_of_the_archive():
     """Re-derive two decisions from the raw members, in this file, for a real sample."""
     import hashlib
     from datetime import timedelta
+    from itertools import islice
     from zipfile import ZipFile
 
     from reconcile_financial_inventory import client
     from sec_universe_readiness import RangeReader
 
-    from itertools import islice
-    from tests.readiness_fixture import load_readiness_fixture, load_archive_context, iter_readiness_records
+    from tests.readiness_fixture import (
+        iter_readiness_records,
+        load_archive_context,
+        load_readiness_fixture,
+    )
 
     release, release_id = pinned_release()
     manifest = load_readiness_fixture(release, release_id)
     engine, entries = load_archive_context(release, manifest)
-    classified_count = sum(row.get('status') == 'CLASSIFIED' for row in iter_readiness_records(release, manifest))
+    classified_count = sum(
+        row.get('status') == 'CLASSIFIED'
+        for row in iter_readiness_records(release, manifest)
+    )
     assert classified_count > 20000
-    classified = (row for row in iter_readiness_records(release, manifest) if row.get('status') == 'CLASSIFIED')
+    classified = (
+        row for row in iter_readiness_records(release, manifest)
+        if row.get('status') == 'CLASSIFIED'
+    )
     sample = list(islice(classified, 0, None, max(classified_count // 40, 1)))[:40]
     reader = RangeReader(engine['source'], client(), block=1048576, cached=4)
     cutoff = date.fromisoformat(engine['date_to'])
@@ -220,7 +234,12 @@ def test_published_records_agree_with_an_independent_read_of_the_archive():
         for record in sample:
             entry = entries[record['cik']]
             info = archive.getinfo(entry['name'])
-            assert (info.file_size, info.compress_size, info.CRC, info.header_offset, info.compress_type) == (entry['uncompressed_bytes'], entry['compressed_bytes'], entry['crc'], entry['offset'], entry['compression'])
+            assert (
+                info.file_size, info.compress_size, info.CRC, info.header_offset, info.compress_type
+            ) == (
+                entry['uncompressed_bytes'], entry['compressed_bytes'], entry['crc'],
+                entry['offset'], entry['compression'],
+            )
             member_raw = archive.read(entry['name'])
             document = json.loads(member_raw)
             assert str(document["cik"]).zfill(10) == record["cik"]
@@ -250,4 +269,5 @@ def test_published_records_agree_with_an_independent_read_of_the_archive():
     assert checked == len(sample)
     print(json.dumps({'audit': 'readiness_independent_archive', 'release_id': release_id,
                       'sample_checked': checked, 'classified_records': classified_count,
-                      'archive_range_requests': reader.requests, 'archive_bytes_read': reader.bytes_read}))
+                      'archive_range_requests': reader.requests,
+                      'archive_bytes_read': reader.bytes_read}))
