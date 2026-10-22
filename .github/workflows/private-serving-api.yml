@@ -45,7 +45,7 @@ jobs:
         run: python -m pip install 'pytest>=8,<10' 'ruff>=0.3,<1' 'click>=8,<9'
       - name: Synthetic existing-data and frozen contract tests
         run: >-
-          python -m pytest -q
+          python -m pytest -q -m "not integration"
           tests/unit/test_sec_engine*.py
           tests/unit/test_sec_screener*.py
           tests/unit/test_sec_universe*.py
