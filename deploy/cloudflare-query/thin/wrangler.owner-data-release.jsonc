@@ -27,6 +27,8 @@
     }
   ],
   "vars": {
+    "COLLECTION_CATALOG_KEY": "gold/collection-catalog/releases/c1164473b3a2ef3d46cee8d04cd1f567bb3c49a37fc00b8dc8d04e8098956f53/manifest.json",
+    "COLLECTION_CATALOG_SHA256": "e6bfa2b8629ddc095912aeeedc4022e670e094db0f1c4c2d2217d0caafaee51c",
     "SERVING_V2_ENABLED": "true",
     "SERVING_V2_CURRENT_KEY": "gold/serving/coverage25/CURRENT.json",
     "CURRENT_POINTER_CACHE_TTL_MS": "0",

@@ -1,0 +1,24 @@
+{
+  "key": "gold/collection-catalog/releases/c1164473b3a2ef3d46cee8d04cd1f567bb3c49a37fc00b8dc8d04e8098956f53/manifest.json",
+  "sha256": "e6bfa2b8629ddc095912aeeedc4022e670e094db0f1c4c2d2217d0caafaee51c",
+  "release_id": "c1164473b3a2ef3d46cee8d04cd1f567bb3c49a37fc00b8dc8d04e8098956f53",
+  "registered_releases": 948,
+  "unique_datasets": 946,
+  "object_references": 46499,
+  "added_releases": 143,
+  "completed_remote_markers": 144,
+  "reconciliation_gaps": [
+    {
+      "marker": "control/wrds/preservation-staged/preservation-20261019T210358Z/crsp_a_stock__stocknames_v2.json",
+      "error_class": "LEGACY_MARKER_REQUIRES_RECONCILIATION"
+    }
+  ],
+  "scanned_at": "2026-10-23T04:59:05.864724+00:00",
+  "raw_payload_bytes_read": 0,
+  "normalized_financial_facts": false,
+  "parent_catalog": {
+    "key": "gold/collection-catalog/releases/ae29d97f14d6052fb4da7fd963a32e4816437e58c20060ce6416ecb769a42c1a/manifest.json",
+    "sha256": "5dc9df9730425b93525b33a738275cfcafbe91f3e1364c7f5622f3146bdaf73c"
+  },
+  "publication": "IMMUTABLE_CANDIDATE_VERIFIED"
+}

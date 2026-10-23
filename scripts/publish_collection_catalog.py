@@ -18,7 +18,7 @@ def sha(raw):
 
 def build(inventory, inventory_sha, coverage_reference):
     release = sha(
-        encode({"inventory": inventory_sha, "coverage": coverage_reference, "version": 1})
+        encode({"inventory": inventory_sha, "coverage": coverage_reference, "version": 2})
     )
     prefix = f"gold/collection-catalog/releases/{release}/"
     objects = {}
@@ -41,6 +41,7 @@ def build(inventory, inventory_sha, coverage_reference):
             "PIT_status": record.get("PIT_status", "NOT_ESTABLISHED"),
             "object_hash_status": "SOURCE_MANIFEST_DECLARED_NOT_REHASHED",
             "schema_status": "SOURCE_MANIFEST_DECLARED; USE_PARQUET_SCHEMA_ROUTE_FOR_FOOTER",
+            **({"normalization": record["normalization"]} if "normalization" in record else {}),
         }
         raw = encode(detail)
         if len(raw) > 1048576:
@@ -71,7 +72,9 @@ def build(inventory, inventory_sha, coverage_reference):
         "unique_datasets": len({e["dataset"] for e in entries if e["dataset"]}),
         "object_references": sum(e["objects"] for e in entries),
         "entries": sorted(entries, key=lambda x: (x["dataset"] or "", x["release"] or "")),
-        "scope": "EXISTING_WRDS_INVENTORY; OTHER_STORES_DISCOVERABLE_THROUGH_OBJECT_LISTING",
+        "scope": inventory.get(
+            "scope", "EXISTING_WRDS_INVENTORY; OTHER_STORES_DISCOVERABLE_THROUGH_OBJECT_LISTING"
+        ),
         "inventory": {
             "store": "research",
             "sha256": inventory_sha,
@@ -80,6 +83,9 @@ def build(inventory, inventory_sha, coverage_reference):
             "recorded_error_count": len(inventory.get("errors", [])),
         },
         "cross_domain_coverage": coverage_reference,
+        **(
+            {"parent_catalog": inventory["parent_catalog"]} if "parent_catalog" in inventory else {}
+        ),
         "acquisition_enabled": False,
         "quality": "SOURCE_UNVALIDATED",
         "schema_validation": "SOURCE_DECLARED_NOT_ALL_FOOTERS_SCANNED",
