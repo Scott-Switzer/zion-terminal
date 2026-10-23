@@ -31,3 +31,15 @@ Costco revenue uses `Revenues` to include membership fees; contract revenue/net 
 Ten oversized manifests were recovered with an 8 MiB bounded, ETag/length/hash-checked reader and schema/part/row validations. Part presence/size checks use the earlier metadata census; full part bodies were not rehashed. The 340 unsealed directories and one ambiguous legacy relative reference are explicitly quarantined in the audit, without invented manifests or promotion. Producer cause remains unknown. Original archives, immutable releases and all three production CURRENT pointers remain unchanged.
 
 Protected operator evidence is in `/Users/scottthomasswitzer/Documents/Secret/artifacts/sec-financial-history`; sanitized evidence hashes are in acceptance-gates.json. No credentials or licensed row payloads are committed. The complete estate is not yet certified queryable.
+
+
+### Stored-data-only callers
+
+The engine-backed history and batch routes accept `materialized_only=true`.
+They return `202` with `MATERIALIZATION_REQUIRED` if a company is not already
+materialized, without submitting a queue task. Omit the option to retain the
+existing owner acquisition behavior. Other values are rejected. Stored query
+calculation/cache writes may still occur; this option prevents new archive
+materialization, not ordinary result caching. A batch stops with the same gap
+response if any member requires materialization. Explicit jobs remain on the
+existing jobs endpoint.
