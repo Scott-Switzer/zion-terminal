@@ -68,7 +68,13 @@ REGISTRY = {
         "definition": "Operating cash flow minus positive PP&E payments, with exact matching periods/currency.",
     },
 }
-REVENUE_CONCEPTS = {"0000909832": ["Revenues"]}
+# Issuer-scoped revenue concept pins. A pin names the single native concept an
+# issuer's revenue must come from; unpinned issuers keep the full concept list
+# and the ambiguity rule that rejects overlapping unequal definitions.
+REVENUE_CONCEPTS = {
+    "0000909832": ["Revenues"],
+    "0000104169": ["Revenues"],  # Walmart: total revenues, not ASC-606 revenue.
+}
 
 DEBT = {
     "0000320193": [
