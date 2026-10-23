@@ -80,6 +80,7 @@ jobs:
           tests/unit/test_hosted_datasets_client.py
           tests/unit/test_collection_serving_acceptance.py
           tests/unit/test_publish_collection_catalog.py
+          tests/unit/test_extend_collection_catalog.py
           tests/unit/test_native_query_acceptance.py
           tests/unit/test_private_serving_acceptance.py
           tests/unit/test_tool_contract_v2.py
@@ -94,6 +95,7 @@ jobs:
           tests/unit/test_sec_expanded_acceptance.py
       - name: Changed-module lint and syntax
         run: |
+          ruff check scripts/extend_collection_catalog.py tests/unit/test_extend_collection_catalog.py
           ruff check deploy/cloudflare-query/src/private_*.py scripts/private_serving_acceptance.py tests/unit/test_private*.py deploy/cloudflare-query/src/sec_expanded*.py tests/unit/test_sec_expanded*.py scripts/publish_sec_expanded_index.py scripts/sec_expanded_acceptance.py scripts/collection_serving_acceptance.py scripts/datasets_client.py tests/unit/test_hosted_datasets_client.py tests/unit/test_collection_serving_acceptance.py scripts/publish_collection_catalog.py tests/unit/test_publish_collection_catalog.py scripts/native_query_acceptance.py tests/unit/test_native_query_acceptance.py
           ruff check deploy/cloudflare-query/src/sec_history*.py tests/unit/test_sec_history*.py tests/unit/test_sec_manifest_recovery.py scripts/*sec_history*.py scripts/sec_foundation_recovery.py scripts/provision_sec_read_token.py scripts/reconcile_sec_catalog_registration.py
           ruff check deploy/cloudflare-query/src/sec_engine*.py deploy/cloudflare-query/src/sec_screener*.py scripts/*sec_engine*.py scripts/sec_screener_acceptance.py scripts/sec_incremental_update.py tests/unit/test_sec_engine*.py tests/unit/test_sec_screener*.py tests/unit/test_sec_incremental_update.py src/zion_terminal/private_research.py

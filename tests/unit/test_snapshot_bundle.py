@@ -69,6 +69,14 @@ def test_manifest_tracks_configured_and_shared_source_releases(monkeypatch):
     env = SimpleNamespace(MARKET_DATA=Bucket(), BUNDLE_SHARED_SNAPSHOT='true', SEC_ENGINE_MANIFEST_KEY='gold/sec-engine/releases/' + 'c'*64 + '/manifest.json')
     original = asyncio.run(b.load_snapshot(env))
     assert original['source_releases']['SEC_ENGINE_MANIFEST_KEY'] == 'c'*64
+    env.COLLECTION_CATALOG_KEY = 'gold/collection-catalog/releases/' + 'e'*64 + '/manifest.json'
+    env.COLLECTION_CATALOG_SHA256 = 'f'*64
+    catalog_snapshot = asyncio.run(b.load_snapshot(env))
+    assert catalog_snapshot['bundle_id'] != original['bundle_id']
+    assert catalog_snapshot['source_releases']['COLLECTION_CATALOG_KEY'] == 'e'*64
+    assert catalog_snapshot['source_releases']['COLLECTION_CATALOG_KEY/manifest_sha256'] == 'f'*64
+    del env.COLLECTION_CATALOG_KEY
+    del env.COLLECTION_CATALOG_SHA256
     for key, field in ((full, 'input_sha256'), (job, 'run_id')):
         before = objects[key][field]
         objects[key][field] += '-next'

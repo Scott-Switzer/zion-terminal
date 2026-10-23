@@ -59,7 +59,9 @@
     "PROVIDER_HISTORY_KEY": "gold/provider-stock-history/releases/54f287c014b55477a40436fa83e78cc601f9356bf5819687c64f9f7db2b54efd/manifest.json",
     "PROVIDER_HISTORY_SHA256": "439b3fb86bfd70fe2c2f1691950fff991323cd232a4ce94bc785d5223b43a0ae",
     "STOCK_HISTORY_KEY": "gold/stock-history/releases/12bf477467e295cdad65a3a50fea80b93c084334d4f49e241eb6d340aaff76ec/manifest.json",
-    "STOCK_HISTORY_SHA256": "cc7ce29b53d35e1d9ed0f07918d7c8265cf23081f51bf66f442ce5f51f82ce6f"
+    "STOCK_HISTORY_SHA256": "cc7ce29b53d35e1d9ed0f07918d7c8265cf23081f51bf66f442ce5f51f82ce6f",
+    "COLLECTION_CATALOG_KEY": "gold/collection-catalog/releases/c1164473b3a2ef3d46cee8d04cd1f567bb3c49a37fc00b8dc8d04e8098956f53/manifest.json",
+    "COLLECTION_CATALOG_SHA256": "e6bfa2b8629ddc095912aeeedc4022e670e094db0f1c4c2d2217d0caafaee51c"
   },
   "observability": {
     "enabled": true,

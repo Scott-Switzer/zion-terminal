@@ -28,8 +28,8 @@
     "head_sampling_rate": 0.05
   },
   "vars": {
-    "COLLECTION_CATALOG_KEY": "gold/collection-catalog/releases/ae29d97f14d6052fb4da7fd963a32e4816437e58c20060ce6416ecb769a42c1a/manifest.json",
-    "COLLECTION_CATALOG_SHA256": "5dc9df9730425b93525b33a738275cfcafbe91f3e1364c7f5622f3146bdaf73c",
+    "COLLECTION_CATALOG_KEY": "gold/collection-catalog/releases/c1164473b3a2ef3d46cee8d04cd1f567bb3c49a37fc00b8dc8d04e8098956f53/manifest.json",
+    "COLLECTION_CATALOG_SHA256": "e6bfa2b8629ddc095912aeeedc4022e670e094db0f1c4c2d2217d0caafaee51c",
     "BASIN_POLICY_KEY": "gold/unified-foundation/policies/a7c9ee3242c9d269ccdc3ce216d4e8fe71daecd063bf7428667b2a4e4435b089.json",
     "BASIN_POLICY_SHA256": "a7c9ee3242c9d269ccdc3ce216d4e8fe71daecd063bf7428667b2a4e4435b089"
   }
