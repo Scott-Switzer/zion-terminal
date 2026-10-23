@@ -129,10 +129,13 @@ class Default(WorkerEntrypoint):
             response = await self._fetch(request)
             # Detect pointer changes during a request rather than relabel old data.
             assert_bundle(snapshot['bundle_id'], await load_snapshot(self.env))
-            response.headers['x-zion-bundle-id'] = snapshot['bundle_id']
-            response.headers['x-zion-data-as-of'] = RESPONSE_DATA_AS_OF.get() or 'null'
-            response.headers['link'] = '</private/v1/snapshot>; rel="describedby"'
-            return response
+            # Python Workers returns a copied header mapping. Reconstruct the
+            # response with that mapping; mutating response.headers loses stamps.
+            headers = response.headers
+            headers['x-zion-bundle-id'] = snapshot['bundle_id']
+            headers['x-zion-data-as-of'] = RESPONSE_DATA_AS_OF.get() or 'null'
+            headers['link'] = '</private/v1/snapshot>; rel="describedby"'
+            return Response(response.body, status=response.status, headers=headers)
         except Exception as error:
             from private_financials import PrivateFinancialsError
             if isinstance(error, PrivateFinancialsError):

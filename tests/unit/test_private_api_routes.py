@@ -56,6 +56,7 @@ class Request:
 def worker(monkeypatch):
     class Response:
         def __init__(self, body, status=200, headers=None):
+            self.body = body
             self.value, self.status, self.headers = json.loads(body), status, headers or {}
 
     monkeypatch.setitem(
