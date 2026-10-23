@@ -6,7 +6,10 @@ The fixtures reproduce the concept/period shapes observed for the real CIKs on
 
 1. definitional collision (Walmart files both total ``Revenues`` and ASC-606
    ``RevenueFromContractWithCustomerExcludingAssessedTax`` with different values
-   for the same fiscal year);
+   for the same fiscal year) — now resolved for Walmart only, by the issuer
+   pin ``REVENUE_CONCEPTS["0000104169"] = ["Revenues"]`` in both revenue
+   registries (``sec_engine.py`` and ``sec_history.py``); every other issuer
+   keeps the collision rule;
 2. a registry omission for an issuer whose only revenue concept is not in the
    engine registry (Goldman Sachs files ``RevenuesNetOfInterestExpense``);
 3. the statement-family policy, which quarantines revenue for any issuer whose
@@ -101,23 +104,8 @@ WMT_TAGS = {
 }
 
 
-def test_walmart_collision_without_the_issuer_pin_stays_ambiguous(monkeypatch):
-    # The pin is what resolves Walmart; the engine's ambiguity rule still fires
-    # for any collision it does not recognise.
-    monkeypatch.delitem(sec_engine.REVENUE_CONCEPTS, WMT, raising=False)
-    data, result = _revenue(WMT, _company(WMT, WMT_TAGS))
-    assert result["observations"] == []
-    reasons = {gap["reason"] for gap in result["coverage_gaps"]}
-    assert "AMBIGUOUS_CONCEPT_OR_DERIVATION" in reasons
-    policy = statement_policy(_company(WMT, WMT_TAGS))
-    assert policy["family"] == "general_us_gaap_unclassified"
-    assert "revenue" not in policy["quarantined_metrics"]
-    assert data["policy"]["quarantined_metrics"].get("total_debt") == (
-        "COMPONENT_NONOVERLAP_NOT_CONFIRMED"
-    )
-
-
 def test_walmart_issuer_pin_selects_total_revenues_without_touching_values():
+    # The pin is part of both registries now, so no test patching is involved.
     data, result = _revenue(WMT, _company(WMT, WMT_TAGS))
     assert [row["value_decimal"] for row in result["observations"]] == [
         "648125000000",
@@ -128,12 +116,86 @@ def test_walmart_issuer_pin_selects_total_revenues_without_touching_values():
     assert all(row["frequency"] == "annual" for row in result["observations"])
     assert statement_policy(_company(WMT, WMT_TAGS))["revenue_concepts"] == ["Revenues"]
     assert data["policy"]["revenue_concepts"] == ["Revenues"]
+    assert "revenue" not in data["policy"]["quarantined_metrics"]
 
 
-def test_revenue_pins_agree_in_both_registries():
+def test_ambiguity_rule_is_preserved_for_every_unpinned_issuer():
+    # The same collision shape on an unpinned issuer stays ambiguous: the pin
+    # changes Walmart's definition choice only, never the collision rule.
+    other = "0000999999"
+    data, result = _revenue(other, _company(other, WMT_TAGS))
+    assert result["observations"] == []
+    reasons = {gap["reason"] for gap in result["coverage_gaps"]}
+    assert "AMBIGUOUS_CONCEPT_OR_DERIVATION" in reasons
+    assert data["policy"]["revenue_concepts"] == [
+        "RevenueFromContractWithCustomerExcludingAssessedTax",
+        "SalesRevenueNet",
+        "Revenues",
+    ]
+
+
+def test_removing_the_walmart_pin_restores_the_collision(monkeypatch):
+    monkeypatch.delitem(sec_engine.REVENUE_CONCEPTS, WMT)
+    _, result = _revenue(WMT, _company(WMT, WMT_TAGS))
+    assert result["observations"] == []
+    reasons = {gap["reason"] for gap in result["coverage_gaps"]}
+    assert "AMBIGUOUS_CONCEPT_OR_DERIVATION" in reasons
+
+
+def test_revenue_concept_pins_are_identical_in_both_registries():
     import sec_history
 
     assert sec_engine.REVENUE_CONCEPTS == sec_history.REVENUE_CONCEPTS
+    assert sec_engine.REVENUE_CONCEPTS == {"0000909832": ["Revenues"], WMT: ["Revenues"]}
+
+
+def test_pin_serves_latest_restatement_but_keeps_every_revision(monkeypatch):
+    monkeypatch.setitem(sec_engine.REVENUE_CONCEPTS, WMT, ["Revenues"])
+    company = _company(WMT, {"Revenues": WMT_TAGS["Revenues"]})
+    rows = company["facts"]["us-gaap"]["Revenues"]["units"]["USD"]
+    # Walmart refiles a different FY2025 value in a later filing. The pin
+    # selects the concept; revisions stay in the object and the latest filing
+    # is the served value.
+    rows.append(
+        {
+            **rows[1],
+            "val": int(680.0 * 1_000_000_000),
+            "accn": "accn-restated-2025",
+            "filed": "2026-03-20",
+            "fy": 2026,
+            "fp": "FY",
+        }
+    )
+    data, result = _revenue(WMT, company)
+    served = {row["period_end"]: row["value_decimal"] for row in result["observations"]}
+    assert served["2025-01-31"] == "680000000000"
+    revisions = [
+        row
+        for row in data["observations"]
+        if row["metric"] == "revenue" and row["period_end"] == "2025-01-31"
+    ]
+    assert len(revisions) == 2
+    assert {row["value_decimal"] for row in revisions} == {"680985000000", "680000000000"}
+
+
+def test_pin_refuses_conflicting_values_inside_one_filing(monkeypatch):
+    monkeypatch.setitem(sec_engine.REVENUE_CONCEPTS, WMT, ["Revenues"])
+    company = _company(WMT, {"Revenues": WMT_TAGS["Revenues"]})
+    rows = company["facts"]["us-gaap"]["Revenues"]["units"]["USD"]
+    rows.append(
+        {
+            **rows[1],
+            "val": int(680.0 * 1_000_000_000),
+            "accn": "accn-conflict-2025",
+        }
+    )
+    _, result = _revenue(WMT, company)
+    served = {row["period_end"]: row["value_decimal"] for row in result["observations"]}
+    assert "2025-01-31" not in served
+    assert any(
+        gap["period_end"] == "2025-01-31" and gap["reason"] == "CONFLICTING_SOURCE_VALUES"
+        for gap in result["coverage_gaps"]
+    )
 
 
 def test_goldman_revenue_concept_is_absent_from_the_registry_entirely():
@@ -234,3 +296,25 @@ def test_quarantine_is_scoped_to_statement_metrics_not_to_balance_sheet_facts():
     }
     assert "net_income" not in quarantined
     assert "cash" not in quarantined
+
+
+def test_walmart_collision_without_the_issuer_pin_stays_ambiguous(monkeypatch):
+    # The pin is what resolves Walmart; the engine's ambiguity rule still fires
+    # for any collision it does not recognise.
+    monkeypatch.delitem(sec_engine.REVENUE_CONCEPTS, WMT, raising=False)
+    data, result = _revenue(WMT, _company(WMT, WMT_TAGS))
+    assert result["observations"] == []
+    reasons = {gap["reason"] for gap in result["coverage_gaps"]}
+    assert "AMBIGUOUS_CONCEPT_OR_DERIVATION" in reasons
+    policy = statement_policy(_company(WMT, WMT_TAGS))
+    assert policy["family"] == "general_us_gaap_unclassified"
+    assert "revenue" not in policy["quarantined_metrics"]
+    assert data["policy"]["quarantined_metrics"].get("total_debt") == (
+        "COMPONENT_NONOVERLAP_NOT_CONFIRMED"
+    )
+
+
+def test_revenue_pins_agree_in_both_registries():
+    import sec_history
+
+    assert sec_engine.REVENUE_CONCEPTS == sec_history.REVENUE_CONCEPTS

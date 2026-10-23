@@ -52,7 +52,7 @@ async def _indexed_release(env,entry,requested):
 async def market_dispatch(env,path,params,rid):
  global _CACHE
  if params.get('as_of'):raise ContractError('SOURCE_LIMITED','provider publication has no established row availability timestamps; historical PIT requests require canonical prices',status=422)
- obj=await env.MARKET_DATA.get('control/daily-prices/CURRENT.json')
+ obj=await env.MARKET_DATA.get(getattr(env,'DAILY_PRICES_CURRENT_KEY','control/daily-prices/CURRENT.json'))
  if obj is None:raise ContractError('SOURCE_LIMITED','whole-market daily publication is not available',status=503)
  pointer=json.loads(await obj.text());sha=pointer.get('sha256','');key=pointer.get('data_key')
  if not re.fullmatch('[a-f0-9]{64}',sha) or pointer.get('version')!=sha or key!='gold/daily-prices/releases/'+sha+'/data.json':raise ContractError('SOURCE_LIMITED','invalid daily publication pointer',status=503)

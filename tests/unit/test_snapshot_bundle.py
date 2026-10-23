@@ -142,3 +142,44 @@ def test_provider_release_and_digest_are_part_of_snapshot(monkeypatch):
 def test_historical_reader_shape_preserves_observation_coverage():
     assert module().data_as_of({'series': [{'observations': [
         {'observation_date': '2026-09-30', 'value': '1.2'}]}]}) == '2026-09-30'
+
+
+def test_index_pin_changes_snapshot_even_when_current_prices_do_not(monkeypatch):
+    b = module()
+    import serving_v2
+    async def serving(env, **kwargs):
+        return {}, {'serving_release_id': 'same'}
+    monkeypatch.setattr(serving_v2, 'load_release', serving)
+    pointer = {'sha256': 'a'*64, 'data_key': 'gold/daily-prices/releases/'+'a'*64+'/data.json'}
+    class Bucket:
+        async def get(self, key):
+            if key != 'control/daily-prices/CURRENT.json': return None
+            raw = json.dumps(pointer)
+            async def text(): return raw
+            return SimpleNamespace(size=len(raw), text=text)
+    env = SimpleNamespace(MARKET_DATA=Bucket())
+    original = asyncio.run(b.load_snapshot(env))
+    pointer['sessions_index'] = {'sha256':'b'*64,'key':'control/daily-prices/sessions/'+'b'*64+'.json','bytes':123}
+    updated = asyncio.run(b.load_snapshot(env))
+    assert updated['bundle_id'] != original['bundle_id']
+    assert updated['source_releases']['daily_session_index'] == 'b'*64
+
+
+@pytest.mark.parametrize('cik,registry,allowed', [
+    ('0000320193','b'*64,True), ('0000320193','c'*64,False),
+    ('0000104169','b'*64,False)])
+def test_registry_override_preserves_only_declared_unaffected_company_context(monkeypatch,cik,registry,allowed):
+    import sec_engine_api as api
+    old='d'*64;new='e'*64
+    m={'release_id':new,'registry_sha256':'a'*64,'source_releases':[old],
+       'registry_change':{'change_class':'REGISTRY_ISSUER_REVENUE_OVERRIDE',
+          'affected_ciks':['0000104169'],'registry_sha256_from':'b'*64,'registry_sha256_to':'a'*64}}
+    async def artifact(env,ref):
+        return {'release_id':old,'registry_sha256':registry,'cik':cik,'rights':'PUBLIC_SEC_ONLY','observations':[]}
+    monkeypatch.setattr(api,'artifact',artifact)
+    entry={'materialized':{'source_release_id':old}}
+    if allowed:
+        assert asyncio.run(api.company(SimpleNamespace(),m,cik,entry))['registry_sha256']==registry
+    else:
+        with pytest.raises(Exception,match='SOURCE_CONTEXT_INVALID'):
+            asyncio.run(api.company(SimpleNamespace(),m,cik,entry))

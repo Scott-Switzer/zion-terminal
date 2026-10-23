@@ -325,9 +325,17 @@ async def company(env, m, cik, e):
         or not re.fullmatch(r"[a-f0-9]{64}", source_release)
     ):
         fail("SOURCE_CONTEXT_INVALID", 503)
+    expected_registry = m["registry_sha256"]
+    change = m.get("registry_change") or {}
+    if (source_release != m["release_id"]
+            and change.get("change_class") == "REGISTRY_ISSUER_REVENUE_OVERRIDE"
+            and cik not in change.get("affected_ciks", [])
+            and change.get("registry_sha256_to") == m["registry_sha256"]
+            and re.fullmatch(r"[a-f0-9]{64}", change.get("registry_sha256_from", ""))):
+        expected_registry = change["registry_sha256_from"]
     if (
         data.get("release_id") != source_release
-        or data.get("registry_sha256") != m["registry_sha256"]
+        or data.get("registry_sha256") != expected_registry
         or data.get("cik") != cik
         or data.get("rights") != "PUBLIC_SEC_ONLY"
         or len(data.get("observations", [])) > 12000
