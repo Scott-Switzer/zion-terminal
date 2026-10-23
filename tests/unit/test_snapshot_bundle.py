@@ -142,3 +142,24 @@ def test_provider_release_and_digest_are_part_of_snapshot(monkeypatch):
 def test_historical_reader_shape_preserves_observation_coverage():
     assert module().data_as_of({'series': [{'observations': [
         {'observation_date': '2026-09-30', 'value': '1.2'}]}]}) == '2026-09-30'
+
+
+def test_index_pin_changes_snapshot_even_when_current_prices_do_not(monkeypatch):
+    b = module()
+    import serving_v2
+    async def serving(env, **kwargs):
+        return {}, {'serving_release_id': 'same'}
+    monkeypatch.setattr(serving_v2, 'load_release', serving)
+    pointer = {'sha256': 'a'*64, 'data_key': 'gold/daily-prices/releases/'+'a'*64+'/data.json'}
+    class Bucket:
+        async def get(self, key):
+            if key != 'control/daily-prices/CURRENT.json': return None
+            raw = json.dumps(pointer)
+            async def text(): return raw
+            return SimpleNamespace(size=len(raw), text=text)
+    env = SimpleNamespace(MARKET_DATA=Bucket())
+    original = asyncio.run(b.load_snapshot(env))
+    pointer['sessions_index'] = {'sha256':'b'*64,'key':'control/daily-prices/sessions/'+'b'*64+'.json','bytes':123}
+    updated = asyncio.run(b.load_snapshot(env))
+    assert updated['bundle_id'] != original['bundle_id']
+    assert updated['source_releases']['daily_session_index'] == 'b'*64

@@ -127,6 +127,14 @@ async def load_snapshot(env):
         if not re.fullmatch(r'[a-f0-9]{64}', digest) or pointer.get('data_key') != f'gold/daily-prices/releases/{digest}/data.json':
             raise ValueError('BUNDLE_REFERENCE_INVALID')
         sources['daily_prices'] = digest
+        index = pointer.get('sessions_index')
+        if index is not None:
+            index_sha = index.get('sha256', '') if isinstance(index, dict) else ''
+            if (not re.fullmatch(r'[a-f0-9]{64}', index_sha)
+                    or index.get('key') != f'control/daily-prices/sessions/{index_sha}.json'
+                    or type(index.get('bytes')) is not int or not 0 < index['bytes'] <= 1048576):
+                raise ValueError('BUNDLE_REFERENCE_INVALID')
+            sources['daily_session_index'] = index_sha
     return {'schema_version': SCHEMA, 'bundle_id': bundle_id(sources),
             'source_releases': dict(sorted(sources.items())), 'data_as_of': None}
 
