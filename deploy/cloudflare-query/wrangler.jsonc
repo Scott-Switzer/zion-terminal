@@ -17,7 +17,8 @@
     "SERVING_V2_CURRENT_KEY": "gold/serving/CURRENT.json",
     "SEC_CORPUS_PREFIX": "sec-filing-intelligence/corpus/v1/b7fc2b52683b61ef53f527e1f766ab1a91eb86346a0f90136d57b0121173fc2b",
     "SERVICE_VERSION": "1.0.0-staging",
-    "DIAGNOSTIC_ISOLATE_TELEMETRY": "false"
+    "DIAGNOSTIC_ISOLATE_TELEMETRY": "false",
+    "SESSION_INDEX_ENABLED": "false"
   },
   "observability": {"enabled": true, "logs": {"head_sampling_rate": 1}},
   "env": {
@@ -36,7 +37,8 @@
         "SERVING_V2_CURRENT_KEY": "gold/serving/CURRENT.json",
         "SEC_CORPUS_PREFIX": "sec-filing-intelligence/corpus/v1/b7fc2b52683b61ef53f527e1f766ab1a91eb86346a0f90136d57b0121173fc2b",
         "SERVICE_VERSION": "2.0.0-serving-staging",
-        "DIAGNOSTIC_ISOLATE_TELEMETRY": "true"
+        "DIAGNOSTIC_ISOLATE_TELEMETRY": "true",
+        "SESSION_INDEX_ENABLED": "true"
       },
       "observability": {"enabled": true, "logs": {"head_sampling_rate": 1}}
     }

@@ -112,6 +112,9 @@
   "company_revenue_concepts": {
     "0000909832": [
       "Revenues"
+    ],
+    "0000104169": [
+      "Revenues"
     ]
   },
   "fiscal_quarter_days": {
@@ -125,7 +128,7 @@
     ]
   },
   "revenue_policy": "Native concept retained; overlapping unequal concepts rejected; TTM cannot span concept changes.",
-  "implementation_sha256": "7285702095e61b7130eb7438c9d78954ee689300499d460bbd2836efdcc76584",
+  "implementation_sha256": "ade60c485ec26e213e8d679f56dba588c52ec4da26d1ffb3eb7239831fdc70c7",
   "dependency_sha256": {
     "temporal_core.py": "4413e8abc7fd69a3a30228effb3df07a1e64f39e73a67951c0b239ba8914eb57",
     "new_york_tz.py": "472d46eee454dedfaaaf281996acf65c00967ab2a6680f81e9d95860d5e5841a"

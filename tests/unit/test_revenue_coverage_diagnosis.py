@@ -101,7 +101,10 @@ WMT_TAGS = {
 }
 
 
-def test_walmart_collision_between_total_revenues_and_asc606_revenue_is_ambiguous():
+def test_walmart_collision_without_the_issuer_pin_stays_ambiguous(monkeypatch):
+    # The pin is what resolves Walmart; the engine's ambiguity rule still fires
+    # for any collision it does not recognise.
+    monkeypatch.delitem(sec_engine.REVENUE_CONCEPTS, WMT, raising=False)
     data, result = _revenue(WMT, _company(WMT, WMT_TAGS))
     assert result["observations"] == []
     reasons = {gap["reason"] for gap in result["coverage_gaps"]}
@@ -114,8 +117,7 @@ def test_walmart_collision_between_total_revenues_and_asc606_revenue_is_ambiguou
     )
 
 
-def test_walmart_issuer_pin_selects_total_revenues_without_touching_values(monkeypatch):
-    monkeypatch.setitem(sec_engine.REVENUE_CONCEPTS, WMT, ["Revenues"])
+def test_walmart_issuer_pin_selects_total_revenues_without_touching_values():
     data, result = _revenue(WMT, _company(WMT, WMT_TAGS))
     assert [row["value_decimal"] for row in result["observations"]] == [
         "648125000000",
@@ -126,6 +128,12 @@ def test_walmart_issuer_pin_selects_total_revenues_without_touching_values(monke
     assert all(row["frequency"] == "annual" for row in result["observations"])
     assert statement_policy(_company(WMT, WMT_TAGS))["revenue_concepts"] == ["Revenues"]
     assert data["policy"]["revenue_concepts"] == ["Revenues"]
+
+
+def test_revenue_pins_agree_in_both_registries():
+    import sec_history
+
+    assert sec_engine.REVENUE_CONCEPTS == sec_history.REVENUE_CONCEPTS
 
 
 def test_goldman_revenue_concept_is_absent_from_the_registry_entirely():
