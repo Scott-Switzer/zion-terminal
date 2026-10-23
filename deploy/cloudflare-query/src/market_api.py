@@ -3,6 +3,52 @@ import hashlib,json,re
 from decimal import Decimal
 from contract_v2 import ContractError
 _CACHE=None
+_INDEX_MAX=512*1024
+_HISTORY_ON=frozenset({'1','true','yes','enabled'})
+def _history_enabled(env):
+ return str(getattr(env,'SESSION_INDEX_ENABLED','') or '').strip().lower() in _HISTORY_ON
+def _index_error(code,message):
+ raise ContractError(code,message,status=503)
+async def _index_entry(env,pointer,requested):
+ """Return a verified index entry for one session, or raise a typed error."""
+ pin=pointer.get('sessions_index')
+ if not isinstance(pin,dict):_index_error('SESSION_INDEX_MISSING','CURRENT has no session index pin')
+ key=pin.get('key');sha=pin.get('sha256');size=pin.get('bytes')
+ if (not isinstance(key,str) or not isinstance(sha,str) or not re.fullmatch('[a-f0-9]{64}',sha)
+  or key!='control/daily-prices/sessions/'+sha+'.json' or not isinstance(size,int) or isinstance(size,bool)
+  or not 1<=size<=_INDEX_MAX):_index_error('SESSION_INDEX_CORRUPT','session index pin is invalid')
+ obj=await env.MARKET_DATA.get(key)
+ if obj is None:_index_error('SESSION_INDEX_MISSING','session index object is missing')
+ raw=str(await obj.text()).encode('utf-8')
+ if len(raw)!=size or hashlib.sha256(raw).hexdigest()!=sha:_index_error('SESSION_INDEX_CORRUPT','session index bytes do not match the pin')
+ try:index=json.loads(raw)
+ except ValueError:_index_error('SESSION_INDEX_CORRUPT','session index is not JSON')
+ if (not isinstance(index,dict) or index.get('schema_version')!=1 or not isinstance(index.get('sessions'),dict)
+  or not isinstance(index.get('latest_session'),str)):_index_error('SESSION_INDEX_CORRUPT','session index contract is invalid')
+ if index['latest_session']!=pointer.get('session'):_index_error('SESSION_INDEX_STALE','session index does not describe the current release')
+ entry=index['sessions'].get(requested) if requested in index['sessions'] else None
+ if not isinstance(entry,dict):_index_error('SESSION_NOT_INDEXED','requested session is not indexed')
+ release_id=entry.get('release_id');data_key=entry.get('data_key')
+ if (not isinstance(release_id,str) or not re.fullmatch('[a-f0-9]{64}',release_id)
+  or data_key!='gold/daily-prices/releases/'+release_id+'/data.json'
+  or not isinstance(entry.get('bytes'),int) or isinstance(entry.get('bytes'),bool)
+  or not isinstance(entry.get('rows'),int) or isinstance(entry.get('rows'),bool)
+  or not isinstance(entry.get('provider'),str) or not isinstance(entry.get('feed'),str)):
+  _index_error('SESSION_INDEX_CORRUPT','session entry is invalid')
+ return entry
+async def _indexed_release(env,entry,requested):
+ """Load the indexed release and re-check its bytes and metadata before serving."""
+ obj=await env.MARKET_DATA.get(entry['data_key'])
+ if obj is None:_index_error('SESSION_INDEX_CORRUPT','indexed session release is missing')
+ raw=str(await obj.text()).encode('utf-8')
+ if len(raw)>16*1024*1024:raise ContractError('RESPONSE_TOO_LARGE','market source exceeds bounded loading budget',status=413)
+ if len(raw)!=entry['bytes'] or hashlib.sha256(raw).hexdigest()!=entry['release_id']:_index_error('SESSION_INDEX_CORRUPT','indexed session release does not match its entry')
+ try:data=json.loads(raw,parse_float=Decimal)
+ except ValueError:_index_error('SESSION_INDEX_CORRUPT','indexed session release is not JSON')
+ if (data.get('session')!=requested or data.get('provider')!=entry['provider'] or data.get('feed')!=entry['feed']
+  or not isinstance(data.get('bars'),list) or len(data['bars'])!=entry['rows']):
+  _index_error('SESSION_INDEX_CORRUPT','indexed session release metadata does not match its entry')
+ return data
 async def market_dispatch(env,path,params,rid):
  global _CACHE
  if params.get('as_of'):raise ContractError('SOURCE_LIMITED','provider publication has no established row availability timestamps; historical PIT requests require canonical prices',status=422)
@@ -10,8 +56,17 @@ async def market_dispatch(env,path,params,rid):
  if obj is None:raise ContractError('SOURCE_LIMITED','whole-market daily publication is not available',status=503)
  pointer=json.loads(await obj.text());sha=pointer.get('sha256','');key=pointer.get('data_key')
  if not re.fullmatch('[a-f0-9]{64}',sha) or pointer.get('version')!=sha or key!='gold/daily-prices/releases/'+sha+'/data.json':raise ContractError('SOURCE_LIMITED','invalid daily publication pointer',status=503)
- if params.get('release_id') and params['release_id']!=sha:raise ContractError('RELEASE_CHANGED','restart pagination against the current market release',status=409)
- if _CACHE is not None and _CACHE[0] is env.MARKET_DATA and _CACHE[1]==sha:data=_CACHE[2]
+ requested=params.get('session')
+ if requested is not None and (not isinstance(requested,str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',requested)):raise ContractError('INVALID_ARGUMENT','session must be YYYY-MM-DD',status=400)
+ historical=bool(requested) and requested!=pointer.get('session')
+ if not historical and params.get('release_id') and params['release_id']!=sha:raise ContractError('RELEASE_CHANGED','restart pagination against the current market release',status=409)
+ if historical:
+  if not _history_enabled(env):raise ContractError('SESSION_INDEX_DISABLED','historical session serving is disabled in this environment',status=503)
+  entry=await _index_entry(env,pointer,requested)
+  data=await _indexed_release(env,entry,requested)
+  sha=entry['release_id'];key=entry['data_key']
+  if params.get('release_id') and params['release_id']!=sha:raise ContractError('RELEASE_CHANGED','restart pagination against the served market release',status=409)
+ elif _CACHE is not None and _CACHE[0] is env.MARKET_DATA and _CACHE[1]==sha:data=_CACHE[2]
  else:
   obj=await env.MARKET_DATA.get(key)
   if obj is None:raise ContractError('SOURCE_LIMITED','daily publication data is missing',status=503)
@@ -22,6 +77,7 @@ async def market_dispatch(env,path,params,rid):
   if data.get('session')!=pointer.get('session') or data.get('provider')!=pointer.get('provider') or data.get('feed')!=pointer.get('feed') or not isinstance(data.get('bars'),list):raise ContractError('SOURCE_LIMITED','daily publication metadata mismatch',status=503)
   _CACHE=(env.MARKET_DATA,sha,data)
  result={'release':{'market_release_id':sha,'provider':data['provider'],'feed':data['feed'],'session':data['session'],'data_key':key,'sha256':sha},'coverage':{'status':'SOURCE_QUALIFIED','point_in_time_status':'NOT_ESTABLISHED','counts':data['counts'],'selection_policy':data.get('selection_policy'),'limitations':['Provider daily prices are separate from canonical fundamental coverage; no row publication timestamp is inferred.']},'request_id':rid}
+ if historical:result['coverage']['index_status']='SESSION_INDEX_VERIFIED';result['coverage']['session_index_key']=pointer['sessions_index']['key']
  if path=='/v1/market/coverage':result['data']={'session':data['session'],'counts':data['counts'],'price_qualified_securities':len(data['bars'])};return result
  if path not in ['/v1/market/prices','/v1/market/securities'] and not path.startswith('/v1/market/prices/'):raise ContractError('NOT_FOUND','market route not found',status=404)
  query=path.removeprefix('/v1/market/prices/') if path.startswith('/v1/market/prices/') else params.get('q','')

@@ -28,3 +28,235 @@ def test_market_prices_do_not_claim_historical_pit_eligibility():
 def test_market_release_rejects_modified_data_bytes():
  with pytest.raises(ContractError,match='hash'):
   asyncio.run(dispatch(source_env(True),'GET','/v1/market/coverage',{},None,'r'))
+
+
+
+# --- historical session serving through the pinned session index ---------------
+
+CURRENT_KEY = 'control/daily-prices/CURRENT.json'
+CURRENT_SESSION = '2026-09-30'
+PRIOR_SESSION = '2026-09-29'
+
+
+def _release(session, close):
+    payload = {
+        'session': session, 'provider': 'alpaca', 'feed': 'sip',
+        'counts': {'target': 1, 'returned': 1, 'noSessionBar': 0, 'invalid': 0},
+        'selection_policy': 'valid bars only',
+        'bars': [{'provider_symbol': 'META', 'security_id': 'meta', 'session_date': session,
+                  'close': close, 'open': close, 'high': close, 'low': close, 'volume': 10}],
+    }
+    raw = json.dumps(payload)
+    sha = hashlib.sha256(raw.encode()).hexdigest()
+    return raw, sha, 'gold/daily-prices/releases/' + sha + '/data.json'
+
+
+def _indexed_env(flag='true', *, session_entry=True, tamper_index=False,
+                 tamper_release=False, stale=False, drop_index=False):
+    current_raw, current_sha, current_key = _release(CURRENT_SESSION, 725.18)
+    prior_raw, prior_sha, prior_key = _release(PRIOR_SESSION, 700.5)
+    entry = {'release_id': prior_sha, 'data_key': prior_key, 'bytes': len(prior_raw.encode()),
+             'rows': 1, 'provider': 'alpaca', 'feed': 'sip',
+             'published_at': '2026-09-30T01:00:00.000Z', 'previous_version': None}
+    current_entry = {**entry, 'release_id': current_sha, 'data_key': current_key,
+                     'bytes': len(current_raw.encode())}
+    sessions = {CURRENT_SESSION: current_entry}
+    if session_entry:
+        sessions[PRIOR_SESSION] = entry
+    index = {'schema_version': 1, 'updated_at': '2026-09-30T01:00:00.000Z',
+             'retention': {'max_sessions': 300},
+             'latest_session': PRIOR_SESSION if stale else CURRENT_SESSION,
+             'sessions': sessions}
+    index_raw = json.dumps(index)
+    if tamper_index:
+        index_raw = index_raw.replace('"rows": 1', '"rows": 2')
+    index_sha = hashlib.sha256(index_raw.encode()).hexdigest()
+    index_key = 'control/daily-prices/sessions/' + index_sha + '.json'
+    objects = {CURRENT_KEY: json.dumps({'version': current_sha, 'sha256': current_sha,
+                                        'session': CURRENT_SESSION, 'provider': 'alpaca',
+                                        'feed': 'sip', 'data_key': current_key,
+                                        'sessions_index': {'key': index_key, 'sha256': index_sha,
+                                                           'bytes': len(index_raw.encode())}}),
+               current_key: current_raw,
+               index_key: index_raw}
+    if session_entry:
+        objects[prior_key] = prior_raw + ('x' if tamper_release else '')
+    if drop_index:
+        objects.pop(index_key)
+    env = SimpleNamespace(MARKET_DATA=Bucket(objects))
+    if flag is not None:
+        env.SESSION_INDEX_ENABLED = flag
+    return env
+
+
+def _expect(call, code):
+    with pytest.raises(ContractError) as err:
+        call()
+    assert err.value.code == code, err.value.code
+
+
+def test_indexed_prior_session_is_served_after_hash_verification():
+    r = asyncio.run(dispatch(_indexed_env(), 'GET', '/v1/market/prices',
+                             {'session': PRIOR_SESSION}, None, 'r'))
+    assert r['release']['session'] == PRIOR_SESSION
+    assert r['release']['market_release_id'] == hashlib.sha256(
+        _release(PRIOR_SESSION, 700.5)[0].encode()).hexdigest()
+    assert r['data']['prices'][0]['close'] == '700.5'
+    assert r['data']['prices'][0]['session_date'] == PRIOR_SESSION
+    assert r['coverage']['index_status'] == 'SESSION_INDEX_VERIFIED'
+    assert r['page']['release_id'] == r['release']['market_release_id']
+
+
+def test_current_session_request_does_not_require_an_index():
+    r = asyncio.run(dispatch(_indexed_env(drop_index=True), 'GET', '/v1/market/prices',
+                             {'session': CURRENT_SESSION}, None, 'r'))
+    assert r['release']['session'] == CURRENT_SESSION
+    assert 'index_status' not in r['coverage']
+
+
+def test_stale_index_falls_back_instead_of_serving_a_session():
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(stale=True), 'GET', '/v1/market/prices',
+                                         {'session': PRIOR_SESSION}, None, 'r')),
+            'SESSION_INDEX_STALE')
+
+
+def test_unindexed_session_is_not_synthesised():
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(session_entry=False), 'GET', '/v1/market/prices',
+                                         {'session': '2026-09-28'}, None, 'r')),
+            'SESSION_NOT_INDEXED')
+
+
+def test_missing_index_object_fails_closed():
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(drop_index=True), 'GET', '/v1/market/prices',
+                                         {'session': PRIOR_SESSION}, None, 'r')),
+            'SESSION_INDEX_MISSING')
+
+
+def test_tampered_index_bytes_are_rejected():
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(tamper_index=True), 'GET', '/v1/market/prices',
+                                         {'session': PRIOR_SESSION}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
+
+
+def test_tampered_indexed_release_is_rejected():
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(tamper_release=True), 'GET', '/v1/market/prices',
+                                         {'session': PRIOR_SESSION}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
+
+
+@pytest.mark.parametrize('flag', [None, '', 'false'])
+def test_historical_serving_stays_off_without_the_staging_flag(flag):
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(flag=flag), 'GET', '/v1/market/prices',
+                                         {'session': PRIOR_SESSION}, None, 'r')),
+            'SESSION_INDEX_DISABLED')
+
+
+def test_session_parameter_is_rejected_outside_market_routes():
+    _expect(lambda: asyncio.run(dispatch(_indexed_env(), 'GET', '/v1/metrics',
+                                         {'session': PRIOR_SESSION}, None, 'r')),
+            'INVALID_ARGUMENT')
+
+
+# --- producer-generated fixture (cross-language contract) ---------------------
+
+FIXTURE_PATH = Path(__file__).parents[1] / 'fixtures' / 'market-session-index.json'
+
+
+def _fixture_env(flag='true'):
+    fixture = json.loads(FIXTURE_PATH.read_text())
+    env = SimpleNamespace(MARKET_DATA=Bucket(fixture['objects']))
+    if flag is not None:
+        env.SESSION_INDEX_ENABLED = flag
+    return fixture, env
+
+
+def test_producer_generated_index_is_served_by_the_thin_worker():
+    fixture, env = _fixture_env()
+    prior = fixture['prior_session']
+    r = asyncio.run(dispatch(env, 'GET', '/v1/market/prices', {'session': prior}, None, 'r'))
+    assert r['release']['session'] == prior
+    assert r['release']['market_release_id'] == r['page']['release_id']
+    assert r['data']['prices'] and all(p['session_date'] == prior for p in r['data']['prices'])
+    assert r['coverage']['index_status'] == 'SESSION_INDEX_VERIFIED'
+
+
+def test_producer_fixture_current_session_still_serves():
+    fixture, env = _fixture_env()
+    r = asyncio.run(dispatch(env, 'GET', '/v1/market/coverage', {}, None, 'r'))
+    assert r['release']['session'] == fixture['latest_session']
+
+
+def test_producer_fixture_tampered_index_is_rejected():
+    fixture, env = _fixture_env()
+    pointer = json.loads(fixture['objects'][CURRENT_KEY])
+    key = pointer['sessions_index']['key']
+    objects = dict(fixture['objects'])
+    objects[key] = objects[key].replace('"max_sessions":300', '"max_sessions":299', 1)
+    tampered = SimpleNamespace(MARKET_DATA=Bucket(objects), SESSION_INDEX_ENABLED='true')
+    _expect(lambda: asyncio.run(dispatch(tampered, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
+
+
+def test_historical_pagination_accepts_the_served_release_id():
+    fixture, env = _fixture_env()
+    prior = fixture['prior_session']
+    first = asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                 {'session': prior, 'limit': 1}, None, 'r'))
+    assert first['page']['next_offset'] == 1
+    second = asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                  {'session': prior, 'limit': 1, 'offset': 1,
+                                   'release_id': first['page']['release_id']}, None, 'r'))
+    assert second['release']['market_release_id'] == first['release']['market_release_id']
+    assert second['page']['offset'] == 1
+
+
+def test_historical_pagination_rejects_the_current_release_id():
+    fixture, env = _fixture_env()
+    pointer = json.loads(fixture['objects'][CURRENT_KEY])
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session'],
+                                          'release_id': pointer['sha256']}, None, 'r')),
+            'RELEASE_CHANGED')
+
+
+# --- rollback and pin-bound drills -------------------------------------------
+
+def _without_pin(fixture, *, key=None, size=None):
+    pointer = json.loads(fixture['objects'][CURRENT_KEY])
+    if key is None and size is None:
+        pointer.pop('sessions_index', None)
+    else:
+        if key is not None:
+            pointer['sessions_index']['key'] = key
+        if size is not None:
+            pointer['sessions_index']['bytes'] = size
+    objects = dict(fixture['objects'])
+    objects[CURRENT_KEY] = json.dumps(pointer)
+    return SimpleNamespace(MARKET_DATA=Bucket(objects), SESSION_INDEX_ENABLED='true')
+
+
+def test_rollback_without_pin_degrades_dated_requests_only():
+    fixture, _ = _fixture_env()
+    env = _without_pin(fixture)
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_MISSING')
+    current = asyncio.run(dispatch(env, 'GET', '/v1/market/coverage', {}, None, 'r'))
+    assert current['release']['session'] == fixture['latest_session']
+
+
+def test_oversized_index_pin_is_rejected_before_reading_it():
+    fixture, _ = _fixture_env()
+    env = _without_pin(fixture, size=600000)
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')
+
+
+def test_index_pin_key_must_match_its_own_digest():
+    fixture, _ = _fixture_env()
+    env = _without_pin(fixture, key='control/daily-prices/sessions/' + 'c' * 64 + '.json')
+    _expect(lambda: asyncio.run(dispatch(env, 'GET', '/v1/market/prices',
+                                         {'session': fixture['prior_session']}, None, 'r')),
+            'SESSION_INDEX_CORRUPT')

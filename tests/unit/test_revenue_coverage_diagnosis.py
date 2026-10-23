@@ -296,3 +296,25 @@ def test_quarantine_is_scoped_to_statement_metrics_not_to_balance_sheet_facts():
     }
     assert "net_income" not in quarantined
     assert "cash" not in quarantined
+
+
+def test_walmart_collision_without_the_issuer_pin_stays_ambiguous(monkeypatch):
+    # The pin is what resolves Walmart; the engine's ambiguity rule still fires
+    # for any collision it does not recognise.
+    monkeypatch.delitem(sec_engine.REVENUE_CONCEPTS, WMT, raising=False)
+    data, result = _revenue(WMT, _company(WMT, WMT_TAGS))
+    assert result["observations"] == []
+    reasons = {gap["reason"] for gap in result["coverage_gaps"]}
+    assert "AMBIGUOUS_CONCEPT_OR_DERIVATION" in reasons
+    policy = statement_policy(_company(WMT, WMT_TAGS))
+    assert policy["family"] == "general_us_gaap_unclassified"
+    assert "revenue" not in policy["quarantined_metrics"]
+    assert data["policy"]["quarantined_metrics"].get("total_debt") == (
+        "COMPONENT_NONOVERLAP_NOT_CONFIRMED"
+    )
+
+
+def test_revenue_pins_agree_in_both_registries():
+    import sec_history
+
+    assert sec_engine.REVENUE_CONCEPTS == sec_history.REVENUE_CONCEPTS
