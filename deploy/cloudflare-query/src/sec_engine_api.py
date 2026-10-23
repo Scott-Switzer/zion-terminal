@@ -459,6 +459,14 @@ async def financial_history(env, m, p, allow_queue=True):
     return result, 200
 
 
+def history_parameters(url, allowed):
+    query = parameters(url, allowed | {"materialized_only"})
+    mode = query.pop("materialized_only", None)
+    if mode not in (None, "true"):
+        fail("INVALID_MATERIALIZATION_MODE")
+    return query, mode is None
+
+
 async def execute(env, request):
     authenticate(env, request)
     path = urlparse(request.url).path
@@ -473,11 +481,10 @@ async def execute(env, request):
     if release_values and len(release_values) == 1:
         m = await approved_release(env, m, release_values[0])
     if path == "/private/v1/financial-history":
-        return await financial_history(
-            env, m, parameters(request.url, HISTORY_PARAMETERS - {"ciks"})
-        )
+        query, allow_queue = history_parameters(request.url, HISTORY_PARAMETERS - {"ciks"})
+        return await financial_history(env, m, query, allow_queue=allow_queue)
     if path == "/private/v1/financial-history/batch":
-        q = parameters(request.url, HISTORY_PARAMETERS - {"cik", "cursor"})
+        q, allow_queue = history_parameters(request.url, HISTORY_PARAMETERS - {"cik", "cursor"})
         ciks = q.pop("ciks", "").split(",")
         if not 1 <= len(ciks) <= 5 or len(set(ciks)) != len(ciks):
             fail("BATCH_REQUIRES_1_TO_5_UNIQUE_CIKS", 422)
@@ -487,7 +494,9 @@ async def execute(env, request):
 
         async def run(cik):
             async with semaphore:
-                result, status = await financial_history(env, m, {**q, "cik": cik})
+                result, status = await financial_history(
+                    env, m, {**q, "cik": cik}, allow_queue=allow_queue
+                )
                 return {"cik": cik, "http_status": status, "result": result}
 
         results = await asyncio.gather(*(run(cik) for cik in ciks))

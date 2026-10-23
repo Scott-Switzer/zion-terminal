@@ -326,3 +326,37 @@ def test_quarantined_archive_identity_cannot_be_queued_or_served():
     ).hexdigest()
     response, status = asyncio.run(handle(env, request()))
     assert status == 422 and response["error"]["code"] == "CIK_QUARANTINED_SOURCE_IDENTITY_MISMATCH"
+
+
+def test_materialized_only_history_reports_gap_without_queue_or_writes(monkeypatch):
+    import sec_engine_api as api
+
+    async def missing(*args):
+        return None
+
+    monkeypatch.setattr(api, "company", missing)
+    for path in (
+        "/private/v1/financial-history?cik=0000789019&materialized_only=true",
+        "/private/v1/financial-history/batch?ciks=0000789019&materialized_only=true",
+    ):
+        env, bucket, _ = fixture()
+
+        class NoQueue:
+            async def sendBatch(self, messages):
+                raise AssertionError("Read-only financial queries cannot queue work")
+
+        env.SEC_ENGINE_QUEUE = NoQueue()
+        value, status = asyncio.run(handle(env, request(path)))
+        assert status == 202
+        assert value["error"]["code"] == "MATERIALIZATION_REQUIRED"
+        assert bucket.writes == 0
+
+
+def test_materialized_only_mode_is_strict_and_retains_stored_results():
+    env, _, _ = fixture()
+    path = "/private/v1/financial-history?cik=0000789019&metrics=revenue&materialized_only="
+    value, status = asyncio.run(handle(env, request(path + "true")))
+    assert status == 200 and value["observations"]
+    for mode in ("false", "1", "TRUE", ""):
+        _, status = asyncio.run(handle(env, request(path + mode)))
+        assert status == 400
