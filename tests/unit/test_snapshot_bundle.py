@@ -93,9 +93,14 @@ def test_thin_http_stamps_answers_and_rejects_a_mid_request_change(monkeypatch):
     import importlib.util
     class Response:
         def __init__(self, body, status=200, headers=None):
-            self.value = json.loads(body)
+            self.value = json.loads(body) if isinstance(body, str) else None
+            self.body = body
             self.status = status
-            self.headers = headers or {}
+            self._headers = headers or {}
+        @property
+        def headers(self):
+            # Python Workers exposes a copied mapping, not a mutable JS Headers.
+            return dict(self._headers)
     monkeypatch.setitem(sys.modules, 'workers', SimpleNamespace(Response=Response, WorkerEntrypoint=object))
     spec = importlib.util.spec_from_file_location('bundle_test_thin', Path(__file__).parents[2] / 'deploy/cloudflare-query/src/thin_worker.py')
     thin = importlib.util.module_from_spec(spec)
@@ -115,6 +120,18 @@ def test_thin_http_stamps_answers_and_rejects_a_mid_request_change(monkeypatch):
     assert result.value['data_as_of'] == '2025-12-31'
     assert result.headers['x-zion-bundle-id'] == 'a'*64
     assert result.headers['x-zion-data-as-of'] == '2025-12-31'
+    stream = object()
+    async def streamed(self, request):
+        return Response(stream, status=206, headers={'etag':'source-etag','content-range':'bytes 0-3/10'})
+    values[:] = [{'bundle_id':'a'*64, 'source_releases':{'SEC':'original'}}]*2
+    monkeypatch.setattr(thin.Default, '_fetch', streamed)
+    result = asyncio.run(worker.fetch(request))
+    assert result.body is stream and result.status == 206
+    assert result.headers['etag'] == 'source-etag'
+    assert result.headers['content-range'] == 'bytes 0-3/10'
+    assert result.headers['x-zion-bundle-id'] == 'a'*64
+    assert result.headers['x-zion-data-as-of'] == 'null'
+    monkeypatch.setattr(thin.Default, '_fetch', answer)
     values[:] = [{'bundle_id':'a'*64,'source_releases':{'SEC':'original'}}, {'bundle_id':'b'*64,'source_releases':{'SEC':'next'}}]
     result = asyncio.run(worker.fetch(request))
     assert result.status == 409 and result.value['error']['code'] == 'RELEASE_MISMATCH'
