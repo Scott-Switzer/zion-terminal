@@ -116,7 +116,7 @@ async def load_snapshot(env):
                 raise ValueError('BUNDLE_REFERENCE_INVALID')
             sources[name] = value[field]
             sources[name + '/reference_sha256'] = digest
-    daily = await _reference(env, 'control/daily-prices/CURRENT.json', optional=True)
+    daily = await _reference(env, getattr(env, 'DAILY_PRICES_CURRENT_KEY', 'control/daily-prices/CURRENT.json'), optional=True)
     if daily is None and str(getattr(env, 'BUNDLE_SHARED_SNAPSHOT', 'false')).lower() == 'true':
         capabilities, _ = await _reference(env, BASE + 'existing-capabilities.json')
         pointer = capabilities['daily_pointer']
