@@ -1,0 +1,29 @@
+name: Benchmark evidence live acceptance
+# Live acceptance runs by hand only: it probes the deployed Worker, so a push to a
+# branch that is not deployed yet would report a false failure on the pull request.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ZION_PRIVATE_BASE_URL: https://zion-ddfi-benchmark-staging.scswitzer.workers.dev
+      ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify acceptance script syntax
+        run: python -m py_compile scripts/benchmark_evidence_acceptance.py
+      - name: Verify deployed benchmark publication evidence
+        run: python scripts/benchmark_evidence_acceptance.py --output benchmark-evidence-acceptance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-evidence-acceptance
+          path: benchmark-evidence-acceptance.json
+          if-no-files-found: ignore
