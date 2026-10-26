@@ -45,6 +45,17 @@ def test_stamp_preserves_source_provenance_and_checks_pin():
         b.assert_bundle('different', snapshot)
 
 
+def test_stamp_accepts_a_foreign_pinned_dataset_family():
+    b = module()
+    snapshot = {'bundle_id': b.bundle_id({'SEC': 'original'}),
+                'source_releases': {'serving': 'financial-current'}}
+    benchmark = {'release': {'serving_release_id': 'ddfi-benchmarks:' + 'a' * 64}}
+    result = b.stamp(benchmark, snapshot)
+    assert result['bundle_id'] == snapshot['bundle_id']
+    with pytest.raises(ValueError, match='RELEASE_MISMATCH'):
+        b.stamp({'release': {'serving_release_id': 'financial-stale'}}, snapshot)
+
+
 def test_manifest_tracks_configured_and_shared_source_releases(monkeypatch):
     b = module()
     import serving_v2

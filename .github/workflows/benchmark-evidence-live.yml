@@ -1,0 +1,34 @@
+name: Benchmark evidence live acceptance
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - acceptance/bench-gate-live
+    paths:
+      - .github/workflows/benchmark-evidence-live.yml
+      - scripts/benchmark_evidence_acceptance.py
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ZION_PRIVATE_BASE_URL: https://zion-ddfi-benchmark-staging.scswitzer.workers.dev
+      ZION_PRIVATE_API_TOKEN: ${{ secrets.ZION_PRIVATE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify acceptance script syntax
+        run: python -m py_compile scripts/benchmark_evidence_acceptance.py
+      - name: Verify deployed benchmark publication evidence
+        run: python scripts/benchmark_evidence_acceptance.py --output benchmark-evidence-acceptance.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-evidence-acceptance
+          path: benchmark-evidence-acceptance.json
+          if-no-files-found: ignore

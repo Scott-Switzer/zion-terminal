@@ -61,13 +61,24 @@ def assert_bundle(expected, snapshot):
         raise ValueError('RELEASE_MISMATCH')
 
 
+# Dataset families outside the financial serving release carry their own pinned
+# identity (DDFI benchmark releases are verified against their hash-pinned index
+# and publication-evidence catalog). Comparing those identities with the
+# financial serving pointer would reject every valid non-financial answer.
+FOREIGN_RELEASE_PREFIXES = ('ddfi-benchmarks:',)
+
+
 def stamp(value, snapshot):
     if not isinstance(value, dict):
         return value
     assert_bundle(value.get('bundle_id'), snapshot)
     release = value.get('release') or {}
     served = value.get('serving_release_id') or (release.get('serving_release_id') if isinstance(release, dict) else None)
-    if served is not None and served != snapshot['source_releases'].get('serving'):
+    if (
+        served is not None
+        and not str(served).startswith(FOREIGN_RELEASE_PREFIXES)
+        and served != snapshot['source_releases'].get('serving')
+    ):
         raise ValueError('RELEASE_MISMATCH')
     return {**value, 'bundle_id': snapshot['bundle_id'], 'data_as_of': data_as_of(value),
             'source_releases': snapshot['source_releases']}
