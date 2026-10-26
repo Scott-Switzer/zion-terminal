@@ -222,7 +222,7 @@ def evidence_entry(entry, objects, **overrides):
     return item
 
 
-def rewrite_evidence(env, mutate):
+def rewrite_evidence(env, mutate, *, clear_cache=True):
     """Rewrite the catalog object and repin its digest, as a curator would."""
     key = env.DDFI_BENCHMARKS_EVIDENCE_KEY
     catalog = json.loads(env.MARKET_DATA.objects[key].raw)
@@ -230,7 +230,8 @@ def rewrite_evidence(env, mutate):
     raw = json.dumps(catalog, sort_keys=True).encode()
     env.MARKET_DATA.objects[key] = Obj(raw)
     env.DDFI_BENCHMARKS_EVIDENCE_SHA256 = hashlib.sha256(raw).hexdigest()
-    ddfi_benchmarks_api._METADATA_CACHE.clear()
+    if clear_cache:
+        ddfi_benchmarks_api._METADATA_CACHE.clear()
 
 
 def call(env, request, request_id="req-1"):
@@ -621,9 +622,52 @@ def test_warm_cache_does_not_bypass_evidence_validation():
         entry = next(e for e in catalog["releases"] if e["release_id"] == ids["jan"])
         entry["publication_evidence"]["server_last_modified"] = "Tue, 13 Jan 2026 00:00:00 GMT"
 
-    rewrite_evidence(env, mutate)
+    # Keep the warmed index/release cache entries: the catalog digest is new, so
+    # only the evidence object itself must be re-read and re-validated.
+    rewrite_evidence(env, mutate, clear_cache=False)
     second = call(env, {
         "operation": "benchmark_context", "release_id": ids["jan"],
         "subject": "Software (System & Application)", "as_of": "2026-03-01",
     })
     assert second["error"]["code"] == "BENCHMARK_EVIDENCE_MISMATCH"
+
+
+def test_nested_evidence_hash_must_match_served_bytes():
+    env, ids = make_env()
+
+    def mutate(catalog):
+        entry = next(e for e in catalog["releases"] if e["release_id"] == ids["jan"])
+        # Outer binding is correct; the nested record names other bytes.
+        entry["publication_evidence"]["evidence_sha256"] = "c" * 64
+
+    rewrite_evidence(env, mutate)
+    result = call(env, {
+        "operation": "benchmark_context", "release_id": ids["jan"],
+        "subject": "Software (System & Application)", "as_of": "2026-03-01",
+    })
+    assert result["error"]["code"] == "BENCHMARK_EVIDENCE_MISMATCH"
+    assert "different source bytes" in result["error"]["message"]
+
+
+def test_evidence_dates_are_compared_in_utc():
+    # 2026-01-11T23:30:00-02:00 is 2026-01-12T01:30Z: publication day in UTC.
+    env, ids = make_env()
+    rewrite_evidence(env, lambda catalog: next(
+        e for e in catalog["releases"] if e["release_id"] == ids["jan"]
+    )["publication_evidence"].__setitem__("observed_at", "2026-01-11T23:30:00-02:00"))
+    result = call(env, {
+        "operation": "benchmark_context", "release_id": ids["jan"],
+        "subject": "Software (System & Application)", "as_of": "2026-03-01",
+    })
+    assert result.get("release", {}).get("ddfi_release_id") == ids["jan"], result
+
+    # 2026-01-12T01:30:00+03:00 is 2026-01-11T22:30Z: still before publication.
+    env, ids = make_env()
+    rewrite_evidence(env, lambda catalog: next(
+        e for e in catalog["releases"] if e["release_id"] == ids["jan"]
+    )["publication_evidence"].__setitem__("observed_at", "2026-01-12T01:30:00+03:00"))
+    result = call(env, {
+        "operation": "benchmark_context", "release_id": ids["jan"],
+        "subject": "Software (System & Application)", "as_of": "2026-03-01",
+    })
+    assert result["error"]["code"] == "BENCHMARK_EVIDENCE_MISMATCH"

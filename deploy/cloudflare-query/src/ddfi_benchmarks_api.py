@@ -124,7 +124,8 @@ def _instant(value, field):
         fail("BENCHMARK_EVIDENCE_MISMATCH", f"{field} is not an ISO timestamp", 503)
     if parsed.tzinfo is None:
         fail("BENCHMARK_EVIDENCE_MISMATCH", f"{field} requires a timezone", 503)
-    return parsed
+    # Normalise before taking a calendar date, or a local offset changes eligibility.
+    return parsed.astimezone(timezone.utc)
 
 
 def _retrieval(value):
@@ -160,6 +161,10 @@ def publication_evidence(entry, manifest, evidence_entries, evidence_digest):
     record = claim.get("publication_evidence")
     if not isinstance(record, dict):
         fail("BENCHMARK_EVIDENCE_MISMATCH", "publication evidence is not structured", 503)
+    # The evidence record may name the bytes it covers; a conflicting nested hash
+    # would otherwise claim reviewed evidence for bytes it does not cover.
+    if record.get("evidence_sha256") is not None and record["evidence_sha256"] != source_sha:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "evidence record covers different source bytes", 503)
     published = entry.get("published_at")
     if claim.get("published_at") != published or manifest.get("published_at") != published:
         fail("BENCHMARK_EVIDENCE_MISMATCH", "evidence, index and manifest disagree on publication", 503)
