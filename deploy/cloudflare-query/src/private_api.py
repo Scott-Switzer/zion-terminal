@@ -28,6 +28,8 @@ OPERATIONS = (
     "price_history",
     "sec_coverage",
     "sec_financials",
+    "benchmark_discovery",
+    "benchmark_context",
 )
 
 
@@ -93,6 +95,13 @@ async def query_existing(env, request: dict, *, request_id: str) -> dict:
         from sec_expanded_api import query_expanded
 
         return await query_expanded(env, request, request_id=request_id)
+    if isinstance(request, dict) and request.get("operation") in (
+        "benchmark_discovery",
+        "benchmark_context",
+    ):
+        from ddfi_benchmarks_api import query_benchmarks
+
+        return await query_benchmarks(env, request, request_id=request_id)
     request = validate_request(request)
     try:
         return await _query(env, request, request_id)
