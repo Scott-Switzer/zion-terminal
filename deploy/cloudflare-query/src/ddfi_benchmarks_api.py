@@ -26,16 +26,22 @@ import hashlib
 import json
 import re
 from datetime import date, datetime, timezone
+from email.utils import parsedate_to_datetime
 
 from private_financials import PrivateFinancialsError
 
 INDEX_SCHEMA = "ddfi-benchmark-index-v1"
 RELEASE_SCHEMA = "damodaran-assumptions-v1"
+EVIDENCE_SCHEMA = "damodaran-publication-evidence-v1"
 CLASSIFICATION = "BENCHMARK_ASSUMPTION_NOT_COMPANY_FACT"
 PREFIX = "gold/ddfi-benchmarks/v1/"
 MAX_INDEX = 262144
 MAX_RELEASE_MEMBER = 4 * 1048576
+MAX_EVIDENCE = 1048576
 MAX_SUBJECTS = 512
+# The only reviewed publication-evidence methods; mirrored from the DCF loader so
+# both consumers reject the same set instead of drifting apart.
+PUBLICATION_METHODS = frozenset({"SERVER_LAST_MODIFIED", "PUBLISHER_STATED", "FIRST_OBSERVED"})
 
 _METADATA_CACHE = {}
 
@@ -84,6 +90,113 @@ async def load_index(env):
     if index.get("version") != INDEX_SCHEMA or not isinstance(index.get("releases"), list):
         fail("BENCHMARK_INTEGRITY_FAILURE", "benchmark index schema mismatch", 503)
     return index, digest
+
+
+async def load_evidence(env):
+    """Read the hash-pinned publication-evidence catalog.
+
+    Historical serving fails closed when the catalog is not configured, so code
+    can ship before the data/config step without changing current-mode behavior.
+    """
+    key, digest = (
+        getattr(env, "DDFI_BENCHMARKS_EVIDENCE_KEY", None),
+        getattr(env, "DDFI_BENCHMARKS_EVIDENCE_SHA256", None),
+    )
+    if not key or not digest:
+        fail("BENCHMARKS_EVIDENCE_NOT_CONFIGURED", "benchmark evidence is not configured", 503)
+    catalog = json.loads(await pinned(env, {"key": key, "sha256": digest}, maximum=MAX_EVIDENCE))
+    if catalog.get("schema_version") != EVIDENCE_SCHEMA or not isinstance(catalog.get("releases"), list):
+        fail("BENCHMARK_INTEGRITY_FAILURE", "benchmark evidence schema mismatch", 503)
+    entries = {}
+    for item in catalog["releases"]:
+        if not isinstance(item, dict) or not isinstance(item.get("release_id"), str):
+            fail("BENCHMARK_INTEGRITY_FAILURE", "benchmark evidence entry is malformed", 503)
+        if item["release_id"] in entries:
+            fail("BENCHMARK_INTEGRITY_FAILURE", "benchmark evidence entries are duplicated", 503)
+        entries[item["release_id"]] = item
+    return entries, digest
+
+
+def _instant(value, field):
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        fail("BENCHMARK_EVIDENCE_MISMATCH", f"{field} is not an ISO timestamp", 503)
+    if parsed.tzinfo is None:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", f"{field} requires a timezone", 503)
+    return parsed
+
+
+def _retrieval(value):
+    """Return ``(date, instant_or_None)``; a date-only record keeps day precision."""
+    text = str(value)
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        try:
+            return date.fromisoformat(text), None
+        except ValueError:
+            fail("BENCHMARK_EVIDENCE_MISMATCH", "retrieved_at is not a calendar date", 503)
+    instant = _instant(value, "retrieved_at")
+    return instant.date(), instant
+
+
+def publication_evidence(entry, manifest, evidence_entries, evidence_digest):
+    """Validate the reviewed evidence bound to the *selected* release bytes.
+
+    The release identity chain is already verified by ``_verify_release``; this
+    adds the publication claim: it must be recorded for this release, bound to
+    the same source digest that the served manifest names, and it must not claim
+    a date the evidence could not have supported.
+    """
+    claim = evidence_entries.get(entry["release_id"])
+    if claim is None:
+        fail(
+            "BENCHMARK_EVIDENCE_MISSING",
+            f"release {entry['release_id']} has no reviewed publication evidence",
+            503,
+        )
+    source_sha = manifest.get("files", {}).get("source.bin")
+    if not source_sha or claim.get("source_sha256") != source_sha:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "evidence is not bound to the served source bytes", 503)
+    record = claim.get("publication_evidence")
+    if not isinstance(record, dict):
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "publication evidence is not structured", 503)
+    published = entry.get("published_at")
+    if claim.get("published_at") != published or manifest.get("published_at") != published:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "evidence, index and manifest disagree on publication", 503)
+    if record.get("method") not in PUBLICATION_METHODS:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "publication evidence method is not reviewed", 503)
+    source_url = str(record.get("source_url") or "")
+    if not source_url.startswith("https://") or not record.get("statement"):
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "publication evidence is incomplete", 503)
+    published_date = date.fromisoformat(published)
+    observed = _instant(record.get("observed_at"), "evidence observed_at")
+    if observed.date() < published_date:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "evidence precedes publication", 503)
+    downloaded = claim.get("download_retrieved_at", claim.get("retrieved_at"))
+    if downloaded is None:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "evidence has no recorded download time", 503)
+    retrieval_date, retrieval_instant = _retrieval(downloaded)
+    if published_date > retrieval_date:
+        fail("BENCHMARK_EVIDENCE_MISMATCH", "publication follows the recorded download", 503)
+    if record.get("method") == "SERVER_LAST_MODIFIED":
+        try:
+            modified = parsedate_to_datetime(str(record.get("server_last_modified")))
+        except (TypeError, ValueError):
+            fail("BENCHMARK_EVIDENCE_MISMATCH", "server Last-Modified is unparseable", 503)
+        if modified.tzinfo is None:
+            fail("BENCHMARK_EVIDENCE_MISMATCH", "server Last-Modified requires a timezone", 503)
+        if modified.date() != published_date:
+            fail("BENCHMARK_EVIDENCE_MISMATCH", "published_at is not the server Last-Modified date", 503)
+        if retrieval_instant is not None and modified > retrieval_instant:
+            fail("BENCHMARK_EVIDENCE_MISMATCH", "server Last-Modified follows the recorded download", 503)
+    return {
+        "method": record["method"],
+        "source_url": source_url,
+        "observed_at": observed.isoformat(),
+        "server_last_modified": record.get("server_last_modified"),
+        "download_precision": "day" if retrieval_instant is None else "instant",
+        "catalog_sha256": evidence_digest,
+    }
 
 
 def _as_of_date(value):
@@ -187,8 +300,8 @@ def _select_release(releases, *, dataset_id, release_id, as_of, expected_release
     return selected, mode
 
 
-def _release_block(entry, mode, index_digest, manifest):
-    return {
+def _release_block(entry, mode, index_digest, manifest, evidence=None):
+    block = {
         "serving_release_id": "ddfi-benchmarks:" + entry["release_id"],
         "ddfi_release_id": entry["release_id"],
         "dataset_id": entry["dataset_id"],
@@ -206,6 +319,9 @@ def _release_block(entry, mode, index_digest, manifest):
         "index_sha256": index_digest,
         "rights": manifest.get("rights", {}),
     }
+    if evidence is not None:
+        block["publication_evidence"] = evidence
+    return block
 
 
 def _observation(record):
@@ -367,6 +483,12 @@ async def _query(env, request, request_id):
         expected_release_id=expected,
     )
     manifest, data = await load_release(env, entry)
+    # Publication evidence gates *historical* serving only. Current selection is
+    # an explicit choice of the newest release and keeps its existing contract.
+    provenance = None
+    if as_of is not None:
+        evidence_entries, evidence_digest = await load_evidence(env)
+        provenance = publication_evidence(entry, manifest, evidence_entries, evidence_digest)
     known = {r["measure"] for r in data["records"]}
     if measures is not None:
         unknown = sorted(set(measures) - known)
@@ -395,7 +517,7 @@ async def _query(env, request, request_id):
         "schema_version": "zion-private-query-v1",
         "request_id": request_id,
         "operation": operation,
-        "release": _release_block(entry, mode, index_digest, manifest),
+        "release": _release_block(entry, mode, index_digest, manifest, provenance),
         "data": {
             "subject": subject,
             "subject_type": data.get("subject_type"),
@@ -426,5 +548,10 @@ async def _query(env, request, request_id):
             "rights_status": manifest.get("rights", {}).get("rights_status"),
             "external_redistribution": manifest.get("rights", {}).get("redistribution_policy"),
             "independent_validation": "SOURCE_CELL_PRESERVED; CONSUMER_NUMERICS_TESTED",
+            "publication_evidence": (
+                "REVIEWED_CATALOG_BOUND_TO_SERVED_SOURCE_BYTES"
+                if provenance is not None
+                else "NOT_APPLICABLE_CURRENT_SELECTION"
+            ),
         },
     }
