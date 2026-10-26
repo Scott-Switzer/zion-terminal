@@ -1,13 +1,8 @@
 name: Benchmark evidence live acceptance
+# Live acceptance runs by hand only: it probes the deployed Worker, so a push to a
+# branch that is not deployed yet would report a false failure on the pull request.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - acceptance/bench-gate-live
-    paths:
-      - .github/workflows/benchmark-evidence-live.yml
-      - scripts/benchmark_evidence_acceptance.py
 permissions:
   contents: read
 jobs:
