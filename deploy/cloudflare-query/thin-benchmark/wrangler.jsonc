@@ -37,7 +37,11 @@
     "SEC_EXPANDED_INDEX_KEY": "gold/sec-expanded/releases/66c116df4860e40b560c3f38cdafba37acae6ae77a7387fc144bb829f3257da0/manifest.json",
     "SEC_EXPANDED_INDEX_SHA256": "d7d93516a7a2cc18859b749fbb3a5719bc92406452ede3505bfde6536fa3f556",
     "DDFI_BENCHMARKS_INDEX_KEY": "gold/ddfi-benchmarks/v1/index.json",
-    "DDFI_BENCHMARKS_INDEX_SHA256": "4817c621389ee06b65254d716573a43633b9a58a9572e57b11f7b2e4ac558ce2"
+    "DDFI_BENCHMARKS_INDEX_SHA256": "4817c621389ee06b65254d716573a43633b9a58a9572e57b11f7b2e4ac558ce2",
+    // Immutable, content-addressed reviewed-evidence catalog. Historical selection
+    // fails closed if this object or its digest does not verify.
+    "DDFI_BENCHMARKS_EVIDENCE_KEY": "gold/ddfi-benchmarks/v1/evidence/d8c75248feff3e39ae5654a2b3cedc7f847b36ea551b6ff207ba3f3b3c60414f.json",
+    "DDFI_BENCHMARKS_EVIDENCE_SHA256": "d8c75248feff3e39ae5654a2b3cedc7f847b36ea551b6ff207ba3f3b3c60414f"
   },
   "observability": {
     "enabled": true,
