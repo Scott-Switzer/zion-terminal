@@ -93,7 +93,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def request_http(base, method, path, payload, token):
+def request_http(base, method, path, payload, token, extra=None):
     headers = {
         "content-type": "application/json",
         "accept": "application/json",
@@ -101,6 +101,8 @@ def request_http(base, method, path, payload, token):
     }
     if token:
         headers["authorization"] = "Bearer " + token
+    for name, value in (extra or {}).items():
+        headers[name] = value
     data = None if payload is None else json.dumps(payload).encode()
     req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
     try:
@@ -111,7 +113,8 @@ def request_http(base, method, path, payload, token):
         raw = response.read(1048577)
         if len(raw) > 1048576:
             raise ValueError("response too large")
-        return response.code, json.loads(raw)
+        received = {k.lower(): v for k, v in response.headers.items()}
+        return response.code, json.loads(raw), received
 
 
 def _loopback(hostname):
@@ -182,10 +185,13 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
     base = base_url.rstrip("/")
     checks = []
 
-    def execute(name, payload, auth=token):
+    def execute(name, payload, auth=token, extra=None):
         started = time.perf_counter()
+        received = {}
         try:
-            status, body = request_fn(base, "POST", "/private/v1/query", payload, auth)
+            status, body, received = request_fn(
+                base, "POST", "/private/v1/query", payload, auth, extra
+            )
             if not isinstance(body, dict):
                 raise ValueError("invalid response")
         except Exception:
@@ -196,6 +202,10 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             "latency_ms": round((time.perf_counter() - started) * 1000, 2),
             "status": "FAIL",
         }
+        stamp = received.get("x-zion-bundle-id")
+        if stamp:
+            check["bundle_stamp"] = stamp
+            check["bundle_stamped"] = stamp == body.get("bundle_id")
         if status != 200:
             code = _code(body)
             if code:
@@ -236,6 +246,7 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             and provenance["selection_mode"] == "HISTORICAL_AS_OF"
             and coverage.get("as_of") == COST_OF_CAPITAL_CUTOFF
             and served
+            and check.get("bundle_stamped")
         ):
             check["status"] = "PASS"
             check["provenance"] = provenance
@@ -295,6 +306,7 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             and release.get("selection_mode") == "CURRENT_EXPLICIT"
             and "publication_evidence" not in release
             and coverage.get("publication_evidence") == CURRENT_EVIDENCE_STATE
+            and current.get("bundle_stamped")
         )
         current["status"] = "PASS" if current_ok else "FAIL"
         if current_ok:
@@ -317,6 +329,25 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             "PASS" if ahead["http_status"] == 400 and ahead.get("error_code") == "INVALID_REQUEST" else "FAIL"
         )
 
+        # A caller-declared bundle pin that does not match the served snapshot
+        # must still be rejected; the stamp is not a no-op after the fix.
+        stale, _ = execute(
+            "bundle_pin_mismatch_rejected",
+            {
+                "operation": "benchmark_context",
+                "dataset_id": "cost_of_capital",
+                "subject": subjects["cost_of_capital"],
+                "measures": [EXPECTED["cost_of_capital"][2]],
+                "as_of": COST_OF_CAPITAL_CUTOFF,
+            },
+            extra={"x-zion-bundle-id": "0" * 32},
+        )
+        stale["status"] = (
+            "PASS"
+            if stale["http_status"] == 409 and stale.get("error_code") == "RELEASE_MISMATCH"
+            else "FAIL"
+        )
+
     for dataset_id in EXPECTED:
         subject = subjects.get(dataset_id)
         if not subject:
@@ -332,7 +363,7 @@ def run_acceptance(base_url, token, *, request_fn=request_http):
             },
         )
         provenance, reason = evidence_provenance(body, dataset_id=dataset_id) if body else (None, "no response")
-        if check["http_status"] == 200 and provenance is not None:
+        if check["http_status"] == 200 and provenance is not None and check.get("bundle_stamped"):
             check["status"] = "PASS"
             check["provenance"] = provenance
         elif check["status"] != "PASS":
