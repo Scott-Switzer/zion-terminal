@@ -1,5 +1,7 @@
 # Zion Terminal
 
+
+> **Moved (2026-10-29):** this code now lives in [personal-hedge-fund](https://github.com/Scott-Switzer/personal-hedge-fund) at `apps/terminal/`, imported as a full subtree with history. New work goes in the monorepo. This repo is frozen for review.
 **Unified financial data retrieval, validation, and synthetic data generation.**
 
 > **Status:** Proof of concept (v0.9.1). Under active development. Not production-ready.
